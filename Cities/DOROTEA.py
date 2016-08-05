@@ -1,6 +1,6 @@
 """
 DOROTEA
-The cities and desire, chaper I
+The cities and desire, chapter I
 JJGC August 2016
 
 What DOROTEA does:
