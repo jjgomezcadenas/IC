@@ -41,25 +41,6 @@ def plot_signal(signal_t,signal,
   plt.plot(signal_t, signal)
   plt.show()
 
-def plot_signal2(signal_t,signal, 
-                title = 'signal', signal_start=0, signal_end=1e+7,
-                signal_min=-1e+7, signal_max=1e+7, 
-                units=''):
-
-  ax1 = plt.subplot(1,1,1)
-  ax1.set_xlim([signal_start, signal_end])
-  ax1.set_ylim([signal_min, signal_max])
-  SetPlotLabels(xlabel='t (ns)', ylabel='signal (%s)'%units)
-  plt.title(title)
-  plt.plot(signal_t, signal)
-  plt.figure()
-
-def pulse_plot(pulse_time, pulse_volt):
-  """
-  Plots pulse
-  """
-  plt.plot(pulse_time, pulse_volt)
-  plt.show()
 
 def SetPlotLabels(xlabel="", ylabel="",grid=True):
   plt.xlabel(xlabel)
@@ -67,30 +48,76 @@ def SetPlotLabels(xlabel="", ylabel="",grid=True):
   if grid == True:
     plt.grid(which='both', axis='both')
 
+def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
+    """
+    Make a scatter of circles plot of x vs y, where x and y are sequence 
+    like objects of the same lengths. The size of circles are in data scale.
 
-def PrintSignal(title,signal_t,signal):
+    Parameters
+    ----------
+    x,y : scalar or array_like, shape (n, )
+        Input data
+    s : scalar or array_like, shape (n, ) 
+        Radius of circle in data unit.
+    c : color or sequence of color, optional, default : 'b'
+        `c` can be a single color format string, or a sequence of color
+        specifications of length `N`, or a sequence of `N` numbers to be
+        mapped to colors using the `cmap` and `norm` specified via kwargs.
+        Note that `c` should not be a single numeric RGB or RGBA sequence 
+        because that is indistinguishable from an array of values
+        to be colormapped. (If you insist, use `color` instead.)  
+        `c` can be a 2-D array in which the rows are RGB or RGBA, however. 
+    vmin, vmax : scalar, optional, default: None
+        `vmin` and `vmax` are used in conjunction with `norm` to normalize
+        luminance data.  If either are `None`, the min and max of the
+        color array is used.
+    kwargs : `~matplotlib.collections.Collection` properties
+        Eg. alpha, edgecolor(ec), facecolor(fc), linewidth(lw), linestyle(ls), 
+        norm, cmap, transform, etc.
 
-  print "%s len: signal_t =%d, signal = %d "%(title,len(signal_t), len(signal))
-  #print "signal_t =", signal_t
-  #print "signal =", signal
-  
-def PlotPE(cbin,cnt,len_signal_max, s1_l,s1_r,s2_l,s2_r):
-    ax1 = plt.subplot(3,1,1)
-    ax1.set_xlim([0, len_signal_max/mus])
-    SetPlotLabels(xlabel='t (mus)', ylabel='signal (PES)')
-    
-    plt.plot(cbin/mus, cnt)
+    Returns
+    -------
+    paths : `~matplotlib.collections.PathCollection`
 
-    ax2 = plt.subplot(3,1,2)
-    ax2.set_xlim([s1_l/mus, s2_r/mus])
-    SetPlotLabels(xlabel='t (mus)', ylabel='signal (PES)')
-    
-    plt.plot(cbin/mus, cnt)
-   
-    ax3 = plt.subplot(3,1,3)
-    ax3.set_xlim([s2_l, s2_r])
-    SetPlotLabels(xlabel='t (mus)', ylabel='signal (PES)')
-    
-    plt.plot(cbin/ns, cnt)
-    plt.show()
+    Examples
+    --------
+    a = np.arange(11)
+    circles(a, a, a*0.2, c=a, alpha=0.5, edgecolor='none')
+    plt.colorbar()
+
+    License
+    --------
+    This code is under [The BSD 3-Clause License]
+    (http://opensource.org/licenses/BSD-3-Clause)
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle
+    from matplotlib.collections import PatchCollection
+
+    if np.isscalar(c):
+        kwargs.setdefault('color', c)
+        c = None
+    if 'fc' in kwargs: kwargs.setdefault('facecolor', kwargs.pop('fc'))
+    if 'ec' in kwargs: kwargs.setdefault('edgecolor', kwargs.pop('ec'))
+    if 'ls' in kwargs: kwargs.setdefault('linestyle', kwargs.pop('ls'))
+    if 'lw' in kwargs: kwargs.setdefault('linewidth', kwargs.pop('lw'))
+
+    patches = [Circle((x_, y_), s_) for x_, y_, s_ in np.broadcast(x, y, s)]
+    collection = PatchCollection(patches, **kwargs)
+    if c is not None:
+        collection.set_array(np.asarray(c))
+        collection.set_clim(vmin, vmax)
+
+    ax = plt.gca()
+    ax.add_collection(collection)
+    ax.autoscale_view()
+    if c is not None:
+        plt.sci(collection)
+    return collection
+
+
+
+
+
 
