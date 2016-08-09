@@ -1,0 +1,200 @@
+"""
+SIERPE: SImulation of EneRgy PlanE
+JJGC July 2016
+
+What SIERPE does:
+1) Reads a Nh5 PRD (pre-raw data) containing MC waveforms for the 12 PMTs of the EP.
+   Each waveform contains number of PEs in bins of 1 ns.
+2) Convolves the PE waveform with the response of the FEE electronics.
+3) Decimates the waveform, simulating the effect of the DAQ sampling (25 ns bins)
+4) Writes a Nh5 dst with the new data 
+5) Adds to Nh5 a new table with metadata
+"""
+from __future__ import print_function
+from Util import *
+from PlotUtil import *
+from Nh5 import *
+
+#import SierpeConfig as CP
+import numpy as np
+
+import FEParam as FP
+import SPE as SP
+import FEE2 as FE
+
+import tables
+import logging
+
+"""
+Configuration parameters
+"""
+
+
+logging.basicConfig(level=logging.INFO)
+
+
+PATH_IN ="/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/"
+PATH_OUT ="/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/"
+
+FILE = "WF_Tl_0.h5"
+
+FIRST_EVT = 0
+LAST_EVT = 10
+NEVENTS = LAST_EVT - FIRST_EVT
+
+
+"""
+Code
+"""
+
+
+def fill_fee_param(param):
+    """
+    fills parameters
+    """
+    param['offset'] = FP.offset
+    param['pmt_gain'] = FP.PMT_GAIN
+    param['V_gain'] =FP.V_GAIN 
+    param['V_gain_units'] ='ohm'
+    param['R'] = FP.R
+    param['R_units'] ='ohm'
+    param['C12'] = FP.C12
+    param['C12_units'] ='nF'
+    param['time_step'] =FP.time_step
+    param['time_daq'] =  FP.time_DAQ
+    param['time_units'] ='ns'
+    param['freq_LPF'] = FP.freq_LPF
+    param['freq_HPF'] =1./(2*pi*FP.R*FP.C)
+    param['freq_units'] ='hertz'
+    param['LSB'] = FP.LSB/volt
+    param['volts_to_adc'] = FP.voltsToAdc/volt
+    param['noise_fee_rms'] = FP.NOISE_FEE
+    param['noise_fee_units'] = 'mV'
+    param['noise_adc'] = FP.NOISE_ADC
+
+def copy_sipm(event_number,sipmrd_):
+    """
+    Copies the sipm EARRAY
+    """
+    rdata = []
+
+    for j in range(sipmrd_.shape[1]):
+        logging.debug("-->SiPM number ={}".format(j))
+        rdata.append(sipmrd_[event_number, j])
+    return np.array(rdata)
+
+def simulate_pmt_response(event_number,pmtrd_):
+    """
+    Sensor Response
+    Given a signal in PE (photoelectrons in bins of 1 ns) and the response function of 
+    for a single photoelectron (spe) and front-end electronics (fee)
+    this function produces the PMT raw data (adc counts bins 25 ns)
+
+    pmtrd_ dataset that holds the PMT PE data for each PMT
+    pmtrd25 dataset to be created with adc counts, bins 25 ns after convoluting with electronics
+    """
+  
+    rdata = []
+
+    for j in range(pmtrd_.shape[1]):
+        logging.debug("-->PMT number ={}".format(j))
+                
+        pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
+        
+        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN) 
+        spe = SP.SPE(pmt_gain=FP.PMT_GAIN,x_slope = 5*ns,x_flat = 1*ns)
+    
+        signal_PMT = spe.SpePulseFromVectorPE(pmt) #PMT response
+
+        #Front end response to PMT pulse (in volts)
+        signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE) 
+
+        #Signal out of DAQ
+        signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
+
+        rdata.append(signal_daq)
+    return np.array(rdata)
+
+        
+if __name__ == '__main__':
+    
+    print("""SImulation of the EneRgy PlanE (SIERPE)
+        This program reads an hdf5 file containing a NEXUS simulation of the
+        response of the NEW energy plane. For each of the 12 PMTs in the EP
+        a waveform is generated containing the number of photoelectrons (pes)
+        produced by the incoming photons in the PMTs in bins of 1 ns.
+
+        SIERPE simulates the response of the front-end electronics, convoluting
+        each pe with the current- response of the PMT, and the with the front-end
+        electronics (characterized by a LPF and an HPF). Finally, the data is 
+        decimated from 1 ns to 25 ns, to simulate the response of the DAQ.
+
+        The resulting functions, together with the metadata describing the simulation
+        parameters are stored in a new hdf5 file. 
+        """)
+    FP.print_FEE()
+    wait()
+
+
+    print("input path ={}; output path = {}; file name ={}".format(
+        PATH_IN,PATH_OUT,FILE))
+
+    print("first event = {} last event = {} number of events = {} ".format(
+        FIRST_EVT,LAST_EVT,NEVENTS))
+
+    # open the input file 
+    with tables.open_file(PATH_IN+FILE, "r") as h5in: 
+        # access the PMT raw data in file 
+        pmtrd_ = h5in.root.pmtrd
+        sipmrd_ = h5in.root.sipmrd
+
+        #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
+
+        # open the output file 
+        with tables.open_file(PATH_OUT+FILE, "w",
+            filters=tables.Filters(complib="blosc", complevel=9)) as h5out:
+ 
+            # create a group and a table to store metadata
+            sparamGroup = h5out.create_group(h5out.root, "SimulationParameters")
+            sparamTable = h5out.create_table(sparamGroup, 'FEE', EnergyPlaneFEE, 
+                            "SimulationParameters", tables.Filters(0))
+
+            param = sparamTable.row
+            fill_fee_param(param)
+            param.append()  # a single-row table
+            sparamTable.flush()
+
+            # create an extensible array to store the waveforms
+            pmtrd = h5out.create_earray(h5out.root, "pmtrd", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, pmtrd_.shape[1], 
+                                        int((pmtrd_.shape[2]+1)/FP.time_DAQ)), 
+                                    expectedrows=pmtrd_.shape[0])
+
+            sipmrd = h5out.create_earray(h5out.root, "sipmrd", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, sipmrd_.shape[1], sipmrd_.shape[2]), 
+                                    expectedrows=sipmrd_.shape[0])
+
+            for i in range(FIRST_EVT,LAST_EVT):
+                print("-->event number ={}".format(i))
+                logging.info("-->event number ={}".format(i))
+                
+                dataPMT = simulate_pmt_response(i,pmtrd_)
+                
+                pmtrd.append(dataPMT.reshape(1, pmtrd_.shape[1], 
+                    int((pmtrd_.shape[2]+1)/FP.time_DAQ)))
+
+                dataSiPM = copy_sipm(i,sipmrd_)
+                
+                sipmrd.append(dataSiPM.reshape(1, sipmrd_.shape[1], sipmrd_.shape[2]))
+
+            pmtrd.flush()
+            sipmrd.flush()
+
+    print("done!")
+
+    
+
+        
+     

@@ -18,6 +18,14 @@ def DownScaleSignal(signal_t, signal, scale):
 	#pulse_plot(signal_t_d, signal_d)
 	return signal_t_d, signal_d
 
+def down_scale_signal_(signal, scale):
+ 	"""
+ 	downscales the signal vector. Re-scale the energy
+ 	"""
+	signal_d=SGN.decimate(signal,scale,ftype='fir')
+	
+	return signal_d*scale
+
 
 ##########################################################
 class Filter:
@@ -143,7 +151,18 @@ class FEE:
 		noise = self.FEENoise(len(signal_daq), noise_rms/FP.voltsToAdc)
  		return signal_t_d, signal_daq + noise
 
- 	def FEENoise(self, signal_length, noise_rms=0.3*mV):
+ 	def daqSignal(self,signal_fee, noise_rms=FP.NOISE_FEE_rms):
+ 		"""
+ 		downscale the signal after the FEE
+ 		
+ 		"""
+
+		signal_d = down_scale_signal_(signal_fee, int(FP.time_DAQ))
+		signal_daq = signal_d/FP.voltsToAdc
+		noise = self.FEENoise(len(signal_daq), noise_rms/FP.voltsToAdc)
+ 		return signal_daq + noise
+
+ 	def FEENoise(self, signal_length, noise_rms=FP.NOISE_FEE_rms):
  		"""
  		filters the input signal according to the filters and transforms it in volts
  		"""

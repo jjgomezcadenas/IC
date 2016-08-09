@@ -119,7 +119,7 @@ def main(argv):
     pfile = path+ffile
     event = int(0)
     try:
-        opts, args = getopt.getopt(argv, "hp:e:", ["help", "path","event"])
+        opts, args = getopt.getopt(argv, "hp", ["help", "path"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -129,8 +129,7 @@ def main(argv):
             sys.exit()
         elif opt in ("-p", "--path"):
             pfile = arg
-        elif opt in ("-e", "--event"):
-            event = int(arg)
+        
 
     print("reading file ={}".format(pfile))
     print("analyzing event ={}".format(event))
@@ -140,10 +139,10 @@ def main(argv):
     plot_sensor(sipmdf,2)
 
 def usage():
-    print("""usage: python DIOMIRA.py --help (-h) --path (-p) --event (-e)
+    print("""usage: python DIOMIRA.py --help (-h) --path (-p) 
         --help (-h): this text
         --path (-p): full path to your pyTNT MC file:
-        --event (-e): event number you want to analyze
+        
         """)
     
     
