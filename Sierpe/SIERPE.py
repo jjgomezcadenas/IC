@@ -23,6 +23,7 @@ import SPE as SP
 import FEE2 as FE
 
 import tables
+import pandas as pd
 import logging
 
 """
@@ -47,30 +48,56 @@ NEVENTS = LAST_EVT - FIRST_EVT
 Code
 """
 
+def get_column(pmta,ic):
+    """
+    access column ic of table pmta and returns column as an array
+    """
+    col =[]
+    for i in range(pmta.shape[0]):
+        col.append(pmta[i][ic])
+    return np.array(col)
+ 
+def read_data_sensors(sensor_table):
+    """
+    reads the sensors table and returns a data frame
+    """
+    pmta = sensor_table.read()
+    PMT={}
+    PMT['channel'] = get_column(pmta,0)
+    PMT['active'] = get_column(pmta,1)
+    PMT['x'] = get_column(pmta,2).T[0]
+    PMT['y'] = get_column(pmta,2).T[1]
+    PMT['gain'] = get_column(pmta,3)
+    PMT['adc_to_pes'] = get_column(pmta,4)
+        
+    return pd.DataFrame(PMT)
 
-def fill_fee_param(param):
+
+def FEE_param():
     """
-    fills parameters
+    Stores the parameters of the EP FEE simulation as a pd Series
     """
-    param['offset'] = FP.offset
-    param['pmt_gain'] = FP.PMT_GAIN
-    param['V_gain'] =FP.V_GAIN 
-    param['V_gain_units'] ='ohm'
-    param['R'] = FP.R
-    param['R_units'] ='ohm'
-    param['C12'] = FP.C12
-    param['C12_units'] ='nF'
-    param['time_step'] =FP.time_step
-    param['time_daq'] =  FP.time_DAQ
-    param['time_units'] ='ns'
-    param['freq_LPF'] = FP.freq_LPF
-    param['freq_HPF'] =1./(2*pi*FP.R*FP.C)
-    param['freq_units'] ='hertz'
-    param['LSB'] = FP.LSB/volt
-    param['volts_to_adc'] = FP.voltsToAdc/volt
-    param['noise_fee_rms'] = FP.NOISE_FEE
-    param['noise_fee_units'] = 'mV'
-    param['noise_adc'] = FP.NOISE_ADC
+    fp = pd.Series([FP.offset,FP.PMT_GAIN,FP.V_GAIN,FP.R,FP.time_step,FP.time_DAQ,
+                    FP.freq_LPF,1./(2*pi*FP.R*FP.C),FP.LSB,FP.voltsToAdc/volt,
+                    FP.NOISE_FEE,FP.NOISE_ADC], 
+                    index=['offset','pmt_gain','V_gain','R',
+                                'time_step','time_daq','freq_LPF',
+                                'freq_HPF','LSB','volts_to_adc',
+                                'noise_fee_rms','noise_adc'])
+    return fp
+
+def read_data_geom(geom_t):
+    """
+    Reads the geom data en returns a PD Series
+    """
+        
+    ga = geom_t.read()
+    G ={}
+    G = pd.Series([ga[0][0][0],ga[0][0][1],ga[0][1][0],ga[0][1][1],
+                    ga[0][2][0],ga[0][2][1],ga[0][3]],
+                    index=['xdet_min','xdet_max','ydet_min','ydet_max',
+                            'zdet_min','zdet_max','R'])
+    return G
 
 def copy_sipm(event_number,sipmrd_):
     """
@@ -150,20 +177,32 @@ if __name__ == '__main__':
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
 
+        #access the geometry and the sensors metadata info
+
+        geom_t = h5in.root.Detector.DetectorGeometry
+        pmt_t = h5in.root.Sensors.DataPMT
+        sipm_t = h5in.root.Sensors.DataSiPM
+        mctrk_t = h5in.root.MC.MCTracks
+
+        #return a pandas DF for sensors and geometry
+        pmtdf = read_data_sensors(pmt_t)
+        sipmdf = read_data_sensors(sipm_t)
+        geodf = read_data_geom(geom_t)
+
+        #FEE simulation data
+        feedf =FEE_param()
+        
+
         # open the output file 
         with tables.open_file(PATH_OUT+FILE, "w",
             filters=tables.Filters(complib="blosc", complevel=9)) as h5out:
  
-            # create a group and a table to store metadata
-            sparamGroup = h5out.create_group(h5out.root, "SimulationParameters")
-            sparamTable = h5out.create_table(sparamGroup, 'FEE', EnergyPlaneFEE, 
-                            "SimulationParameters", tables.Filters(0))
+            # create a group and a table to store MC data
+            mcgroup = h5out.create_group(h5out.root, "MC")
 
-            param = sparamTable.row
-            fill_fee_param(param)
-            param.append()  # a single-row table
-            sparamTable.flush()
-
+            # copy the mctrk table
+            mctrk_t.copy(newparent=mcgroup)
+            
             # create an extensible array to store the waveforms
             pmtrd = h5out.create_earray(h5out.root, "pmtrd", 
                                     atom=tables.IntAtom(), 
@@ -191,6 +230,14 @@ if __name__ == '__main__':
 
             pmtrd.flush()
             sipmrd.flush()
+
+            #store the DF with sensors and geom info
+        store_export = pd.HDFStore(PATH_OUT+FILE)
+        store_export.append('Sensors/DataPMT', pmtdf, data_columns=pmtdf.columns)
+        store_export.append('Sensors/DataSiPM', sipmdf, data_columns=pmtdf.columns)
+        store_export.append('Detector/DetectorGeometry', geodf)
+        store_export.append('EnergyPlane/FEE', feedf)
+        store_export.close()
 
     print("done!")
 

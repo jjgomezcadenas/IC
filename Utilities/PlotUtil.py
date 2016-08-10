@@ -9,6 +9,9 @@ import numpy as np
 import os
 import sys
 
+from matplotlib.patches import Circle
+from matplotlib.collections import PatchCollection
+
 def hbins(x, nsigma=5, nbins=10):
   xmin =np.average(x) - nsigma*np.std(x)
   xmax =np.average(x) + nsigma*np.std(x)
@@ -90,10 +93,7 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
     This code is under [The BSD 3-Clause License]
     (http://opensource.org/licenses/BSD-3-Clause)
     """
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Circle
-    from matplotlib.collections import PatchCollection
+    
 
     if np.isscalar(c):
         kwargs.setdefault('color', c)

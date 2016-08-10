@@ -53,28 +53,28 @@ class MCTrack(tables.IsDescription):
     hit_time =tables.Float64Col(pos=12)
     hit_energy =tables.Float64Col(pos=13)
 
-class EnergyPlaneFEE(tables.IsDescription):
-    """
-    Stores the parameters used by the EP simulation as metadata
-    """
+# class EnergyPlaneFEE(tables.IsDescription):
+#     """
+#     Stores the parameters used by the EP simulation as metadata
+#     """
     
-    offset = tables.Int16Col(pos=1)  #displaces the baseline (e.g, 700)
-    pmt_gain =tables.Float32Col(pos=2)  #Gain of PMT (4.5e6)
-    V_gain =tables.Float32Col(pos=4)  #FE gain (250*ohm)
-    V_gain_units = tables.StringCol(3,pos=4)
-    R = tables.Float32Col(pos=5) # resistor in Ohms (2350*ohm)
-    R_units = tables.StringCol(3,pos=6)
-    C12 = tables.Float32Col(shape=12,pos=7) #6.2*nF  decoupling capacitor in pF
-    C12_units = tables.StringCol(2, pos=8)
-    time_step=tables.Float32Col(pos=9) #1*ns input MC time bins
-    time_daq=tables.Float32Col(pos=10) #25*ns DAQ time 
-    time_units = tables.StringCol(2,pos=11)   
-    freq_LPF=tables.Float32Col(pos=12) #3E6*hertz
-    freq_HPF=tables.Float32Col(pos=13) #1/2piRC
-    freq_units = tables.StringCol(5,pos=14)
-    LSB = tables.Float32Col(pos=15)    # Least Significant Bit 2*volt/2**NBITS, 
-    volts_to_adc = tables.Float32Col(pos=16) # conversion from volts to adc counts
-    noise_fee_rms = tables.Float32Col(pos=17) # noise FEE in volts
-    noise_fee_units = tables.StringCol(2,pos=18)
-    noise_adc = tables.Float32Col(pos=19) # noise FEE in ADC counts
+#     offset = tables.Int16Col(pos=1)  #displaces the baseline (e.g, 700)
+#     pmt_gain =tables.Float32Col(pos=2)  #Gain of PMT (4.5e6)
+#     V_gain =tables.Float32Col(pos=4)  #FE gain (250*ohm)
+#     V_gain_units = tables.StringCol(3,pos=4)
+#     R = tables.Float32Col(pos=5) # resistor in Ohms (2350*ohm)
+#     R_units = tables.StringCol(3,pos=6)
+#     C12 = tables.Float32Col(shape=12,pos=7) #6.2*nF  decoupling capacitor in pF
+#     C12_units = tables.StringCol(2, pos=8)
+#     time_step=tables.Float32Col(pos=9) #1*ns input MC time bins
+#     time_daq=tables.Float32Col(pos=10) #25*ns DAQ time 
+#     time_units = tables.StringCol(2,pos=11)   
+#     freq_LPF=tables.Float32Col(pos=12) #3E6*hertz
+#     freq_HPF=tables.Float32Col(pos=13) #1/2piRC
+#     freq_units = tables.StringCol(5,pos=14)
+#     LSB = tables.Float32Col(pos=15)    # Least Significant Bit 2*volt/2**NBITS, 
+#     volts_to_adc = tables.Float32Col(pos=16) # conversion from volts to adc counts
+#     noise_fee_rms = tables.Float32Col(pos=17) # noise FEE in volts
+#     noise_fee_units = tables.StringCol(2,pos=18)
+#     noise_adc = tables.Float32Col(pos=19) # noise FEE in ADC counts
 
