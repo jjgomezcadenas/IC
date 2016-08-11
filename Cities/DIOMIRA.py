@@ -39,10 +39,11 @@ logging.basicConfig(level=logging.INFO)
 PATH_IN ="/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/"
 PATH_OUT ="/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/"
 
-FILE = "WF_Tl_0.h5"
+FILE_IN = "WF_Tl_0.h5"
+FILE_OUT = "WF_Tl_0_RWF.h5"
 
 FIRST_EVT = 0
-LAST_EVT = 10
+LAST_EVT = 100
 NEVENTS = LAST_EVT - FIRST_EVT
 RUN_ALL = True
 
@@ -51,66 +52,99 @@ RUN_ALL = True
 Code
 """
 
-def get_column(pmta,ic):
-    """
-    access column ic of table pmta and returns column as an array
-    """
-    col =[]
-    for i in range(pmta.shape[0]):
-        col.append(pmta[i][ic])
-    return np.array(col)
+
+# def get_column(pmta,ic):
+#     """
+#     access column ic of table pmta and returns column as an array
+#     """
+#     col =[]
+#     for i in range(pmta.shape[0]):
+#         col.append(pmta[i][ic])
+#     return np.array(col)
  
-def read_data_sensors(sensor_table):
-    """
-    reads the sensors table and returns a data frame
-    """
-    pmta = sensor_table.read()
-    PMT={}
-    PMT['channel'] = get_column(pmta,0)
-    PMT['active'] = get_column(pmta,1)
-    PMT['x'] = get_column(pmta,2).T[0]
-    PMT['y'] = get_column(pmta,2).T[1]
-    PMT['gain'] = get_column(pmta,3)
-    PMT['adc_to_pes'] = get_column(pmta,4)
+# def read_data_sensors(sensor_table):
+#     """
+#     reads the sensors table and returns a data frame
+#     """
+#     pmta = sensor_table.read()
+#     PMT={}
+#     PMT['channel'] = get_column(pmta,0)
+#     PMT['active'] = get_column(pmta,1)
+#     PMT['x'] = get_column(pmta,2).T[0]
+#     PMT['y'] = get_column(pmta,2).T[1]
+#     PMT['gain'] = get_column(pmta,3)
+#     PMT['adc_to_pes'] = get_column(pmta,4)
         
-    return pd.DataFrame(PMT)
+#     return pd.DataFrame(PMT)
 
 
-def FEE_param():
+def FEE_param_table(fee_table):
     """
-    Stores the parameters of the EP FEE simulation as a pd Series
+    Stores the parameters of the EP FEE simulation 
     """
-    fp = pd.Series([FP.offset,FP.PMT_GAIN,FP.V_GAIN,FP.R,FP.time_step,FP.time_DAQ,
-                    FP.freq_LPF,1./(2*pi*FP.R*FP.C),FP.LSB,FP.voltsToAdc/volt,
-                    FP.NOISE_FEE,FP.NOISE_ADC], 
-                    index=['offset','pmt_gain','V_gain','R',
-                                'time_step','time_daq','freq_LPF',
-                                'freq_HPF','LSB','volts_to_adc',
-                                'noise_fee_rms','noise_adc'])
-    return fp
+    row = fee_table.row
+    row['offset'] = FP.offset
+    row['pmt_gain'] = FP.PMT_GAIN
+    row['V_gain'] = FP.V_GAIN
+    row['R'] = FP.R
+    row['C12'] = FP.C12
+    row['time_step'] = FP.time_step
+    row['time_daq'] = FP.time_DAQ
+    row['freq_LPF'] = FP.freq_LPF
+    row['freq_HPF'] = 1./(2*pi*FP.R*FP.C)
+    row['LSB'] = FP.LSB
+    row['volts_to_adc'] = FP.voltsToAdc/volt
+    row['noise_fee_rms'] = FP.NOISE_FEE
+    row['noise_adc'] = FP.NOISE_ADC
+    
+    row.append()
+    
 
-def read_data_geom(geom_t):
-    """
-    Reads the geom data en returns a PD Series
-    """
+# def read_data_geom(geom_t):
+#     """
+#     Reads the geom data en returns a PD Series
+#     """
         
-    ga = geom_t.read()
-    G ={}
-    G = pd.Series([ga[0][0][0],ga[0][0][1],ga[0][1][0],ga[0][1][1],
-                    ga[0][2][0],ga[0][2][1],ga[0][3]],
-                    index=['xdet_min','xdet_max','ydet_min','ydet_max',
-                            'zdet_min','zdet_max','R'])
-    return G
+#     ga = geom_t.read()
+#     G ={}
+#     G = pd.Series([ga[0][0][0],ga[0][0][1],ga[0][1][0],ga[0][1][1],
+#                     ga[0][2][0],ga[0][2][1],ga[0][3]],
+#                     index=['xdet_min','xdet_max','ydet_min','ydet_max',
+#                             'zdet_min','zdet_max','R'])
+#     return G
 
-def copy_sipm(event_number,sipmrd_):
+def energy_pes(event_number, sensord):
     """
-    Copies the sipm EARRAY
+    Sum the WFs of PMTs and SiPMs (MC) and store the total energy in PES
+    """     
+    rdata = []
+
+    for j in range(sensord.shape[1]):
+        swf = sensord[event_number, j]
+        ene = np.sum(swf)
+        rdata.append(ene)
+        
+    return np.array(rdata) 
+
+def simulate_sipm_response(event_number,sipmrd_):
+    """
+    For the moment use a dummy rutne that simply copies the sipm EARRAY
     """
     rdata = []
 
     for j in range(sipmrd_.shape[1]):
         logging.debug("-->SiPM number ={}".format(j))
         rdata.append(sipmrd_[event_number, j])
+    return np.array(rdata)
+
+def copy_pmt(event_number,pmtrd_):
+    """
+    For the moment use a dummy rutne that simply copies the sipm EARRAY
+    """
+    rdata = []
+
+    for j in range(pmtrd_.shape[1]):
+        rdata.append(pmtrd_[event_number, j])
     return np.array(rdata)
 
 def simulate_pmt_response(event_number,pmtrd_):
@@ -173,19 +207,33 @@ if __name__ == '__main__':
     wait()
 
 
-    print("input path ={}; output path = {}; file name ={}".format(
-        PATH_IN,PATH_OUT,FILE))
+    print("input path ={}; output path = {}; file_in ={} file_out ={}".format(
+        PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))
 
-    print("first event = {} last event = {} number of events = {} ".format(
+    print("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
     # open the input file 
-    with tables.open_file(PATH_IN+FILE, "r") as h5in: 
+    with tables.open_file(PATH_IN+FILE_IN, "r") as h5in: 
         # access the PMT raw data in file 
         pmtrd_ = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
+        NPMT = pmtrd_.shape[1]
+        NSIPM = sipmrd_.shape[1]
+        PMTWL = pmtrd_.shape[2] 
+        PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
+        SIPMWL = sipmrd_.shape[2]
+        NEVENTS_DST = pmtrd_.shape[0]
+
+        print("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
+        NPMT,NSIPM,NEVENTS_DST))
+
+        print("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
+        PMTWL,SIPMWL,PMTWL_FEE))
+
+        wait()
 
         #access the geometry and the sensors metadata info
 
@@ -194,76 +242,133 @@ if __name__ == '__main__':
         sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
 
-        #return a pandas DF for sensors and geometry
-        pmtdf = read_data_sensors(pmt_t)
-        sipmdf = read_data_sensors(sipm_t)
-        geodf = read_data_geom(geom_t)
+        # #return a pandas DF for sensors and geometry
+        # pmtdf = read_data_sensors(pmt_t)
+        # sipmdf = read_data_sensors(sipm_t)
+        # geodf = read_data_geom(geom_t)
 
-        #FEE simulation data
-        feedf =FEE_param()
         
-
         # open the output file 
-        with tables.open_file(PATH_OUT+FILE, "w",
+        with tables.open_file(PATH_OUT+FILE_OUT, "w",
             filters=tables.Filters(complib="blosc", complevel=9)) as h5out:
  
-            # create a group and a table to store MC data
+            # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
-
             # copy the mctrk table
             mctrk_t.copy(newparent=mcgroup)
-            
-            # create an extensible array to store the waveforms
-            pmtrd = h5out.create_earray(h5out.root, "pmtrd", 
-                                    atom=tables.IntAtom(), 
-                                    shape=(0, pmtrd_.shape[1], 
-                                        int((pmtrd_.shape[2]+1)/FP.time_DAQ)), 
-                                    expectedrows=pmtrd_.shape[0])
 
-            sipmrd = h5out.create_earray(h5out.root, "sipmrd", 
+            # create a group  to store geom data
+            detgroup = h5out.create_group(h5out.root, "Detector")
+            # copy the geom table
+            geom_t.copy(newparent=detgroup)
+
+            # create a group  store sensor data
+            sgroup = h5out.create_group(h5out.root, "Sensors")
+            # copy the pmt table
+            pmt_t.copy(newparent=sgroup)
+            # copy the sipm table
+            sipm_t.copy(newparent=sgroup)
+
+            # create a table to store Energy plane FEE data and hang it from MC group
+            fee_table = h5out.create_table(mcgroup, "FEE", FEE,
+                          "EP-FEE parameters",
+                           tables.Filters(0))
+
+            # fill table
+            FEE_param_table(fee_table)
+
+            # create a group to store RawData
+            rgroup = h5out.create_group(h5out.root, "RD")
+            
+            # create an extensible array to store the RWF waveforms
+            pmtrd = h5out.create_earray(h5out.root.RD, "pmtrd", 
                                     atom=tables.IntAtom(), 
-                                    shape=(0, sipmrd_.shape[1], sipmrd_.shape[2]), 
-                                    expectedrows=sipmrd_.shape[0])
+                                    shape=(0, NPMT, PMTWL_FEE), 
+                                    expectedrows=NEVENTS_DST)
+            # pmtrd = h5out.create_earray(h5out.root.RD, "pmtrd", 
+            #                         atom=tables.IntAtom(), 
+            #                         shape=(0, NPMT, PMTWL), 
+            #                         expectedrows=NEVENTS_DST)
+
+            sipmrd = h5out.create_earray(h5out.root.RD, "sipmrd", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, NSIPM, SIPMWL), 
+                                    expectedrows=NEVENTS_DST)
+
+            #create an extensible array to store the energy in PES of PMTs 
+            epmt = h5out.create_earray(h5out.root.RD, "epmt", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, NPMT), 
+                                    expectedrows=NEVENTS_DST)
+
+            # create an extensible array to store the energy in PES of SiPMs 
+            esipm = h5out.create_earray(h5out.root.RD, "esipm", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, NSIPM), 
+                                    expectedrows=NEVENTS_DST)
 
             
-            if NEVENTS > pmtrd_.shape[0] and RUN_ALL == False:
+            if NEVENTS > NEVENTS_DST and RUN_ALL == False:
                 print("""
                 Refusing to run: you have requested
                 FIRST_EVT = {}
                 LAST_EVT  = {}
                 Thus you want to run over {} events
-                but the size of the DST is {}
+                but the size of the DST is {} events.
                 Please change your choice or select RUN_ALL = TRUE
                 to run over the whole DST when this happens
-                """.format(FIRST_EVT,LAST_EVT,NEVENTS,pmtrd_.shape[0]))
+                """.format(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST))
                 sys.exit(0)
-            elif  NEVENTS > pmtrd_.shape[0] and RUN_ALL == True:
+            elif  NEVENTS > NEVENTS_DST and RUN_ALL == True:
                 FIRST_EVT = 0
-                LAST_EVT = pmtrd_.shape[0]
-            
+                LAST_EVT = NEVENTS_DST
+                NEVENTS = NEVENTS_DST
+
+            #create a 2d array to store the true energy of the PMTs (pes)
+            ene_pmt = np.zeros((NEVENTS,NPMT))
+
+            #create a 2d array to store the true energy of the SiPMs (pes)
+            ene_sipm = np.zeros((NEVENTS,NSIPM))
+
             for i in range(FIRST_EVT,LAST_EVT):
                 print("-->event number ={}".format(i))
                 logging.info("-->event number ={}".format(i))
-                
-                dataPMT = simulate_pmt_response(i,pmtrd_)
-                
-                pmtrd.append(dataPMT.reshape(1, pmtrd_.shape[1], 
-                    int((pmtrd_.shape[2]+1)/FP.time_DAQ)))
 
-                dataSiPM = copy_sipm(i,sipmrd_)
+                #simulate PMT response and return an array with new WF
+                dataPMT = simulate_pmt_response(i,pmtrd_)
+                #dataPMT = copy_pmt(i,pmtrd_)
                 
-                sipmrd.append(dataSiPM.reshape(1, sipmrd_.shape[1], sipmrd_.shape[2]))
+                #append to PMT EARRAY
+                pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
+                #pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL))
+                   
+                #simulate SiPM response and return an array with new WF
+                dataSiPM = simulate_sipm_response(i,sipmrd_)
+                
+                #append to SiPM EARRAY
+                sipmrd.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
+
+                #fill ene_pmt vector
+                enePMT = energy_pes(i, pmtrd_)
+                #append to epmt EARRAY
+                epmt.append(enePMT.reshape(1, NPMT))
+
+                #fill ene_sipm vector
+                eneSIPM = energy_pes(i, sipmrd_)
+                esipm.append(eneSIPM.reshape(1, NSIPM))
 
             pmtrd.flush()
             sipmrd.flush()
+            epmt.flush()
+            esipm.flush()
 
             #store the DF with sensors and geom info
-            store_export = pd.HDFStore(PATH_OUT+FILE)
-            store_export.append('Sensors/DataPMT', pmtdf, data_columns=pmtdf.columns)
-            store_export.append('Sensors/DataSiPM', sipmdf, data_columns=pmtdf.columns)
-            store_export.append('Detector/DetectorGeometry', geodf)
-            store_export.append('EnergyPlane/FEE', feedf)
-            store_export.close()
+            # store_export = pd.HDFStore(PATH_OUT+FILE)
+            # store_export.append('Sensors/DataPMT', pmtdf, data_columns=pmtdf.columns)
+            # store_export.append('Sensors/DataSiPM', sipmdf, data_columns=pmtdf.columns)
+            # store_export.append('Detector/DetectorGeometry', geodf)
+            # store_export.append('EnergyPlane/FEE', feedf)
+            # store_export.close()
 
     print("done!")
 
