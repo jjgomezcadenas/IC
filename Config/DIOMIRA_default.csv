@@ -1,0 +1,3 @@
+#Configuration file for DIOMIRA
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,END 
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Tl_0.h5,WF_Tl_0_RWF.h5,0,99,1,1

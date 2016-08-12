@@ -27,55 +27,14 @@ import FEE2 as FE
 import tables
 import pandas as pd
 import logging
+import getopt
 
-"""
-Configuration parameters
-"""
-
-
-logging.basicConfig(level=logging.INFO)
-
-
-PATH_IN ="/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/"
-PATH_OUT ="/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/"
-
-FILE_IN = "WF_Tl_0.h5"
-FILE_OUT = "WF_Tl_0_RWF.h5"
-
-FIRST_EVT = 0
-LAST_EVT = 100
-NEVENTS = LAST_EVT - FIRST_EVT
-RUN_ALL = True
 
 
 """
 Code
 """
 
-
-# def get_column(pmta,ic):
-#     """
-#     access column ic of table pmta and returns column as an array
-#     """
-#     col =[]
-#     for i in range(pmta.shape[0]):
-#         col.append(pmta[i][ic])
-#     return np.array(col)
- 
-# def read_data_sensors(sensor_table):
-#     """
-#     reads the sensors table and returns a data frame
-#     """
-#     pmta = sensor_table.read()
-#     PMT={}
-#     PMT['channel'] = get_column(pmta,0)
-#     PMT['active'] = get_column(pmta,1)
-#     PMT['x'] = get_column(pmta,2).T[0]
-#     PMT['y'] = get_column(pmta,2).T[1]
-#     PMT['gain'] = get_column(pmta,3)
-#     PMT['adc_to_pes'] = get_column(pmta,4)
-        
-#     return pd.DataFrame(PMT)
 
 
 def FEE_param_table(fee_table):
@@ -99,19 +58,6 @@ def FEE_param_table(fee_table):
     
     row.append()
     
-
-# def read_data_geom(geom_t):
-#     """
-#     Reads the geom data en returns a PD Series
-#     """
-        
-#     ga = geom_t.read()
-#     G ={}
-#     G = pd.Series([ga[0][0][0],ga[0][0][1],ga[0][1][0],ga[0][1][1],
-#                     ga[0][2][0],ga[0][2][1],ga[0][3]],
-#                     index=['xdet_min','xdet_max','ydet_min','ydet_max',
-#                             'zdet_min','zdet_max','R'])
-#     return G
 
 def energy_pes(event_number, sensord):
     """
@@ -179,9 +125,102 @@ def simulate_pmt_response(event_number,pmtrd_):
         rdata.append(signal_daq)
     return np.array(rdata)
 
+def usage():
+    """
+    Usage of program
+    """
+    print("""
+        Usage: python (run) DIOMIRA [args]
+        where args are:
+         -h (--help) : this text
+         -i (--info) : print a text describing the invisible city of DIOMIRA
+         -d (--debug) : can be set to 'DEBUG','INFO','WARNING','ERROR'
+         -c (--cfile) : full path to a configuration file
+         
+         example of configuration file 
+
+        #Header is not read
+        Names of parameters (comma separated)
+        Values of parameters (comma separated)
+        
+        The parameters for DIOMIRA are:
+        PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL 
+
+        The parameters are self-explaining. 
+        RUN_ALL is used to decide whether to run all the events in the file 
+        in case that the total number of events requested (LAST_EVT-FIRST_EVT) 
+        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
+        the script will run over all elements in the DST, 
+        otherwise it will exit with a warning.
+
+        """)
+def configure(argv):
+    """
+    reads arguments from the command line and configures job
+    """
+    
+    global DEBUG, PATH_IN, PATH_OUT, FILE_IN, FILE_OUT
+    global  FIRST_EVT, LAST_EVT,NEVENTS, RUN_ALL, INFO
+    
+    DEBUG='INFO'
+    INFO = True
+    cfile =''
+    try:
+        opts, args = getopt.getopt(argv, "hidc:", ["help","info","debug","cfile"])
+
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif opt in ("-d", "--debug"):
+            DEBUG = arg
+        elif opt in ("-i", "--info"):
+            INFO = arg
+        elif opt in ("-c", "--cfile"):
+            cfile = arg
+ 
+    if DEBUG == 'ERROR' or DEBUG == 'error' or DEBUG == 'e':
+        logging.basicConfig(level=logging.ERROR)
+    elif DEBUG == 'DEBUG' or DEBUG == 'debug' or DEBUG == 'd':
+        logging.basicConfig(level=logging.DEBUG)
+    elif DEBUG == 'WARNING' or DEBUG == 'warning' or DEBUG == 'w':
+        logging.basicConfig(level=logging.WARNING)
+    elif DEBUG == 'INFO' or DEBUG == 'info' or DEBUG == 'i':
+        logging.basicConfig(level=logging.INFO)
+    else:
+        print("value of debug option not defined")
+        usage()
+
+    if cfile == '':
+        print("Path to configuration file not given")
+        usage()
+        sys.exit()
+
+    CFP =pd.read_csv(cfile,skiprows=1)
+    print("""
+        Configuration parameters \n 
+        {}
+        """.format(CFP))
+
+    PATH_IN=CFP['PATH_IN'][0] 
+    PATH_OUT=CFP['PATH_OUT'][0]
+    FILE_IN=CFP['FILE_IN'][0]
+    FILE_OUT=CFP['FILE_OUT'][0]
+    FIRST_EVT=CFP['FIRST_EVT'][0]
+    LAST_EVT=CFP['LAST_EVT'][0]
+    RUN_ALL=CFP['RUN_ALL'][0]
+    NEVENTS = LAST_EVT -  FIRST_EVT
+
         
 if __name__ == '__main__':
-    print(diomira)
+    configure(sys.argv[1:])
+
+    if INFO:
+        print(diomira)
+
     wait()
     
     print("""
@@ -214,7 +253,7 @@ if __name__ == '__main__':
         FIRST_EVT,LAST_EVT,NEVENTS))
 
     # open the input file 
-    with tables.open_file(PATH_IN+FILE_IN, "r") as h5in: 
+    with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in: 
         # access the PMT raw data in file 
         pmtrd_ = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
@@ -249,7 +288,7 @@ if __name__ == '__main__':
 
         
         # open the output file 
-        with tables.open_file(PATH_OUT+FILE_OUT, "w",
+        with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
             filters=tables.Filters(complib="blosc", complevel=9)) as h5out:
  
             # create a group to store MC data
