@@ -35,8 +35,6 @@ import getopt
 Code
 """
 
-
-
 def FEE_param_table(fee_table):
     """
     Stores the parameters of the EP FEE simulation 
