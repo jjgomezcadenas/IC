@@ -1,20 +1,19 @@
 """
-DIOMIRA
+ISIDORA
 JJGC Agusut 2016
 
-What DIOMIRA does:
-1) Reads a MCRD file containing MC waveforms for the 12 PMTs of the EP.
-   Each waveform contains number of PEs in bins of 1 ns.
-2) Convolves the PE waveform with the response of the FEE electronics.
-3) Decimates the waveform, simulating the effect of the DAQ sampling (25 ns bins)
-4) Writes a RWF file with the new data and adds the FEE simulation parameters as metadata
+What ISIDORA does:
+1) Reads a RWF file written by DIOMIRA 
+2) Performs DBLR
+3) Write the corrected waveforms (CWF) to the file as new Evectors. 
+4) Computes the energy of the CWF and adds it to the file
 """
 
 from __future__ import print_function
 from Util import *
 from PlotUtil import *
 from Nh5 import *
-from cities import diomira
+from cities import isidora
 
 import numpy as np
 
@@ -33,26 +32,6 @@ import getopt
 Code
 """
 
-def FEE_param_table(fee_table):
-    """
-    Stores the parameters of the EP FEE simulation 
-    """
-    row = fee_table.row
-    row['offset'] = FP.offset
-    row['pmt_gain'] = FP.PMT_GAIN
-    row['V_gain'] = FP.V_GAIN
-    row['R'] = FP.R
-    row['C12'] = FP.C12
-    row['time_step'] = FP.time_step
-    row['time_daq'] = FP.time_DAQ
-    row['freq_LPF'] = FP.freq_LPF
-    row['freq_HPF'] = 1./(2*pi*FP.R*FP.C)
-    row['LSB'] = FP.LSB
-    row['volts_to_adc'] = FP.voltsToAdc/volt
-    row['noise_fee_rms'] = FP.NOISE_FEE
-    row['noise_adc'] = FP.NOISE_ADC
-    
-    row.append()
     
 
 def energy_pes(event_number, sensord):
@@ -221,19 +200,21 @@ if __name__ == '__main__':
     
     print("""
         DIOMIRA:
-        1. Reads an MCRD file produced by NEXUS, which stores TWF1ns waveforms 
-            for the PMTs and SiPMs as well as data on geometry, sensors and MC.
+        1. Reads an Nh5 file produced by art/centella, which stores the
+            pre-raw data (PRD) for the PMTs and SiPMs waveforms, as well as
+            data on geometry, sensors and MC.
 
-        2. Simulates the response of the energy plane in the PMTs MCRD, and
-            outputs PMT TWF25ns e.g., waveforms in bins of 25 ns (and in adc counts)
+        2. Simulates the response of the energy plane in the PMTs PRD, and
+            outputs PMT Raw-Data (RD), e.g., waveforms in bins of 25 ns
             which correspond to the output of the EP FEE.
 
-        3. Writes a RWF file with the TWF25ns waveforms copying over all tables 
-            existing in MCRD fie (MCTrk, Geom, PMT data). It also adds vectors
-            holding the waveform energy in pes (per PMT/SiPM)
+        3. Re-formats the data on detector geometry and sensors as pandas
+            dataframes (PDF) and Series (PS)
 
-        4. Add a table describing the FEE parameters used for simulation
+        4. Add a PS describing the FEE parameters used for simulation
 
+        5. Copies the MC table and the SiPM PRD (the simulation of SiPM response
+        is pending)
 
         """)
     FP.print_FEE()
@@ -275,6 +256,11 @@ if __name__ == '__main__':
         sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
 
+        # #return a pandas DF for sensors and geometry
+        # pmtdf = read_data_sensors(pmt_t)
+        # sipmdf = read_data_sensors(sipm_t)
+        # geodf = read_data_geom(geom_t)
+
         
         # open the output file 
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
@@ -313,7 +299,10 @@ if __name__ == '__main__':
                                     atom=tables.IntAtom(), 
                                     shape=(0, NPMT, PMTWL_FEE), 
                                     expectedrows=NEVENTS_DST)
-            
+            # pmtrd = h5out.create_earray(h5out.root.RD, "pmtrd", 
+            #                         atom=tables.IntAtom(), 
+            #                         shape=(0, NPMT, PMTWL), 
+            #                         expectedrows=NEVENTS_DST)
 
             sipmrd = h5out.create_earray(h5out.root.RD, "sipmrd", 
                                     atom=tables.IntAtom(), 
@@ -387,8 +376,15 @@ if __name__ == '__main__':
             epmt.flush()
             esipm.flush()
 
+            #store the DF with sensors and geom info
+            # store_export = pd.HDFStore(PATH_OUT+FILE)
+            # store_export.append('Sensors/DataPMT', pmtdf, data_columns=pmtdf.columns)
+            # store_export.append('Sensors/DataSiPM', sipmdf, data_columns=pmtdf.columns)
+            # store_export.append('Detector/DetectorGeometry', geodf)
+            # store_export.append('EnergyPlane/FEE', feedf)
+            # store_export.close()
 
-    print("Leaving Diomira. Safe travel!")
+    print("done!")
 
     
 
