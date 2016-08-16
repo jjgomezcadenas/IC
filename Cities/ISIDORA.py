@@ -32,7 +32,6 @@ import getopt
 Code
 """
 
-    
 
 def energy_pes(event_number, sensord):
     """
@@ -47,65 +46,59 @@ def energy_pes(event_number, sensord):
         
     return np.array(rdata) 
 
-def simulate_sipm_response(event_number,sipmrd_):
+def BLR(event_number,pmtrd25):
     """
-    For the moment use a dummy rutne that simply copies the sipm EARRAY
+    Peform Base line Restoration
     """
-    rdata = []
-
-    for j in range(sipmrd_.shape[1]):
-        logging.debug("-->SiPM number ={}".format(j))
-        rdata.append(sipmrd_[event_number, j])
-    return np.array(rdata)
-
-def copy_pmt(event_number,pmtrd_):
-    """
-    For the moment use a dummy rutne that simply copies the sipm EARRAY
-    """
-    rdata = []
-
-    for j in range(pmtrd_.shape[1]):
-        rdata.append(pmtrd_[event_number, j])
-    return np.array(rdata)
-
-def simulate_pmt_response(event_number,pmtrd_):
-    """
-    Sensor Response
-    Given a signal in PE (photoelectrons in bins of 1 ns) and the response function of 
-    for a single photoelectron (spe) and front-end electronics (fee)
-    this function produces the PMT raw data (adc counts bins 25 ns)
-
-    pmtrd_ dataset that holds the PMT PE data for each PMT
-    pmtrd25 dataset to be created with adc counts, bins 25 ns after convoluting with electronics
-    """
-  
-    rdata = []
-
-    for j in range(pmtrd_.shape[1]):
+    ene_pmt =np.zeros(len(CP.CFGP['PMTS']), dtype=np.int32)
+    ipmt = 0
+    PMTWF ={}
+    for j in CP.CFGP['PMTS']:
         logging.debug("-->PMT number ={}".format(j))
-                
-        pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
+
+        pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
         
-        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN) 
-        spe = SP.SPE(pmt_gain=FP.PMT_GAIN,x_slope = 5*ns,x_flat = 1*ns)
-    
-        signal_PMT = spe.SpePulseFromVectorPE(pmt) #PMT response
+        if CP.CPLT['plot_RAW'] == True:
+            print("RAW signal")
+            plot_signal(CP.signal_t,pmtrd, title = 'signal RAW', 
+                    signal_start=0, signal_end=CP.CFGP['LEN_WVF25'], 
+                    units='adc')
 
-        #Front end response to PMT pulse (in volts)
-        signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE) 
+        #Deconvolution
+        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
+        signal_inv_daq = fee.InverseSignalDAQ(CP.signal_t)  #inverse function
+        coef = signal_inv_daq[10]  #accumulator coefficient
+        
 
-        #Signal out of DAQ
-        signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
+        if CP.CPLT['plot_signal_inv'] :   
+            plot_signal(CP.signal_t/ns,signal_inv_daq,
+                title = 'Inverse DAQ', 
+                signal_start=0*ns, signal_end=10*ns, 
+                units='')
+            print("inverse coef fee: = {}".format(coef))
 
-        rdata.append(signal_daq)
-    return np.array(rdata)
+        # print "calling MauDeconv"
+   
+        signal_blr, eadc = DB.BLR(pmtrd, coef, n_sigma = CP.CFGP['NSIGMA'], 
+                            NOISE_ADC=FP.NOISE_ADC, thr2=FP.NOISE_ADC/4., thr3 = FP.NOISE_ADC/2.,
+                            plot=CP.CPLT['plot_BLR'])
+        if CP.CPLT['plot_DEC'] == True:
+            print("DBLR signal")
+            plot_signal(CP.signal_t,signal_blr, title = 'signal BLR', 
+                    signal_start=0, signal_end=CP.CFGP['LEN_WVF25'], 
+                    units='adc')
 
+        ene_pmt[ipmt] = eadc
+        PMTWF[ipmt]=signal_blr
+        ipmt+=1
+    return pd.Series(ene_pmt), pd.DataFrame(PMTWF)
+        
 def usage():
     """
     Usage of program
     """
     print("""
-        Usage: python (run) DIOMIRA [args]
+        Usage: python (run) ISIDORA [args]
         where args are:
          -h (--help) : this text
          -i (--info) : print a text describing the invisible city of DIOMIRA
