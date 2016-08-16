@@ -132,8 +132,10 @@ def plot_sensor(geom_df,sensor_df, energy_df, event=0, radius=10):
     x =sensor_df['x'].values
     y =sensor_df['y'].values
     r =np.ones(len(sensor_df['x'].values))*radius
-#    col = energy_df[event].values
-    col = energy_df.iloc[[event]].values.flatten()
+#    col = energy_df[event].values ### BUG! we were taking columns
+
+ #   col = energy_df.iloc[[event]].values.flatten() JMB fix
+    col = energy_df.ix[event].values # another fix more concise
     
     plt.figure(figsize=(10,10))
     ax = plt.subplot(aspect='equal')
