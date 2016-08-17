@@ -232,3 +232,20 @@ def plot_track(geom_df,mchits_df,vox_size=10, zoom = False):
     
     plt.show()
 
+def plot_waveforms(pmtwfdf):
+    """
+    Takes as input a df storing the PMT wf and plots the 12 PMT WF
+    """
+    
+    plt.figure(figsize=(12,12))
+    
+    len_pmt = len(pmtwfdf[0])
+    for i in range(12):
+        ax1 = plt.subplot(3,4,i+1)
+        ax1.set_xlim([0, len_pmt])
+        SetPlotLabels(xlabel='t (ns)', ylabel='adc')
+        plt.plot(pmtwfdf[i])
+
+    
+    plt.show()
+
