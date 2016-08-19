@@ -64,12 +64,13 @@ class FEE(tables.IsDescription):
     V_gain =tables.Float32Col(pos=3)  #FE gain (250*ohm)
     R = tables.Float32Col(pos=4) # resistor in Ohms (2350*ohm)
     C12 = tables.Float32Col(shape=12,pos=5) #6.2*nF  decoupling capacitor in pF
-    time_step=tables.Float32Col(pos=6) #1*ns input MC time bins
-    time_daq=tables.Float32Col(pos=7) #25*ns DAQ time 
-    freq_LPF=tables.Float32Col(pos=8) #3E6*hertz
-    freq_HPF=tables.Float32Col(pos=9) #1/2piRC
-    LSB = tables.Float32Col(pos=10)    # Least Significant Bit 2*volt/2**NBITS, 
-    volts_to_adc = tables.Float32Col(pos=11) # conversion from volts to adc counts
-    noise_fee_rms = tables.Float32Col(pos=12) # noise FEE in volts
-    noise_adc = tables.Float32Col(pos=13) # noise FEE in ADC counts
+    CO12 = tables.Float32Col(shape=12,pos=6) #Accumulator coefficients
+    time_step=tables.Float32Col(pos=7) #1*ns input MC time bins
+    time_daq=tables.Float32Col(pos=8) #25*ns DAQ time 
+    freq_LPF=tables.Float32Col(pos=9) #3E6*hertz
+    freq_HPF=tables.Float32Col(pos=10) #1/2piRC
+    LSB = tables.Float32Col(pos=11)    # Least Significant Bit 2*volt/2**NBITS, 
+    volts_to_adc = tables.Float32Col(pos=12) # conversion from volts to adc counts
+    noise_fee_rms = tables.Float32Col(pos=13) # noise FEE in volts
+    noise_adc = tables.Float32Col(pos=14) # noise FEE in ADC counts
 

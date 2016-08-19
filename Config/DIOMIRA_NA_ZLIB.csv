@@ -1,3 +1,3 @@
 #Configuration file for DIOMIRA
 PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,END 
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_0_100evts_comp1_chunk32k.h5,WF_Na_0_RWF.h5,0,99,1,1
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_1Kevts_comp1_chunk32k.h5,WF_Na_1k_RWF.h5,0,999,1,1

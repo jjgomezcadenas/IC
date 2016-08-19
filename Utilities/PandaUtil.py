@@ -147,6 +147,27 @@ def plot_sensor(geom_df,sensor_df, energy_df, event=0, radius=10):
     ylim(geom_df['ydet_min'],geom_df['ydet_max'])
     return col
 
+def plot_ene_pmt(geom_df,sensor_df, energy_pmt, radius=10):
+    """
+    plots the reconstructed energy of the PMTs
+    energy_pmt is a vector describing the reconstructed energy 
+    in each PMT
+    """
+    x =sensor_df['x'].values
+    y =sensor_df['y'].values
+    r =np.ones(len(sensor_df['x'].values))*radius
+    col = energy_pmt 
+    
+    plt.figure(figsize=(10,10))
+    ax = plt.subplot(aspect='equal')
+    circles(x, y, r, c=col, alpha=0.5, ec='none')
+    plt.colorbar()
+    #xlim(-198,198)  #one should use geom info
+    #ylim(-198,198)
+    xlim(geom_df['xdet_min'],geom_df['xdet_max'])
+    ylim(geom_df['ydet_min'],geom_df['ydet_max'])
+    return col
+
 def plot_track(geom_df,mchits_df,vox_size=10, zoom = False):
     """
     plot the hits of a mctrk. Adapted from JR plotting functions 

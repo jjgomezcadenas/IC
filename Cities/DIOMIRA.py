@@ -43,6 +43,7 @@ def FEE_param_table(fee_table):
     row['V_gain'] = FP.V_GAIN
     row['R'] = FP.R
     row['C12'] = FP.C12
+    row['CO12'] = FP.C12 # to be rewritten by ISIDORA
     row['time_step'] = FP.time_step
     row['time_daq'] = FP.time_DAQ
     row['freq_LPF'] = FP.freq_LPF
@@ -350,10 +351,10 @@ if __name__ == '__main__':
                 NEVENTS = NEVENTS_DST
 
             #create a 2d array to store the true energy of the PMTs (pes)
-            ene_pmt = np.zeros((NEVENTS,NPMT))
+            #ene_pmt = np.zeros((NEVENTS,NPMT))
 
             #create a 2d array to store the true energy of the SiPMs (pes)
-            ene_sipm = np.zeros((NEVENTS,NSIPM))
+            #ene_sipm = np.zeros((NEVENTS,NSIPM))
 
             for i in range(FIRST_EVT,LAST_EVT):
                 print("-->event number ={}".format(i))

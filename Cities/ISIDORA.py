@@ -31,67 +31,91 @@ import getopt
 """
 Code
 """
-
-
-def energy_pes(event_number, sensord):
+def accumulator_coefficients(NPMT,CA):
     """
-    Sum the WFs of PMTs and SiPMs (MC) and store the total energy in PES
-    """     
-    rdata = []
-
-    for j in range(sensord.shape[1]):
-        swf = sensord[event_number, j]
-        ene = np.sum(swf)
-        rdata.append(ene)
+    Compute the accumulator coefficients
+    """
+    import FEParam as FP
+    import FEE2 as FE
+    
+    coef_acc =np.zeros(NPMT, dtype=np.double)
+    for j in range(NPMT):
         
-    return np.array(rdata) 
+        fee = FE.FEE(C=CA[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
+        signal_inv_daq = fee.InverseSignalDAQ(signal_t)  #inverse function
+        coef_acc[j] = signal_inv_daq[10] #any index is valid, function is flat
+        
+    return coef_acc
 
-def BLR(event_number,pmtrd25):
+def DBLR(pmtrd_, event_number, CA, pmt_range=0, MAU_LEN=250,
+         thr1 = 20., thr2=0., thr3 = 5., plot=False , log='INFO'):
     """
     Peform Base line Restoration
+    CA is an array with the coefficients of the accumulator
+    Threshold 1 is used to decide when raw signal raises up above trigger line
+    Threshold 2 is used to decide when reconstructed signal is above trigger line
+    Threshold 3 is used to compare Raw and Rec signal
     """
-    ene_pmt =np.zeros(len(CP.CFGP['PMTS']), dtype=np.int32)
-    ipmt = 0
-    PMTWF ={}
-    for j in CP.CFGP['PMTS']:
-        logging.debug("-->PMT number ={}".format(j))
+    
+    len_WF = pmtrd_.shape[2]
+    NPMT = pmtrd_.shape[1]
+    ene_pmt =np.zeros(NPMT, dtype=np.int64)
+   
+    PMTWF =[]
+    
+    pmts = pmt_range
+    if pmt_range == 0:
+        pmts = range(NPMT)
+    for j in pmts:
 
         pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
         
-        if CP.CPLT['plot_RAW'] == True:
-            print("RAW signal")
-            plot_signal(CP.signal_t,pmtrd, title = 'signal RAW', 
-                    signal_start=0, signal_end=CP.CFGP['LEN_WVF25'], 
-                    units='adc')
+        pmtwf, ene_pmt[j] = BLR(pmtrd, CA[j], MAU_LEN, thr1, thr2, thr3, plot,log)
+        PMTWF.append(pmtwf)
+       
+    return ene_pmt, np.array(PMTWF)
+                                        
+def DBLR(pmtrd_,signal_t, event_number=0, 
+         CA=FP.C12, pmt_range=0, 
+         mau_len=FP.MAU_WindowSize,
+         thr1 = 20., thr2=0., thr3 = 5., 
+         plot='True', log='DEBUG'):
+    """
+    Peform Base line Restoration
+    CA is an array with the values of the capacitances for the PMTs
+    Threshold 1 is used to decide when raw signal raises up above trigger line
+    Threshold 2 is used to decide when reconstructed signal is above trigger line
+    Threshold 3 is used to compare Raw and Rec signal
+    """
+    import FEParam as FP
+    import FEE2 as FE
+    
+    len_WF = pmtrd_.shape[2]
+    NPMT = pmtrd_.shape[1]
+    ene_pmt =np.zeros(NPMT, dtype=np.double)
+    coef_pmt =np.zeros(NPMT, dtype=np.double)
+    
+    PMTWF =[]
+    
+    pmts = pmt_range
+    if pmt_range == 0:
+        pmts = range(NPMT)
+    for j in pmts:
 
-        #Deconvolution
-        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
-        signal_inv_daq = fee.InverseSignalDAQ(CP.signal_t)  #inverse function
-        coef = signal_inv_daq[10]  #accumulator coefficient
+        pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
         
-
-        if CP.CPLT['plot_signal_inv'] :   
-            plot_signal(CP.signal_t/ns,signal_inv_daq,
-                title = 'Inverse DAQ', 
-                signal_start=0*ns, signal_end=10*ns, 
-                units='')
-            print("inverse coef fee: = {}".format(coef))
-
-        # print "calling MauDeconv"
-   
-        signal_blr, eadc = DB.BLR(pmtrd, coef, n_sigma = CP.CFGP['NSIGMA'], 
-                            NOISE_ADC=FP.NOISE_ADC, thr2=FP.NOISE_ADC/4., thr3 = FP.NOISE_ADC/2.,
-                            plot=CP.CPLT['plot_BLR'])
-        if CP.CPLT['plot_DEC'] == True:
-            print("DBLR signal")
-            plot_signal(CP.signal_t,signal_blr, title = 'signal BLR', 
-                    signal_start=0, signal_end=CP.CFGP['LEN_WVF25'], 
-                    units='adc')
-
-        ene_pmt[ipmt] = eadc
-        PMTWF[ipmt]=signal_blr
-        ipmt+=1
-    return pd.Series(ene_pmt), pd.DataFrame(PMTWF)
+        #Deconvolution
+        fee = FE.FEE(C=CA[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
+        signal_inv_daq = fee.InverseSignalDAQ(signal_t)  #inverse function
+        coef = signal_inv_daq[10]  #accumulator coefficient
+       
+        signal_blr, eadc = BLR(pmtrd, coef, j, MAU_LEN, thr1, thr2, thr3, plot,log)
+    
+        ene_pmt[j] = eadc
+        coef_pmt[j] = coef
+        PMTWF.append(signal_blr)
+       
+    return np.array(PMTWF), ene_pmt, coef_pmt
         
 def usage():
     """
@@ -187,136 +211,72 @@ if __name__ == '__main__':
     configure(sys.argv[1:])
 
     if INFO:
-        print(diomira)
+        print(isidora)
 
     wait()
     
     print("""
-        DIOMIRA:
-        1. Reads an Nh5 file produced by art/centella, which stores the
-            pre-raw data (PRD) for the PMTs and SiPMs waveforms, as well as
-            data on geometry, sensors and MC.
+        ISIDORA:
+        1. Reads an Nh5 file produced by DIOMIRA, which stores the
+            raw waveforms (RWF) for the PMTs and SiPMs waveforms, as well as
+            data on geometry, sensors and MC. The RDWF of the PMTs
+            show negative swing due to the HPF of the EP FEE electronics
 
-        2. Simulates the response of the energy plane in the PMTs PRD, and
-            outputs PMT Raw-Data (RD), e.g., waveforms in bins of 25 ns
-            which correspond to the output of the EP FEE.
+        2. Performs DBLR on the PMT RWF and produces corrected waveforms (CWF).
 
-        3. Re-formats the data on detector geometry and sensors as pandas
-            dataframes (PDF) and Series (PS)
+        3. Adds the CWF to the DST 
 
-        4. Add a PS describing the FEE parameters used for simulation
-
-        5. Copies the MC table and the SiPM PRD (the simulation of SiPM response
-        is pending)
+        4. Computes the energy of the PMTs per each event and writes to DST
 
         """)
-    FP.print_FEE()
-    wait()
 
-
-    print("input path ={}; output path = {}; file_in ={} file_out ={}".format(
-        PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))
+    print("input path ={}; file_in ={} ".format(
+        PATH_IN,FILE_IN))
 
     print("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
-    # open the input file 
-    with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in: 
+    # open the input file in mode append 
+    with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "a") as h5in: 
         # access the PMT raw data in file 
         pmtrd_ = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
+
+        #define a time vector needed for deconvolution
+        signal_t = np.arange(0.0, pmtrd_.shape[2]*1., 1., dtype=np.double)
+
+        
         NPMT = pmtrd_.shape[1]
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2] 
-        PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
         print("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
         NPMT,NSIPM,NEVENTS_DST))
 
-        print("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
-        PMTWL,SIPMWL,PMTWL_FEE))
+        print("lof SiPM WF = {} lof PMT WF (MC) = {} ".format(
+        PMTWL,SIPMWL))
 
         wait()
-
-        #access the geometry and the sensors metadata info
-
-        geom_t = h5in.root.Detector.DetectorGeometry
-        pmt_t = h5in.root.Sensors.DataPMT
-        sipm_t = h5in.root.Sensors.DataSiPM
-        mctrk_t = h5in.root.MC.MCTracks
-
-        # #return a pandas DF for sensors and geometry
-        # pmtdf = read_data_sensors(pmt_t)
-        # sipmdf = read_data_sensors(sipm_t)
-        # geodf = read_data_geom(geom_t)
-
-        
-        # open the output file 
-        with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
-            filters=tables.Filters(complib="blosc", complevel=9)) as h5out:
- 
-            # create a group to store MC data
-            mcgroup = h5out.create_group(h5out.root, "MC")
-            # copy the mctrk table
-            mctrk_t.copy(newparent=mcgroup)
-
-            # create a group  to store geom data
-            detgroup = h5out.create_group(h5out.root, "Detector")
-            # copy the geom table
-            geom_t.copy(newparent=detgroup)
-
-            # create a group  store sensor data
-            sgroup = h5out.create_group(h5out.root, "Sensors")
-            # copy the pmt table
-            pmt_t.copy(newparent=sgroup)
-            # copy the sipm table
-            sipm_t.copy(newparent=sgroup)
-
-            # create a table to store Energy plane FEE data and hang it from MC group
-            fee_table = h5out.create_table(mcgroup, "FEE", FEE,
-                          "EP-FEE parameters",
-                           tables.Filters(0))
-
-            # fill table
-            FEE_param_table(fee_table)
-
-            # create a group to store RawData
-            rgroup = h5out.create_group(h5out.root, "RD")
             
-            # create an extensible array to store the RWF waveforms
-            pmtrd = h5out.create_earray(h5out.root.RD, "pmtrd", 
-                                    atom=tables.IntAtom(), 
-                                    shape=(0, NPMT, PMTWL_FEE), 
+        # create an extensible array to store the CWF waveforms
+        pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
+                                    atom=tables.FloatAtom(), 
+                                    shape=(0, NPMT, PMTWL), 
                                     expectedrows=NEVENTS_DST)
-            # pmtrd = h5out.create_earray(h5out.root.RD, "pmtrd", 
-            #                         atom=tables.IntAtom(), 
-            #                         shape=(0, NPMT, PMTWL), 
-            #                         expectedrows=NEVENTS_DST)
+            
 
-            sipmrd = h5out.create_earray(h5out.root.RD, "sipmrd", 
-                                    atom=tables.IntAtom(), 
-                                    shape=(0, NSIPM, SIPMWL), 
-                                    expectedrows=NEVENTS_DST)
-
-            #create an extensible array to store the energy in PES of PMTs 
-            epmt = h5out.create_earray(h5out.root.RD, "epmt", 
-                                    atom=tables.IntAtom(), 
+        #create an extensible array to store the energy in adc counts of CWF 
+        ecwf = h5out.create_earray(h5out.root.RD, "ecwf", 
+                                    atom=tables.FloatAtom(), 
                                     shape=(0, NPMT), 
                                     expectedrows=NEVENTS_DST)
-
-            # create an extensible array to store the energy in PES of SiPMs 
-            esipm = h5out.create_earray(h5out.root.RD, "esipm", 
-                                    atom=tables.IntAtom(), 
-                                    shape=(0, NSIPM), 
-                                    expectedrows=NEVENTS_DST)
-
             
-            if NEVENTS > NEVENTS_DST and RUN_ALL == False:
-                print("""
+        if NEVENTS > NEVENTS_DST and RUN_ALL == False:
+            print("""
                 Refusing to run: you have requested
                 FIRST_EVT = {}
                 LAST_EVT  = {}
@@ -326,56 +286,38 @@ if __name__ == '__main__':
                 to run over the whole DST when this happens
                 """.format(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST))
                 sys.exit(0)
-            elif  NEVENTS > NEVENTS_DST and RUN_ALL == True:
-                FIRST_EVT = 0
-                LAST_EVT = NEVENTS_DST
-                NEVENTS = NEVENTS_DST
 
-            #create a 2d array to store the true energy of the PMTs (pes)
-            ene_pmt = np.zeros((NEVENTS,NPMT))
+        elif  NEVENTS > NEVENTS_DST and RUN_ALL == True:
+            FIRST_EVT = 0
+            LAST_EVT = NEVENTS_DST
+            NEVENTS = NEVENTS_DST
 
-            #create a 2d array to store the true energy of the SiPMs (pes)
-            ene_sipm = np.zeros((NEVENTS,NSIPM))
+        #create a 2d array to store the  energy of the CWF
+        ene_cwf = np.zeros((NEVENTS,NPMT))
 
-            for i in range(FIRST_EVT,LAST_EVT):
-                print("-->event number ={}".format(i))
-                logging.info("-->event number ={}".format(i))
+            
+        for i in range(FIRST_EVT,LAST_EVT):
+            print("-->event number ={}".format(i))
+            logging.info("-->event number ={}".format(i))
 
-                #simulate PMT response and return an array with new WF
-                dataPMT = simulate_pmt_response(i,pmtrd_)
-                #dataPMT = copy_pmt(i,pmtrd_)
+            #Perform DBLR
+            pmtCWF, eneCWF, coefBLR = DBLR(pmtrd_,signal_t, 
+                                        event_number =i, CA =C12, 
+                                        pmt_range=0, mau_len=MAU_LEN,
+                                        thr1 = THR1, thr2=THR2, thr3 =THR3, 
+                                        plot=PLOT, log=LOG):
+
+            
                 
-                #append to PMT EARRAY
-                pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
-                #pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL))
-                   
-                #simulate SiPM response and return an array with new WF
-                dataSiPM = simulate_sipm_response(i,sipmrd_)
+            #append to PMT EARRAY
+            pmtcwf.append(pmtCWF.reshape(1, NPMT, PMTWL))
+            #append to ecwf EARRAY
+            ecwf.append(eneCWF.reshape(1, NPMT))
                 
-                #append to SiPM EARRAY
-                sipmrd.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
-
-                #fill ene_pmt vector
-                enePMT = energy_pes(i, pmtrd_)
-                #append to epmt EARRAY
-                epmt.append(enePMT.reshape(1, NPMT))
-
-                #fill ene_sipm vector
-                eneSIPM = energy_pes(i, sipmrd_)
-                esipm.append(eneSIPM.reshape(1, NSIPM))
-
-            pmtrd.flush()
-            sipmrd.flush()
-            epmt.flush()
-            esipm.flush()
-
-            #store the DF with sensors and geom info
-            # store_export = pd.HDFStore(PATH_OUT+FILE)
-            # store_export.append('Sensors/DataPMT', pmtdf, data_columns=pmtdf.columns)
-            # store_export.append('Sensors/DataSiPM', sipmdf, data_columns=pmtdf.columns)
-            # store_export.append('Detector/DetectorGeometry', geodf)
-            # store_export.append('EnergyPlane/FEE', feedf)
-            # store_export.close()
+                
+        pmtcwf.flush()
+        ecwf.flush()
+        
 
     print("done!")
 
