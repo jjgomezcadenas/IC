@@ -1,9 +1,9 @@
-def usage():
+def usage(program_name):
     """
     Usage of program
     """
     print("""
-        Usage: python (run) DIOMIRA [args]
+        Usage: python (run) % [args]
         where args are:
          -h (--help) : this text
          -i (--info) : print a text describing the invisible city of DIOMIRA
@@ -31,7 +31,7 @@ def usage():
         otherwise it will exit with a warning.
 
 
-        """)
+        """.format(program_name))
 def configure(argv):
     """
     reads arguments from the command line and configures job
