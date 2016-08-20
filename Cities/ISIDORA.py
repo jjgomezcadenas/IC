@@ -31,14 +31,197 @@ import getopt
 """
 Code
 """
-def accumulator_coefficients(NPMT,CA):
+
+def BLR(signal_daq, coef, mau_len, thr1, thr2, thr3, log):
+
     """
-    Compute the accumulator coefficients
+    Deconvolution offline of the DAQ signal using a MAU
+    moving window-average filter of a vector data. See notebook 
+    y(n) = (1/WindowSize)(x(n) + x(n-1) + ... + x(n-windowSize))
+    in a filter operation filter(b,a,x):
+    b = (1/WindowSize)*ones(WindowSize) = (1/WS)*[1,1,1,...]: numerator
+    a = 1 : denominator
+    y = filter(b,a,x)
+    y[0] = b[0]*x[0] = (1/WS) * x[0]
+    y[1] = (1/WS) * (x[0] + x[1])
+    y[WS-1] = mean(x[0:WS])
+    y[WS] = mean(x[1:WS+1])
+    and so on
     """
-    import FEParam as FP
-    import FEE2 as FE
+    
+    logl ='logging.'+log
+    logging.basicConfig(level=eval(logl))
+    
+
+    len_signal_daq = len(signal_daq)
+    MAU = np.zeros(len_signal_daq, dtype=np.double)
+    acum = np.zeros(len_signal_daq, dtype=np.double)
+    signal_r = np.zeros(len_signal_daq, dtype=np.double)
+    pulse_f = np.zeros(len(signal_daq), dtype=np.double)
+    pulse_ff = np.zeros(len(signal_daq), dtype=np.double)
+    pulse_t = np.zeros(len(signal_daq), dtype=np.double)
+    pulse_w = np.zeros(len(signal_daq), dtype=np.double)
+    
+    signal_i = np.copy(signal_daq) #uses to update MAU while procesing signal
+
+    nm = mau_len
+    B_MAU = (1./nm)*np.ones(nm)
+
+#   MAU averages the signal in the initial tranch 
+#    allows to compute the baseline of the signal  
+    
+    MAU[0:nm] = SGN.lfilter(B_MAU,1, signal_daq[0:nm])
+    acum[nm] =  MAU[nm]
+    BASELINE = MAU[nm-1]
+
+    logging.debug("""-->BLR: 
+                     PMT number = {}
+                     MAU_LEN={}
+                     thr1 = {}, thr2 = {}, thr3 = {} =""".format(
+                     pmt, mau_len, thr1, thr2, thr3))
+    logging.debug("n = {}, acum[n] = {} BASELINE ={}".format(nm, acum[nm],BASELINE))
+
+#----------
+
+# While MAU inits BLR is switched off, thus signal_r = signal_daq 
+
+    signal_r[0:nm] = signal_daq[0:nm] 
+    pulse_on=0
+    wait_over=0
+    offset = 0
+    
+    # MAU has computed the offset using nm samples
+    # now loop until the end of DAQ window
+
+    logging.debug("nm = {}".format(nm))
+    
+    for k in range(nm,len_signal_daq): 
+
+        trigger_line = MAU[k-1] + thr1
+        pulse_t[k] = trigger_line
+        pulse_f[k] = pulse_on
+        pulse_w[k] = wait_over 
+        pulse_ff[k] = signal_daq[k] - signal_r[k]
+        
+        # condition: raw signal raises above trigger line and 
+        # we are not in the tail
+        # (wait_over == 0)
+        if signal_daq[k] > trigger_line and wait_over == 0:
+
+            # if the pulse just started pulse_on = 0.
+            # In this case compute the offset as value 
+            #of the MAU before pulse starts (at k-1)
+
+            if pulse_on == 0: # pulse just started
+                #offset computed as the value of MAU before pulse starts
+                offset = MAU[k-1]  
+                pulse_on = 1 
+                
+            #Pulse is on: Freeze the MAU
+            MAU[k] = MAU[k-1]  
+            signal_i[k] =MAU[k-1]  #signal_i follows the MAU
+            
+            #update recovered signal, correcting by offset
+            acum[k] = acum[k-1] + signal_daq[k] - offset;
+            signal_r[k] = signal_daq[k] + coef*acum[k] 
+                  
+            
+        else:  #no signal or raw signal has dropped below threshold
+                      
+        # but raw signal can be negative for a while and still contribute to the
+        # reconstructed signal.
+
+            if pulse_on == 1: #reconstructed signal still on
+                # switch the pulse off only when recovered signal 
+                #drops below threshold
+                #slide the MAU, still frozen. 
+                # keep recovering signal
+                
+                MAU[k] = MAU[k-1] 
+                signal_i[k] =MAU[k-1]
+                acum[k] = acum[k-1] + signal_daq[k] - offset;
+                signal_r[k] = signal_daq[k] + coef*acum[k] 
+                
+                
+                #if the recovered signal drops before trigger line 
+                #rec pulse is over!
+                if signal_r[k] < trigger_line + thr2:
+                    wait_over = 1  #start tail compensation
+                    pulse_on = 0   #recovered pulse is over
+                      
+
+            else:  #recovered signal has droped below trigger line
+            #need to compensate the tail to avoid drifting due to erros in 
+            #baseline calculatoin
+
+                if wait_over == 1: #compensating pulse
+                    # recovered signal and raw signal 
+                    #must be equal within a threshold
+                    # otherwise keep compensating pluse
+
+                        
+                    if signal_daq[k-1] < signal_r[k-1] - thr3:
+                        # raw signal still below recovered signal 
+                        # keep compensating pulse
+                        # is the recovered signal near offset?
+                        upper = offset + (thr3 + thr2)
+                        lower = offset - (thr3 + thr2)
+                        
+                        if signal_r[k-1] > lower and signal_r[k-1] < upper:
+                            # we are near offset, activate MAU. 
+                            
+                            signal_i[k] = signal_r[k-1]
+                            MAU[k] = np.sum(signal_i[k-nm:k])*1./nm
+                            
+                                      
+                        else: 
+                            # rec signal not near offset MAU frozen  
+                            MAU[k] = MAU[k-1]
+                            signal_i[k] = MAU[k-1]
+                            
+
+                        # keep adding recovered signal  
+                        acum[k] = acum[k-1] + signal_daq[k] - MAU[k]
+                        signal_r[k] = signal_daq[k] + coef*acum[k]
+                        
+                    else:  # raw signal above recovered signal: we are done 
+                        
+                        wait_over = 0
+                        acum[k] = MAU[k-1]
+                        signal_r[k] = signal_daq[k]
+                        signal_i[k] = signal_r[k]
+                        MAU[k] = np.sum(signal_i[k-nm:k])*1./nm
+                        
+                            
+                else: #signal still not found
+                    
+                    #update MAU and signals
+                    MAU[k] = np.sum(signal_i[k-nm:k]*1.)/nm   
+                    acum[k] = MAU[k-1]
+                    signal_r[k] = signal_daq[k]
+                    signal_i[k] = signal_r[k]  
+                                                                                                       
+    energy = np.dot(pulse_f,(signal_r-BASELINE)) 
+                       
+    return  signal_r-BASELINE, energy
+
+def accumulator_coefficients(pmtrd_,CA):
+    """
+    Compute the accumulator coefficients for DBLR
+    It computes the inverse function of the HPF and takes
+    the accumulator as the value of the function anywhere
+    but the first bin (the inverse is a step function with
+    constant value equal to the accumulator)
+    CA are the values of the capacitances defining the filter
+    (1/(2CR)) for each PMT
+    """
+    len_WF = pmtrd_.shape[2]
+    NPMT = pmtrd_.shape[1]
     
     coef_acc =np.zeros(NPMT, dtype=np.double)
+
+    signal_t = np.arange(0.0, len_WF*1., 1., dtype=np.double)
+
     for j in range(NPMT):
         
         fee = FE.FEE(C=CA[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
@@ -47,11 +230,11 @@ def accumulator_coefficients(NPMT,CA):
         
     return coef_acc
 
-def DBLR(pmtrd_, event_number, CA, pmt_range=0, MAU_LEN=250,
-         thr1 = 20., thr2=0., thr3 = 5., plot=False , log='INFO'):
+def DBLR(pmtrd_, event_number, coeff_acc, mau_len=250,
+         thr1 = 20., thr2=0., thr3 = 5., log='INFO', pmt_range=0):
     """
     Peform Base line Restoration
-    CA is an array with the coefficients of the accumulator
+    coeff_acc is an array with the coefficients of the accumulator
     Threshold 1 is used to decide when raw signal raises up above trigger line
     Threshold 2 is used to decide when reconstructed signal is above trigger line
     Threshold 3 is used to compare Raw and Rec signal
@@ -66,57 +249,16 @@ def DBLR(pmtrd_, event_number, CA, pmt_range=0, MAU_LEN=250,
     pmts = pmt_range
     if pmt_range == 0:
         pmts = range(NPMT)
-    for j in pmts:
 
+    for j in pmts:
         pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
         
-        pmtwf, ene_pmt[j] = BLR(pmtrd, CA[j], MAU_LEN, thr1, thr2, thr3, plot,log)
+        pmtwf, ene_pmt[j] = BLR(pmtrd, coeff_acc[j], mau_len, thr1, thr2, thr3, log)
         PMTWF.append(pmtwf)
        
     return ene_pmt, np.array(PMTWF)
                                         
-def DBLR(pmtrd_,signal_t, event_number=0, 
-         CA=FP.C12, pmt_range=0, 
-         mau_len=FP.MAU_WindowSize,
-         thr1 = 20., thr2=0., thr3 = 5., 
-         plot='True', log='DEBUG'):
-    """
-    Peform Base line Restoration
-    CA is an array with the values of the capacitances for the PMTs
-    Threshold 1 is used to decide when raw signal raises up above trigger line
-    Threshold 2 is used to decide when reconstructed signal is above trigger line
-    Threshold 3 is used to compare Raw and Rec signal
-    """
-    import FEParam as FP
-    import FEE2 as FE
-    
-    len_WF = pmtrd_.shape[2]
-    NPMT = pmtrd_.shape[1]
-    ene_pmt =np.zeros(NPMT, dtype=np.double)
-    coef_pmt =np.zeros(NPMT, dtype=np.double)
-    
-    PMTWF =[]
-    
-    pmts = pmt_range
-    if pmt_range == 0:
-        pmts = range(NPMT)
-    for j in pmts:
 
-        pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-        
-        #Deconvolution
-        fee = FE.FEE(C=CA[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
-        signal_inv_daq = fee.InverseSignalDAQ(signal_t)  #inverse function
-        coef = signal_inv_daq[10]  #accumulator coefficient
-       
-        signal_blr, eadc = BLR(pmtrd, coef, j, MAU_LEN, thr1, thr2, thr3, plot,log)
-    
-        ene_pmt[j] = eadc
-        coef_pmt[j] = coef
-        PMTWF.append(signal_blr)
-       
-    return np.array(PMTWF), ene_pmt, coef_pmt
-        
 def usage():
     """
     Usage of program
@@ -125,25 +267,35 @@ def usage():
         Usage: python (run) ISIDORA [args]
         where args are:
          -h (--help) : this text
-         -i (--info) : print a text describing the invisible city of DIOMIRA
+         -i (--info) : print a text describing the invisible city of ISIDORA
          -d (--debug) : can be set to 'DEBUG','INFO','WARNING','ERROR'
          -c (--cfile) : full path to a configuration file
          
          example of configuration file 
 
-        #Header is not read
+        # comment line  
         Names of parameters (comma separated)
         Values of parameters (comma separated)
         
-        The parameters for DIOMIRA are:
-        PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL 
+        The parameters for ISIDORA are:
 
-        The parameters are self-explaining. 
-        RUN_ALL is used to decide whether to run all the events in the file 
+        PATH_IN = path to DST file
+        FILE_IN = name of DST file
+        FIRST_EVT,LAST_EVT,RUN_ALL,
+
+        RUN_ALL is used to decide whether to run all the events in the file
         in case that the total number of events requested (LAST_EVT-FIRST_EVT) 
         exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
         the script will run over all elements in the DST, 
         otherwise it will exit with a warning.
+
+        CA = Nominal (measured) values of the capacitors defining the filter
+        MAU_LEN = length of MAU
+        THR1, THR2, THR3, are trhesholds for the DBLR algorithm 
+        Threshold 1 is used to decide when raw signal raises up above trigger line
+        Threshold 2 is used to decide when reconstructed signal is above trigger line
+        Threshold 3 is used to compare Raw and Rec signal
+        
 
         """)
 def configure(argv):
@@ -151,12 +303,13 @@ def configure(argv):
     reads arguments from the command line and configures job
     """
     
-    global DEBUG, PATH_IN, PATH_OUT, FILE_IN, FILE_OUT
-    global  FIRST_EVT, LAST_EVT,NEVENTS, RUN_ALL, INFO
+    global DEBUG, PATH_IN, FILE_IN,INFO 
+    global  FIRST_EVT, LAST_EVT, NEVENTS, RUN_ALL
+    global  CA, MAU_LEN, THR1, THR2, THR3
     
     DEBUG='INFO'
-    INFO = True
     cfile =''
+    INFO = True
     try:
         opts, args = getopt.getopt(argv, "hidc:", ["help","info","debug","cfile"])
 
@@ -173,37 +326,32 @@ def configure(argv):
             INFO = arg
         elif opt in ("-c", "--cfile"):
             cfile = arg
- 
-    if DEBUG == 'ERROR' or DEBUG == 'error' or DEBUG == 'e':
-        logging.basicConfig(level=logging.ERROR)
-    elif DEBUG == 'DEBUG' or DEBUG == 'debug' or DEBUG == 'd':
-        logging.basicConfig(level=logging.DEBUG)
-    elif DEBUG == 'WARNING' or DEBUG == 'warning' or DEBUG == 'w':
-        logging.basicConfig(level=logging.WARNING)
-    elif DEBUG == 'INFO' or DEBUG == 'info' or DEBUG == 'i':
-        logging.basicConfig(level=logging.INFO)
-    else:
-        print("value of debug option not defined")
-        usage()
 
+    lg = 'logging.'+DEBUG
+    logging.basicConfig(level=eval(lg))
+ 
     if cfile == '':
         print("Path to configuration file not given")
         usage()
         sys.exit()
 
-    CFP =pd.read_csv(cfile,skiprows=1)
+    CFP =pd.read_csv(cfile,comment="#")
     print("""
         Configuration parameters \n 
         {}
         """.format(CFP))
-
+    
     PATH_IN=CFP['PATH_IN'][0] 
-    PATH_OUT=CFP['PATH_OUT'][0]
     FILE_IN=CFP['FILE_IN'][0]
-    FILE_OUT=CFP['FILE_OUT'][0]
     FIRST_EVT=CFP['FIRST_EVT'][0]
     LAST_EVT=CFP['LAST_EVT'][0]
     RUN_ALL=CFP['RUN_ALL'][0]
+    CA=CFP['CA'][0]
+    MAU_LEN=CFP['MAU_LEN'][0]
+    THR1=CFP['THR1'][0] 
+    THR2=CFP['THR2'][0] 
+    THR3=CFP['THR3'][0]
+
     NEVENTS = LAST_EVT -  FIRST_EVT
 
         
@@ -244,9 +392,7 @@ if __name__ == '__main__':
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
 
-        #define a time vector needed for deconvolution
-        signal_t = np.arange(0.0, pmtrd_.shape[2]*1., 1., dtype=np.double)
-
+        
         
         NPMT = pmtrd_.shape[1]
         NSIPM = sipmrd_.shape[1]

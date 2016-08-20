@@ -136,19 +136,24 @@ def usage():
          
          example of configuration file 
 
-        #Header is not read
+         # comment line  
         Names of parameters (comma separated)
         Values of parameters (comma separated)
         
         The parameters for DIOMIRA are:
-        PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL 
 
-        The parameters are self-explaining. 
-        RUN_ALL is used to decide whether to run all the events in the file 
+        PATH_IN = path to input DST file (must be a MCRD file)
+        FILE_IN = name of input DST file
+        PATH_OUT = path to output DST file (RWF file)
+        FILE_OUT = name of ouput DST file (RWF file)
+        FIRST_EVT,LAST_EVT,RUN_ALL,
+
+        RUN_ALL is used to decide whether to run all the events in the file
         in case that the total number of events requested (LAST_EVT-FIRST_EVT) 
         exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
         the script will run over all elements in the DST, 
         otherwise it will exit with a warning.
+
 
         """)
 def configure(argv):
@@ -156,47 +161,45 @@ def configure(argv):
     reads arguments from the command line and configures job
     """
     
+    print("argv ={}".format(argv))
     global DEBUG, PATH_IN, PATH_OUT, FILE_IN, FILE_OUT
     global  FIRST_EVT, LAST_EVT,NEVENTS, RUN_ALL, INFO
     
     DEBUG='INFO'
-    INFO = True
+    INFO = False
     cfile =''
     try:
-        opts, args = getopt.getopt(argv, "hidc:", ["help","info","debug","cfile"])
+        opts, args = getopt.getopt(argv, "hid:c:", ["help","info","debug","cfile"])
 
     except getopt.GetoptError:
         usage()
         sys.exit(2)
+
+    print("opts ={}".format(opts))
+
     for opt, arg in opts:
+        print("opt ={}, arg = {}".format(opt,arg))
         if opt in ("-h", "--help"):
             usage()
             sys.exit()
         elif opt in ("-d", "--debug"):
             DEBUG = arg
         elif opt in ("-i", "--info"):
-            INFO = arg
+            INFO = True
         elif opt in ("-c", "--cfile"):
             cfile = arg
  
-    if DEBUG == 'ERROR' or DEBUG == 'error' or DEBUG == 'e':
-        logging.basicConfig(level=logging.ERROR)
-    elif DEBUG == 'DEBUG' or DEBUG == 'debug' or DEBUG == 'd':
-        logging.basicConfig(level=logging.DEBUG)
-    elif DEBUG == 'WARNING' or DEBUG == 'warning' or DEBUG == 'w':
-        logging.basicConfig(level=logging.WARNING)
-    elif DEBUG == 'INFO' or DEBUG == 'info' or DEBUG == 'i':
-        logging.basicConfig(level=logging.INFO)
-    else:
-        print("value of debug option not defined")
-        usage()
+    lg = 'logging.'+DEBUG
+    print('INFO = {} DEBUG={}'.format(INFO,DEBUG))
+    print("lg ={}".format(lg))
+    logging.basicConfig(level=eval(lg))
 
     if cfile == '':
         print("Path to configuration file not given")
         usage()
         sys.exit()
 
-    CFP =pd.read_csv(cfile,skiprows=1)
+    CFP =pd.read_csv(cfile,comment="#")
     print("""
         Configuration parameters \n 
         {}

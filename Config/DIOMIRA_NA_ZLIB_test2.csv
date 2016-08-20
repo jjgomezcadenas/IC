@@ -1,0 +1,17 @@
+# Configuration file for DIOMIRA
+# The parameters for DIOMIRA are:
+#
+#        PATH_IN = path to input DST file (must be a MCRD file)
+#        FILE_IN = name of input DST file
+#        PATH_OUT = path to output DST file (RWF file)
+#        FILE_OUT = name of ouput DST file (RWF file)
+#        FIRST_EVT,LAST_EVT,RUN_ALL,
+#
+#        RUN_ALL is used to decide whether to run all the events in the file
+#        in case that the total number of events requested (LAST_EVT-FIRST_EVT) 
+#        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
+#        the script will run over all elements in the DST, 
+#        otherwise it will exit with a warning.
+#
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,C12,END 
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_1Kevts_comp1_chunk32k.h5,WF_Na_test_RWF.h5,0,10,1,6.02975448 6.22547194 6.0671337 6.22159457 6.29999787 6.09892384 6.18289435 6.21775591 6.19306671 6.30518792 6.20359891 6.31231192,1
