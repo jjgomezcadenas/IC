@@ -1,9 +1,37 @@
+<<<<<<< HEAD
+
+import pandas as pd
+import logging
+import getopt
+import sys
+
+
+
+def cdf_to_dict(cdf):
+    """
+    transforms the configuration data frame into a dictionary
+    """
+
+    dc ={}
+    for k in cdf.keys():
+        dc[k] = cdf[k][0]
+    return dc
+    
+
+=======
+>>>>>>> master
 def usage(program_name):
     """
     Usage of program
     """
     print("""
+<<<<<<< HEAD
+
+        Usage: python (run) {} [args]
+
+=======
         Usage: python (run) % [args]
+>>>>>>> master
         where args are:
          -h (--help) : this text
          -i (--info) : print a text describing the invisible city of DIOMIRA
@@ -32,31 +60,35 @@ def usage(program_name):
 
 
         """.format(program_name))
+<<<<<<< HEAD
+def configure(pname,argv):
+
+=======
 def configure(argv):
+>>>>>>> master
     """
     reads arguments from the command line and configures job
     """
     
-    print("argv ={}".format(argv))
-    global DEBUG, PATH_IN, PATH_OUT, FILE_IN, FILE_OUT
-    global  FIRST_EVT, LAST_EVT,NEVENTS, RUN_ALL, INFO
+    #print("argv ={}".format(argv))
     
     DEBUG='INFO'
     INFO = False
     cfile =''
+
     try:
         opts, args = getopt.getopt(argv, "hid:c:", ["help","info","debug","cfile"])
 
     except getopt.GetoptError:
-        usage()
+        usage(pname)
         sys.exit(2)
 
-    print("opts ={}".format(opts))
+    #print("opts ={}".format(opts))
 
     for opt, arg in opts:
-        print("opt ={}, arg = {}".format(opt,arg))
+        #print("opt ={}, arg = {}".format(opt,arg))
         if opt in ("-h", "--help"):
-            usage()
+            usage(pname)
             sys.exit()
         elif opt in ("-d", "--debug"):
             DEBUG = arg
@@ -66,26 +98,27 @@ def configure(argv):
             cfile = arg
  
     lg = 'logging.'+DEBUG
-    print('INFO = {} DEBUG={}'.format(INFO,DEBUG))
-    print("lg ={}".format(lg))
+    #print('INFO = {} DEBUG={}'.format(INFO,DEBUG))
+    #print("lg ={}".format(lg))
     logging.basicConfig(level=eval(lg))
 
     if cfile == '':
         print("Path to configuration file not given")
-        usage()
+        usage(pname)
         sys.exit()
 
-    CFP =pd.read_csv(cfile,comment="#")
-    print("""
-        Configuration parameters \n 
-        {}
-        """.format(CFP))
+    cfp =pd.read_csv(cfile,comment="#")
+    # print("""
+    #     Configuration parameters \n 
+    #     {}
+    #     """.format(cfp))
 
-    PATH_IN=CFP['PATH_IN'][0] 
-    PATH_OUT=CFP['PATH_OUT'][0]
-    FILE_IN=CFP['FILE_IN'][0]
-    FILE_OUT=CFP['FILE_OUT'][0]
-    FIRST_EVT=CFP['FIRST_EVT'][0]
-    LAST_EVT=CFP['LAST_EVT'][0]
-    RUN_ALL=CFP['RUN_ALL'][0]
-    NEVENTS = LAST_EVT -  FIRST_EVT
+    CFP = cdf_to_dict(cfp)
+    
+    print("ConFiguration Parameters (CFP) dictionary  = {}".format(CFP))
+    return INFO, CFP
+    
+
+
+if __name__ == '__main__':
+    INFO, CFP = configure(sys.argv[0],sys.argv[1:])
