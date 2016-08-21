@@ -1,3 +1,4 @@
+
 import pandas as pd
 import logging
 import getopt
@@ -15,12 +16,15 @@ def cdf_to_dict(cdf):
         dc[k] = cdf[k][0]
     return dc
     
+
 def usage(program_name):
     """
     Usage of program
     """
     print("""
+
         Usage: python (run) {} [args]
+
         where args are:
          -h (--help) : this text
          -i (--info) : print a text describing the invisible city of DIOMIRA
@@ -50,6 +54,7 @@ def usage(program_name):
 
         """.format(program_name))
 def configure(pname,argv):
+
     """
     reads arguments from the command line and configures job
     """
