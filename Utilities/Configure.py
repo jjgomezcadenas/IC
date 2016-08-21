@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 import pandas as pd
 import logging
@@ -17,14 +18,20 @@ def cdf_to_dict(cdf):
     return dc
     
 
+=======
+>>>>>>> master
 def usage(program_name):
     """
     Usage of program
     """
     print("""
+<<<<<<< HEAD
 
         Usage: python (run) {} [args]
 
+=======
+        Usage: python (run) % [args]
+>>>>>>> master
         where args are:
          -h (--help) : this text
          -i (--info) : print a text describing the invisible city of DIOMIRA
@@ -53,8 +60,12 @@ def usage(program_name):
 
 
         """.format(program_name))
+<<<<<<< HEAD
 def configure(pname,argv):
 
+=======
+def configure(argv):
+>>>>>>> master
     """
     reads arguments from the command line and configures job
     """
