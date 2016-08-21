@@ -9,6 +9,18 @@ import numpy as np
 def wait():
 	raw_input("Press a key...")
 
+def farray_from_string(sfl):
+    """
+    returns a np array of floats from a string (sfl)
+    representing the array in which the numbers are separated by blanks
+    e.g, '1.4 3.6 6.7' -->np.array(1.4,3.6,6.7)
+    """
+    sarr = sfl.split(' ')
+    arr = []
+    for x in sarr:
+        arr.append(float(x))
+    return np.array(arr)
+
 
 def drange(start, stop, step):
 	"""

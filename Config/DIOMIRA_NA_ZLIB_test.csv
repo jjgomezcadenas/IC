@@ -14,4 +14,4 @@
 #        otherwise it will exit with a warning.
 #
 PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,END 
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_1Kevts_comp1_chunk32k.h5,WF_Na_test_RWF.h5,0,10,1,1
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_1Kevts_comp1_chunk32k.h5,WF_Na_test_RWF.h5,0,5,1,1
