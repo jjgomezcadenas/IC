@@ -13,6 +13,7 @@ Because the response is characterized over several time bins, we
 have several values for M and the coefficients.
 
 """
+import numpy as np
 
 # Number of time bins
 n_tbins = 2
@@ -30,6 +31,9 @@ c7 = [-4.19111362353e-11, -9.21915945523e-11]
 c8 = [9.12129133361e-13, 2.20534216312e-12]
 c9 = [-8.40089561697e-15, -2.1795164563e-14]
 
+# Maximum radial extent of parameterization
+rmax = 20.
+
 # Return the SiPM response for the specified time bin and radial distance.
 def sipm_par(tbin,r):
 
@@ -37,6 +41,17 @@ def sipm_par(tbin,r):
         print "Invalid time bin in sipm_param: returning 0.0 ..."
         return 0.0
     
-    return M[tbin]*(c0[tbin] + c1[tbin]*r + c2[tbin]*r**2 + c3[tbin]*r**3 + 
+    # Calculate the response based on the parametrization.
+    vpar = M[tbin]*(c0[tbin] + c1[tbin]*r + c2[tbin]*r**2 + c3[tbin]*r**3 + 
     c4[tbin]*r**4 + c5[tbin]*r**5 + c6[tbin]*r**6 + c7[tbin]*r**7 + 
-    c8[tbin]*r**8 + c9[tbin]*r**9);
+    c8[tbin]*r**8 + c9[tbin]*r**9)
+
+    # Zero the response for radii too large.
+    ret = np.zeros(len(vpar)); iret = 0
+    for rv,pv in zip(r,vpar):
+        if(rv < rmax):
+            ret[iret] = pv
+        iret += 1
+        
+    return ret
+        
