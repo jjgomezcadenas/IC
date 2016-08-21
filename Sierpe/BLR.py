@@ -45,10 +45,9 @@ def BLR(signal_daq, coef, mau_len, thr1, thr2, thr3, log):
     BASELINE = MAU[nm-1]
 
     logging.debug("""-->BLR: 
-                     PMT number = {}
                      MAU_LEN={}
                      thr1 = {}, thr2 = {}, thr3 = {} =""".format(
-                     pmt, mau_len, thr1, thr2, thr3))
+                     mau_len, thr1, thr2, thr3))
     logging.debug("n = {}, acum[n] = {} BASELINE ={}".format(nm, acum[nm],BASELINE))
 
 #----------

@@ -156,17 +156,30 @@ if __name__ == '__main__':
         wait()
             
         # create an extensible array to store the CWF waveforms
-        pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
+        pmtcwf =0
+        try:
+            print("creating an extensible array for CWF")
+            pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
                                     atom=tables.FloatAtom(), 
                                     shape=(0, NPMT, PMTWL), 
                                     expectedrows=NEVENTS_DST)
+        except tables.exceptions.NodeError:
+            print("array already exists")
+            pmtcwf = h5in.root.RD.pmtcwf
             
 
         #create an extensible array to store the energy in adc counts of CWF 
-        ecwf = h5in.create_earray(h5in.root.RD, "ecwf", 
+        ecwf = 0
+        try:
+            print("creating an extensible array for EWF")
+            ecwf = h5in.create_earray(h5in.root.RD, "ecwf", 
                                     atom=tables.FloatAtom(), 
                                     shape=(0, NPMT), 
                                     expectedrows=NEVENTS_DST)
+        except tables.exceptions.NodeError:
+            print("array already exists")
+            ecwf = h5in.root.RD.ecwf
+
             
         if NEVENTS > NEVENTS_DST and RUN_ALL == False:
             print("""
