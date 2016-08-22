@@ -67,6 +67,19 @@ def read_energy_sensors(energy_v):
     """        
     return pd.DataFrame(energy_v.read())
 
+def get_waveforms(pmtea,event_number=0):
+    """
+    Takes the earray pmtea and returns a DF for event_number
+    """
+    
+    PMTWF ={}
+    NPMT = pmtea.shape[1]
+    
+    for j in range(NPMT):
+        PMTWF[j] = pmtea[event_number, j] #waveform for event event_number, PMT j
+       
+    return pd.DataFrame(PMTWF)
+
 def get_mctrks(mctrk,event_number = 0):
     """
     return all the mc trks in an event
@@ -355,4 +368,5 @@ def plot_waveforms(pmtwfdf):
 
     
     plt.show()
+
 
