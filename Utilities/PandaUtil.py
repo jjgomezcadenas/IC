@@ -61,7 +61,7 @@ def read_data_sensors(sensor_table):
         
     return pd.DataFrame(PMT)
 
-def read_energy_sensors(energy_v):
+def get_energy_sensors(energy_v):
     """
     reads the sensors energy and returns a data frame
     """        
@@ -79,6 +79,39 @@ def get_waveforms(pmtea,event_number=0):
         PMTWF[j] = pmtea[event_number, j] #waveform for event event_number, PMT j
        
     return pd.DataFrame(PMTWF)
+
+def get_waveforms_and_energy(pmtea,event_number=0):
+    """
+    Takes the earray pmtea and returns a DF for the wf
+    and a Series with the sum of the energies for event_number
+    """
+    
+    PMTWF ={}
+    EPMT = []
+    NPMT = pmtea.shape[1]
+    
+    for j in range(NPMT):
+        PMTWF[j] = pmtea[event_number, j] #waveform for event event_number, PMT j
+        epmt = np.sum(PMTWF[j])
+        EPMT.append(epmt)
+    return pd.DataFrame(PMTWF), pd.Series(EPMT)
+
+def get_energy(pmtea,event_list=[0]):
+    """
+    Takes the earray pmtea and a list of events and returns a DF
+    with the sum of the energies for event_number
+    """
+    
+    NPMT = pmtea.shape[1]
+    epmt = np.zeros(NPMT)
+    EPMT=[]
+    
+    for i in event_list:
+        for j in range(NPMT):
+            epmt[j] = np.sum(pmtea[i, j])
+        EPMT.append(epmt)
+        
+    return pd.DataFrame(EPMT)
 
 def get_mctrks(mctrk,event_number = 0):
     """
@@ -369,4 +402,12 @@ def plot_waveforms(pmtwfdf):
     
     plt.show()
 
+def scan_waveforms(pmtea,list_of_events=[0]):
+    """
+    Takes the earray pmtea and a list of events and scan the waveforms
+    """
+    
+    for event in list_of_events:
+        plot_waveforms(get_waveforms(pmtea,event_number=event))
+        wait()
 

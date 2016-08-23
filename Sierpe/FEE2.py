@@ -4,8 +4,8 @@ import FEParam as FP
 import SPE as SP
 from scipy import signal as SGN
 import numpy as np
-from deModel import arrayFixedInt
-from deModel import DeFixedInt
+#from deModel import arrayFixedInt
+#from deModel import DeFixedInt
 
 
 def DownScaleSignal(signal_t, signal, scale):
@@ -25,6 +25,7 @@ def down_scale_signal_(signal, scale):
 	signal_d=SGN.decimate(signal,scale,ftype='fir')
 	
 	return signal_d*scale
+	return signal_d
 
 def DeconvSimple(signal,signal_inv):
 	"""
