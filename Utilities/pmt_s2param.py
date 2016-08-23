@@ -10,7 +10,7 @@ where x is the distance of the PMT from some central point of
 light emission.
 
 Because the response is characterized over several time bins, we
-have several values for M and the coefficients.
+have several values for the coefficients.
 
 bin0:  0.000574750745019*x^0 + 1.10551593622e-06*x^1 - 9.235238402e-08*x^2   + 3.46259217873e-09*x^3 - 7.33713600058e-11*x^4 + 9.19898878737e-13*x^5 - 6.98227428799e-15*x^6 + 3.1406356128e-17*x^7  - 7.67645875755e-20*x^8 + 7.81040203096e-23*x^9
 bin1:  0.000576954290746*x^0 + 8.78011324737e-07*x^1 - 8.22143465033e-08*x^2 + 3.18869631098e-09*x^3 - 6.85073893144e-11*x^4 + 8.63609118076e-13*x^5 - 6.57006249998e-15*x^6 + 2.95827405899e-17*x^7 - 7.23392664106e-20*x^8 + 7.35945039447e-23*x^9
