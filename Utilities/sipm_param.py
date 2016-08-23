@@ -37,21 +37,27 @@ rmax = 20.
 # Return the SiPM response for the specified time bin and radial distance.
 def sipm_par(tbin,r):
 
+    # Ensure the time bin value is valid.
     if(tbin < 0 or tbin >= n_tbins):
         print "Invalid time bin in sipm_param: returning 0.0 ..."
         return 0.0
-    
+
     # Calculate the response based on the parametrization.
     vpar = M[tbin]*(c0[tbin] + c1[tbin]*r + c2[tbin]*r**2 + c3[tbin]*r**3 + 
     c4[tbin]*r**4 + c5[tbin]*r**5 + c6[tbin]*r**6 + c7[tbin]*r**7 + 
     c8[tbin]*r**8 + c9[tbin]*r**9)
 
     # Zero the response for radii too large.
-    ret = np.zeros(len(vpar)); iret = 0
-    for rv,pv in zip(r,vpar):
-        if(rv < rmax):
-            ret[iret] = pv
-        iret += 1
+    if(hasattr(vpar, "__len__")):
+        ret = np.zeros(len(vpar)); iret = 0
+        for rv,pv in zip(r,vpar):
+            if(rv < rmax):
+                ret[iret] = pv
+            iret += 1
+        return ret
+    else:
+        if(r < rmax):
+            return vpar
+        return 0.0
         
-    return ret
         
