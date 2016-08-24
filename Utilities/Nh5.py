@@ -74,3 +74,5 @@ class FEE(tables.IsDescription):
     noise_fee_rms = tables.Float32Col(pos=13) # noise FEE in volts
     noise_adc = tables.Float32Col(pos=14) # noise FEE in ADC counts
 
+
+

@@ -23,3 +23,14 @@ The dreamed-of city contained him as a young man; he arrives at Isidora in his o
 In the square there is the wall where the old men sit and watch the young go by; 
 he is seated in a row with them. Desires are already memories.
 """
+
+dorotea ="""
+There are two ways of describing the city of Dorothea: you can say that four aluminum
+towers rise from its walls flanking seven gates with spring-operated drawbirdges 
+that span the moat whose water feeds four green canals wichi cross the citiy, dividing 
+it into nine quarters, each with three hundred houses and seven hundred chimneys [...]
+or else you can say like the camel driver who took me there: " I arrived in my first
+youth, ne morming, many people were hurrying along the streets towards the market, the
+women had fine teeth and looked you straight in the the eye, three soldiers on a platform
+played the trumpet, and all around wheels turned and colored banners fluttered in the wind. 
+"""
