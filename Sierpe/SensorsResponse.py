@@ -1,6 +1,6 @@
 """
 Sensors Response
-JJGC Agusut 2016
+JJGC August 2016
 
 
 Simulates the response of the energy plane (HPF, LPF, noise) and the response of the
@@ -10,15 +10,13 @@ SiPM plane (not yet implemented)
 
 from __future__ import print_function
 from Util import *
-
-import numpy as np
-
+from LogConfig import *
 import FEParam as FP
 import SPE as SP
 import FEE2 as FE
 
 import tables
-from LogConfig import *
+from FEE2 import down_scale_signal_
 
 
 """
@@ -68,7 +66,6 @@ def simulate_sipm_response(event_number,sipmrd_):
     rdata = []
 
     for j in range(sipmrd_.shape[1]):
-        logger.debug("-->SiPM number ={}".format(j))
         rdata.append(sipmrd_[event_number, j])
     return np.array(rdata)
 
@@ -103,5 +100,22 @@ def simulate_pmt_response(event_number,pmtrd_):
         signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
 
         rdata.append(signal_daq)
+    return np.array(rdata)
+
+def decimate_signal(event_number,pmtrd_):
+    """
+    Decimates the MCRD signal to produce TWF (pes, bins 25 ns)
+    """
+  
+    rdata = []
+
+    for j in range(pmtrd_.shape[1]):
+        logger.debug("-->PMT number ={}".format(j))
+                
+        pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
+        twf = down_scale_signal_(pmt, int(FP.time_DAQ))
+        
+        
+        rdata.append(twf)
     return np.array(rdata)
 
