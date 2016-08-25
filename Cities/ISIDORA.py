@@ -11,21 +11,18 @@ What ISIDORA does:
 
 from __future__ import print_function
 from Util import *
-from PlotUtil import *
+from LogConfig import *
+from Configure import configure
 from Nh5 import *
 from cities import isidora
-import Configure as CF
 
-import numpy as np
 
 import FEParam as FP
-import SPE as SP
 import FEE2 as FE
-import BLR
+from BLR import BLR
 
 import tables
 import pandas as pd
-import logging
 
 
 """
@@ -81,7 +78,9 @@ def DBLR(pmtrd_, event_number, coeff_acc, mau_len=250,
     for j in pmts:
         pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
         
-        pmtwf, ene_pmt[j] = BLR.BLR(pmtrd, coeff_acc[j], mau_len, thr1, thr2, thr3, log)
+        pmtwf, ene_pmt[j] = BLR.BLR(pmtrd, coeff_acc[j], mau_len, 
+            thr1, thr2, thr3, log)
+
         PMTWF.append(pmtwf)
        
     return ene_pmt, np.array(PMTWF)
@@ -159,6 +158,7 @@ if __name__ == '__main__':
         pmtcwf =0
         try:
             print("creating an extensible array for CWF")
+            h5in.remove_node("/RD","sipmrwf", )
             pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
                                     atom=tables.FloatAtom(), 
                                     shape=(0, NPMT, PMTWL), 

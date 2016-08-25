@@ -1,5 +1,6 @@
-import logging
-import numpy as np
+from __future__ import print_function
+from Util import *
+from LogConfig import *
 from scipy import signal as SGN 
 
 def BLR(signal_daq, coef, mau_len, thr1, thr2, thr3, log):
@@ -19,8 +20,9 @@ def BLR(signal_daq, coef, mau_len, thr1, thr2, thr3, log):
     and so on
     """
     
-    logl ='logging.'+log
-    logging.basicConfig(level=eval(logl))
+    lg = 'logging.'+DEBUG
+    
+    logger.setLevel(eval(lg))
     
 
     len_signal_daq = len(signal_daq)
