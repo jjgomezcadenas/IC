@@ -24,7 +24,7 @@ def down_scale_signal_(signal, scale):
  	"""
 	signal_d=SGN.decimate(signal,scale,ftype='fir')
 	
-	return signal_d*scale
+	#return signal_d*scale
 	return signal_d
 
 def DeconvSimple(signal,signal_inv):

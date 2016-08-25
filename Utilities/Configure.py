@@ -1,9 +1,10 @@
-
+"""
+Configure running options for the cities
+JJGC August 2016
+"""
+from LogConfig import *
 import pandas as pd
-import logging
 import getopt
-import sys
-
 
 
 def cdf_to_dict(cdf):
@@ -90,9 +91,8 @@ def configure(pname,argv):
             cfile = arg
  
     lg = 'logging.'+DEBUG
-    #print('INFO = {} DEBUG={}'.format(INFO,DEBUG))
-    #print("lg ={}".format(lg))
-    logging.basicConfig(level=eval(lg))
+    
+    logger.setLevel(eval(lg))
 
     if cfile == '':
         print("Path to configuration file not given")
@@ -100,14 +100,10 @@ def configure(pname,argv):
         sys.exit()
 
     cfp =pd.read_csv(cfile,comment="#")
-    # print("""
-    #     Configuration parameters \n 
-    #     {}
-    #     """.format(cfp))
-
+    
     CFP = cdf_to_dict(cfp)
     
-    print("ConFiguration Parameters (CFP) dictionary  = {}".format(CFP))
+    logger.info("Configuration Parameters (CFP) dictionary  = {}".format(CFP))
     return INFO, CFP
     
 

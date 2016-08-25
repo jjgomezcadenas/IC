@@ -1,6 +1,6 @@
 """
 DIOMIRA
-JJGC Agusut 2016
+JJGC August 2016
 
 What DIOMIRA does:
 1) Reads a MCRD file containing MC waveforms for the 12 PMTs of the EP.
@@ -12,120 +12,22 @@ What DIOMIRA does:
 
 from __future__ import print_function
 from Util import *
-from PlotUtil import *
-import Configure as CF
+from LogConfig import *
+from Configure import configure
 from Nh5 import *
 from cities import diomira
-
-import numpy as np
-
-import FEParam as FP
-import SPE as SP
-import FEE2 as FE
+from SensorsResponse import *
 
 import tables
-import pandas as pd
-import logging
 
 
 """
 Code
 """
 
-def FEE_param_table(fee_table):
-    """
-    Stores the parameters of the EP FEE simulation 
-    """
-    row = fee_table.row
-    row['offset'] = FP.offset
-    row['pmt_gain'] = FP.PMT_GAIN
-    row['V_gain'] = FP.V_GAIN
-    row['R'] = FP.R
-    row['C12'] = FP.C12
-    row['CO12'] = FP.C12 # to be rewritten by ISIDORA
-    row['time_step'] = FP.time_step
-    row['time_daq'] = FP.time_DAQ
-    row['freq_LPF'] = FP.freq_LPF
-    row['freq_HPF'] = 1./(2*pi*FP.R*FP.C)
-    row['LSB'] = FP.LSB
-    row['volts_to_adc'] = FP.voltsToAdc/volt
-    row['noise_fee_rms'] = FP.NOISE_FEE
-    row['noise_adc'] = FP.NOISE_ADC
-    
-    row.append()
-    
-
-def energy_pes(event_number, sensord):
-    """
-    Sum the WFs of PMTs and SiPMs (MC) and store the total energy in PES
-    """     
-    rdata = []
-
-    for j in range(sensord.shape[1]):
-        swf = sensord[event_number, j]
-        ene = np.sum(swf)
-        rdata.append(ene)
-        
-    return np.array(rdata) 
-
-def simulate_sipm_response(event_number,sipmrd_):
-    """
-    For the moment use a dummy rutne that simply copies the sipm EARRAY
-    """
-    rdata = []
-
-    for j in range(sipmrd_.shape[1]):
-        logging.debug("-->SiPM number ={}".format(j))
-        rdata.append(sipmrd_[event_number, j])
-    return np.array(rdata)
-
-def copy_pmt(event_number,pmtrd_):
-    """
-    For the moment use a dummy rutne that simply copies the sipm EARRAY
-    """
-    rdata = []
-
-    for j in range(pmtrd_.shape[1]):
-        rdata.append(pmtrd_[event_number, j])
-    return np.array(rdata)
-
-def simulate_pmt_response(event_number,pmtrd_):
-    """
-    Sensor Response
-    Given a signal in PE (photoelectrons in bins of 1 ns) and the response function of 
-    for a single photoelectron (spe) and front-end electronics (fee)
-    this function produces the PMT raw data (adc counts bins 25 ns)
-
-    pmtrd_ dataset that holds the PMT PE data for each PMT
-    pmtrd25 dataset to be created with adc counts, bins 25 ns after convoluting with electronics
-    """
-  
-    rdata = []
-
-    for j in range(pmtrd_.shape[1]):
-        logging.debug("-->PMT number ={}".format(j))
-                
-        pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-        
-        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN) 
-        spe = SP.SPE(pmt_gain=FP.PMT_GAIN,x_slope = 5*ns,x_flat = 1*ns)
-    
-        signal_PMT = spe.SpePulseFromVectorPE(pmt) #PMT response
-
-        #Front end response to PMT pulse (in volts)
-        signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE) 
-
-        #Signal out of DAQ
-        signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
-
-        rdata.append(signal_daq)
-    return np.array(rdata)
-
-
-        
-if __name__ == '__main__':
-    INFO, CFP = CF.configure(sys.argv[0],sys.argv[1:])
-
+def DIOMIRA(argv):
+    INFO, CFP = configure(argv[0],argv[1:])
+   
     if INFO:
         print(diomira)
 
@@ -133,18 +35,22 @@ if __name__ == '__main__':
     
     print("""
         DIOMIRA:
-        1. Reads an MCRD file produced by NEXUS, which stores TWF1ns waveforms 
-            for the PMTs and SiPMs as well as data on geometry, sensors and MC.
+         1. Reads an MCRD file produced by art/centella, which stores MCRD 
+         waveforms for PMTs (bins of 1 ns)
+        and the SiPMs (bins of 1 mus)
+            
 
-        2. Simulates the response of the energy plane in the PMTs  and
-            outputs PMT TWF25ns e.g., waveforms in bins of 25 ns (and in adc counts)
-            which correspond to the output of the EP FEE.
-
-        3. Writes a RWF file with the TWF25ns waveforms copying over all tables 
-            existing in MCRD fie (MCTrk, Geom, PMT data). It also adds vectors
-            holding the waveform energy in pes (per PMT/SiPM)
+        2. Simulates the response of the energy plane in the PMTs MCRD, 
+        and produces both RWF and TWF:
+        see: http://localhost:8931/notebooks/Nh5-Event-Model.ipynb#Reconstructed-Objects
+        
+            
+        3. Simulates the response of the tracking plane in the SiPMs MCRD and outputs
+            SiPM RWF (not yet implemented, for the time being simply copy the MCRD)
 
         4. Add a table describing the FEE parameters used for simulation
+
+        5. Copies the tables on geometry, detector data and MC
 
 
         """)
@@ -160,10 +66,10 @@ if __name__ == '__main__':
     RUN_ALL =CFP['RUN_ALL']
     NEVENTS = LAST_EVT - FIRST_EVT
 
-    print("input path ={}; output path = {}; file_in ={} file_out ={}".format(
+    logger.info("input path ={}; output path = {}; file_in ={} file_out ={}".format(
         PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))
 
-    print("first event = {} last event = {} nof events requested = {} ".format(
+    logger.info("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
     # open the input file 
@@ -180,10 +86,10 @@ if __name__ == '__main__':
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
-        print("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
+        logger.info("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
         NPMT,NSIPM,NEVENTS_DST))
 
-        print("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
+        logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
         PMTWL,SIPMWL,PMTWL_FEE))
 
         wait()
@@ -229,13 +135,19 @@ if __name__ == '__main__':
             rgroup = h5out.create_group(h5out.root, "RD")
             
             # create an extensible array to store the RWF waveforms
-            pmtrd = h5out.create_earray(h5out.root.RD, "pmtrd", 
+            pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, NPMT, PMTWL_FEE), 
+                                    expectedrows=NEVENTS_DST)
+            
+            # create an extensible array to store the TWF waveforms
+            pmttwf = h5out.create_earray(h5out.root.RD, "pmttwf", 
                                     atom=tables.IntAtom(), 
                                     shape=(0, NPMT, PMTWL_FEE), 
                                     expectedrows=NEVENTS_DST)
             
 
-            sipmrd = h5out.create_earray(h5out.root.RD, "sipmrd", 
+            sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf", 
                                     atom=tables.IntAtom(), 
                                     shape=(0, NSIPM, SIPMWL), 
                                     expectedrows=NEVENTS_DST)
@@ -269,29 +181,31 @@ if __name__ == '__main__':
                 LAST_EVT = NEVENTS_DST
                 NEVENTS = NEVENTS_DST
 
-            #create a 2d array to store the true energy of the PMTs (pes)
-            #ene_pmt = np.zeros((NEVENTS,NPMT))
-
-            #create a 2d array to store the true energy of the SiPMs (pes)
-            #ene_sipm = np.zeros((NEVENTS,NSIPM))
 
             for i in range(FIRST_EVT,LAST_EVT):
-                print("-->event number ={}".format(i))
-                logging.info("-->event number ={}".format(i))
+                logger.info("-->event number ={}".format(i))
 
-                #simulate PMT response and return an array with new WF
+                #simulate PMT response and return an array with RWF
                 dataPMT = simulate_pmt_response(i,pmtrd_)
-                #dataPMT = copy_pmt(i,pmtrd_)
                 
-                #append to PMT EARRAY
-                pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
+                #TWF
+                 
+                truePMT = decimate_signal(i,pmtrd_)
+                
+                
+                #RWF for pmts
+                pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
+                #pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL))
+                
+                #TWF for pmts
+                pmttwf.append(truePMT.reshape(1, NPMT, PMTWL_FEE))
                 #pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL))
                    
                 #simulate SiPM response and return an array with new WF
                 dataSiPM = simulate_sipm_response(i,sipmrd_)
                 
                 #append to SiPM EARRAY
-                sipmrd.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
+                sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
 
                 #fill ene_pmt vector
                 enePMT = energy_pes(i, pmtrd_)
@@ -302,15 +216,17 @@ if __name__ == '__main__':
                 eneSIPM = energy_pes(i, sipmrd_)
                 esipm.append(eneSIPM.reshape(1, NSIPM))
 
-            pmtrd.flush()
-            sipmrd.flush()
+            pmtrwf.flush()
+            pmttwf.flush()
+            sipmrwf.flush()
             epmt.flush()
             esipm.flush()
 
 
-    print("Leaving Diomira. Safe travel!")
+    print("Leaving Diomira. Safe travels!")
 
-    
 
         
-     
+if __name__ == '__main__':
+    DIOMIRA(sys.argv)
+    
