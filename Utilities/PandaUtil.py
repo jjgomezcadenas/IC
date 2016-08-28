@@ -193,16 +193,16 @@ def plot_sensor(geom_df,sensor_df, energy_df, event=0, radius=10):
     ylim(geom_df['ydet_min'],geom_df['ydet_max'])
     return col
 
-def plot_ene_pmt(geom_df,sensor_df, energy_pmt, radius=10):
+def plot_ene_pmt(geom_df,sensor_df, epmt, event_number=0, radius=10):
     """
     plots the reconstructed energy of the PMTs
-    energy_pmt is a vector describing the reconstructed energy 
+    energy_se is a series describing the reconstructed energy 
     in each PMT
     """
     x =sensor_df['x'].values
     y =sensor_df['y'].values
     r =np.ones(len(sensor_df['x'].values))*radius
-    col = energy_pmt 
+    col = epmt[event_number] 
     
     plt.figure(figsize=(10,10))
     ax = plt.subplot(aspect='equal')
