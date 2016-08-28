@@ -118,4 +118,37 @@ def decimate_signal(event_number,pmtrd_):
         
         rdata.append(twf)
     return np.array(rdata)
+def rebin_array(a,stride):
+    """
+    rebins array a according to stride
+    """
+    
+    lenb = (len(a)+1)/int(stride)
+    b = np.zeros(lenb)
+    j=0
+    for i in range(lenb):
+        b[i] = np.sum(a[j:j+stride])
+        j+= stride
+    return b
+
+def rebin_signal(event_number,pmtrd_):
+    """
+    rebins the MCRD signal to produce TWF (pes, bins 25 ns)
+    """
+    
+    rdata = []
+
+    for j in range(pmtrd_.shape[1]):
+        logger.debug("-->PMT number ={}".format(j))
+                
+        pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
+        twf = rebin_array(pmt, int(FP.time_DAQ))
+        
+        rdata.append(twf)
+    return np.array(rdata)
+
+  
+
+
+
 

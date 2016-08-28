@@ -190,7 +190,7 @@ def DIOMIRA(argv):
                 
                 #TWF
                  
-                truePMT = decimate_signal(i,pmtrd_)
+                truePMT = rebin_signal(i,pmtrd_)
                 
                 
                 #RWF for pmts

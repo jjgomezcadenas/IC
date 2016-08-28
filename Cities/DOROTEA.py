@@ -139,7 +139,7 @@ if __name__ == '__main__':
         sipmrwf = 0
         try:
             sipmrwf = h5in.root.RD.sipmrwf
-            h5in.remove_node("/RD","sipmrwf", )
+            h5in.remove_node("/RD","sipmrwf")
             sipmrwf = h5in.create_earray(h5in.root.RD, "sipmrwf", 
                                     atom=tables.IntAtom(), 
                                     shape=(0, NSIPM, SIPMWL), 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
         epmt = 0
         try:
             epmt = h5in.root.RD.epmt
-            h5in.remove_node("/RD","epmt", )
+            h5in.remove_node("/RD","epmt")
             epmt = h5in.create_earray(h5in.root.RD, "epmt", 
                                     atom=tables.IntAtom(), 
                                     shape=(0, NPMT), 

@@ -13,14 +13,11 @@ from __future__ import print_function
 from Util import *
 from LogConfig import *
 from Configure import configure
-from Nh5 import *
+
 from cities import isidora
 
-
+from BLR import accumulator_coefficients,DBLR
 import FEParam as FP
-import FEE2 as FE
-from BLR import BLR
-
 import tables
 import pandas as pd
 
@@ -29,66 +26,8 @@ import pandas as pd
 Code
 """
 
-
-def accumulator_coefficients(pmtrd_,CA):
-    """
-    Compute the accumulator coefficients for DBLR
-    It computes the inverse function of the HPF and takes
-    the accumulator as the value of the function anywhere
-    but the first bin (the inverse is a step function with
-    constant value equal to the accumulator)
-    CA are the values of the capacitances defining the filter
-    (1/(2CR)) for each PMT
-    """
-    len_WF = pmtrd_.shape[2]
-    NPMT = pmtrd_.shape[1]
-    
-    coef_acc =np.zeros(NPMT, dtype=np.double)
-
-    signal_t = np.arange(0.0, len_WF*1., 1., dtype=np.double)
-
-    for j in range(NPMT):
-        
-        fee = FE.FEE(C=CA[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
-        signal_inv_daq = fee.InverseSignalDAQ(signal_t)  #inverse function
-        coef_acc[j] = signal_inv_daq[10] #any index is valid, function is flat
-        
-    return coef_acc
-
-def DBLR(pmtrd_, event_number, coeff_acc, mau_len=250,
-         thr1 = 20., thr2=0., thr3 = 5., log='INFO', pmt_range=0):
-    """
-    Peform Base line Restoration
-    coeff_acc is an array with the coefficients of the accumulator
-    Threshold 1 is used to decide when raw signal raises up above trigger line
-    Threshold 2 is used to decide when reconstructed signal is above trigger line
-    Threshold 3 is used to compare Raw and Rec signal
-    """
-    
-    len_WF = pmtrd_.shape[2]
-    NPMT = pmtrd_.shape[1]
-    ene_pmt =np.zeros(NPMT, dtype=np.int64)
-   
-    PMTWF =[]
-    
-    pmts = pmt_range
-    if pmt_range == 0:
-        pmts = range(NPMT)
-
-    for j in pmts:
-        pmtrd = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-        
-        pmtwf, ene_pmt[j] = BLR.BLR(pmtrd, coeff_acc[j], mau_len, 
-            thr1, thr2, thr3, log)
-
-        PMTWF.append(pmtwf)
-       
-    return ene_pmt, np.array(PMTWF)
-                                        
-
-if __name__ == '__main__':
-    INFO, CFP = CF.configure(sys.argv[0],sys.argv[1:])
-
+def ISIDORA(argv):
+    INFO, CFP = configure(argv[0],argv[1:])
     if INFO:
         print(isidora)
 
@@ -103,7 +42,7 @@ if __name__ == '__main__':
 
         2. Performs DBLR on the PMT RWF and produces corrected waveforms (CWF).
 
-        3. Adds the CWF to the DST 
+        3. Adds the CWF and ancilliary info to the DST 
 
         4. Computes the energy of the PMTs per each event and writes to DST
 
@@ -117,28 +56,27 @@ if __name__ == '__main__':
     RUN_ALL=CFP['RUN_ALL']
     CA=farray_from_string(CFP['CA'])*nF 
     MAU_LEN=CFP['MAU_LEN']
-    THR1=CFP['THR1'] 
-    THR2=CFP['THR2'] 
-    THR3=CFP['THR3']
+    NSIGMA1=CFP['NSIGMA1'] 
+    NSIGMA2=CFP['NSIGMA2'] 
 
     NEVENTS = LAST_EVT -  FIRST_EVT
 
 
-    print("input path ={}; file_in ={} ".format(
+    logger.info("input path ={}; file_in ={} ".format(
         PATH_IN,FILE_IN))
 
-    print("first event = {} last event = {} nof events requested = {} ".format(
+    logger.info("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
-    print("MAU length = {} THR1 = {} THR2 = {} THR3 = {} ".format(
-        MAU_LEN,THR1,THR2,THR3))
-    print("CA (nf) = {}  ".format(CA/nF))
+    logger.info("MAU length = {} n_sigma1 = {} n_sigma2 = {} ".format(
+        MAU_LEN,NSIGMA1,NSIGMA2))
+    logger.info("CA sigma(nf) = {}  ".format(CA/nF))
     
 
     # open the input file in mode append 
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "a") as h5in: 
         # access the PMT raw data in file 
-        pmtrd_ = h5in.root.RD.pmtrd
+        pmtrd_ = h5in.root.RD.pmtrwf
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)    
         
@@ -146,39 +84,93 @@ if __name__ == '__main__':
         PMTWL = pmtrd_.shape[2] 
         NEVENTS_DST = pmtrd_.shape[0]
 
-        print("nof PMTs = {} nof events in input DST = {} ".format(
+        logger.info("nof PMTs = {} nof events in input DST = {} ".format(
         NPMT,NEVENTS_DST))
 
-        print("lof PMT WF (MC) = {} ".format(
+        logger.info("lof PMT WF (MC) = {} ".format(
         PMTWL))
 
         wait()
             
         # create an extensible array to store the CWF waveforms
+        # if it exists remove and create again
         pmtcwf =0
         try:
-            print("creating an extensible array for CWF")
-            h5in.remove_node("/RD","sipmrwf", )
+            pmtcwf = h5in.root.RD.pmtcwf
+            h5in.remove_node("/RD","pmtcwf")
             pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
                                     atom=tables.FloatAtom(), 
                                     shape=(0, NPMT, PMTWL), 
                                     expectedrows=NEVENTS_DST)
         except tables.exceptions.NodeError:
-            print("array already exists")
-            pmtcwf = h5in.root.RD.pmtcwf
-            
-
-        #create an extensible array to store the energy in adc counts of CWF 
-        ecwf = 0
-        try:
-            print("creating an extensible array for EWF")
-            ecwf = h5in.create_earray(h5in.root.RD, "ecwf", 
+            pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
                                     atom=tables.FloatAtom(), 
-                                    shape=(0, NPMT), 
+                                    shape=(0, NPMT, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+
+        # create a group to store BLR configuration (por PMT0)
+
+        rgroup = 0
+        try:
+            rgroup = h5in.root.BLR
+            
+        except tables.exceptions.NodeError:
+            rgroup = h5in.create_group(h5in.root, "BLR")
+
+        
+        MAU = 0
+        acum = 0
+        pulse_on = 0
+        wait_over = 0
+
+        try:
+            mau = h5in.root.BLR.mau
+            h5in.remove_node("/BLR","mau")
+            mau = h5in.create_earray(h5in.root.BLR, "mau", 
+                                    atom=tables.FloatAtom(), 
+                                    shape=(0, PMTWL), 
                                     expectedrows=NEVENTS_DST)
         except tables.exceptions.NodeError:
-            print("array already exists")
-            ecwf = h5in.root.RD.ecwf
+            mau = h5in.create_earray(h5in.root.BLR, "mau", 
+                                    atom=tables.FloatAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        try:
+            pulse_on = h5in.root.BLR.pulse_on
+            h5in.remove_node("/BLR","pulse_on")
+            pulse_on = h5in.create_earray(h5in.root.BLR, "pulse_on", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        except tables.exceptions.NodeError:
+            pulse_on = h5in.create_earray(h5in.root.BLR, "pulse_on", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        try:
+            wait_over = h5in.root.BLR.wait_over
+            h5in.remove_node("/BLR","wait_over")
+            wait_over = h5in.create_earray(h5in.root.BLR, "wait_over", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        except tables.exceptions.NodeError:
+            wait_over = h5in.create_earray(h5in.root.BLR, "wait_over", 
+                                    atom=tables.IntAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        try:
+            acum  = h5in.root.BLR.acum 
+            h5in.remove_node("/BLR","acum")
+            acum  = h5in.create_earray(h5in.root.BLR, "acum", 
+                                    atom=tables.FloatAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        except tables.exceptions.NodeError:
+            acum  = h5in.create_earray(h5in.root.BLR, "acum", 
+                                    atom=tables.FloatAtom(), 
+                                    shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
 
             
         if NEVENTS > NEVENTS_DST and RUN_ALL == False:
@@ -198,35 +190,52 @@ if __name__ == '__main__':
             LAST_EVT = NEVENTS_DST
             NEVENTS = NEVENTS_DST
 
-        #create a 2d array to store the  energy of the CWF
-        ene_cwf = np.zeros((NEVENTS,NPMT))
-
             
         for i in range(FIRST_EVT,LAST_EVT):
-            print("-->event number ={}".format(i))
-            logging.info("-->event number ={}".format(i))
+            
+            logger.info("-->event number ={}".format(i))
 
-            #Perform DBLR
+            #DBLR
             coeff_acc = accumulator_coefficients(pmtrd_,CA)
 
-            eneCWF, pmtCWF = DBLR(pmtrd_, i, coeff_acc, mau_len=MAU_LEN,
-                                  thr1 = THR1, thr2=THR2, thr3 = THR3, 
-                                  log='INFO', pmt_range=0)
+
+            BLRS = DBLR(pmtrd_, i, coeff_acc, mau_len=MAU_LEN,
+                        thr1 = NSIGMA1*FP.NOISE_ADC, thr2=0, 
+                        thr3 = NSIGMA2*FP.NOISE_ADC, log='INFO')
+
             
+            pmtCWF = []
+            for blr in BLRS:
+                pmtCWF.append(blr.signal_r)
                 
-            #append to PMT EARRAY
-            pmtcwf.append(pmtCWF.reshape(1, NPMT, PMTWL))
-            #append to ecwf EARRAY
-            ecwf.append(eneCWF.reshape(1, NPMT))
+            #append to pmtcwd
+            pmtcwf.append(np.array(pmtCWF).reshape(1, NPMT, PMTWL))
+
+            # append BLR variables
+
+            mau_pmt0 = BLRS[0].MAU
+            mau.append(mau_pmt0.reshape(1, PMTWL))
+
+            pulse_on0 = BLRS[0].pulse_on
+            pulse_on.append(pulse_on0.reshape(1, PMTWL))
+
+            wait_over0 = BLRS[0].wait_over
+            wait_over.append(wait_over0.reshape(1, PMTWL))
+
+            acum0  = BLRS[0].acum
+            acum.append(acum0.reshape(1, PMTWL))
                 
                 
         pmtcwf.flush()
-        ecwf.flush()
+        mau.flush()
+        pulse_on.flush()
+        wait_over.flush()
+        acum.flush()
         
 
     print("Leaving Isidora. Safe travels!")
 
-    
+                                       
 
-        
-     
+if __name__ == '__main__':
+    ISIDORA(sys.argv)
