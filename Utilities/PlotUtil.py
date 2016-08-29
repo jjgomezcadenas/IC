@@ -34,6 +34,14 @@ def HSimple1(x,nbins,title='hsimple',xlabel = '', ylabel = 'Frequency',
     plt.figure()
 
 
+def plts(signal, signal_start=0, signal_end=1e+4, offset=5):
+    ax1 = plt.subplot(1,1,1)
+    ymin =np.amin(signal[signal_start:signal_end]) - offset
+    ymax =np.amax(signal[signal_start:signal_end]) + offset
+    ax1.set_xlim([signal_start, signal_end])
+    ax1.set_ylim([ymin, ymax])
+    plt.plot(signal)
+
 def plot_signal(signal_t,signal, 
                 title = 'signal', signal_start=0, signal_end=1e+4, units=''):
 
@@ -43,21 +51,6 @@ def plot_signal(signal_t,signal,
   plt.title(title)
   plt.plot(signal_t, signal)
   plt.show()
-
-def plts(signal, signal_start=0, signal_end=1e+4, offset=5):
-  """
-  A more concise version
-  """
-
-    ax1 = plt.subplot(1,1,1)
-    ymin =np.amin(signal[signal_start:signal_end]) - offset
-    ymax =np.amax(signal[signal_start:signal_end]) + offset
-    ax1.set_xlim([signal_start, signal_end])
-    ax1.set_ylim([ymin, ymax])
-    plt.plot(signal)
-
-
-
 
 def SetPlotLabels(xlabel="", ylabel="",grid=True):
   plt.xlabel(xlabel)
