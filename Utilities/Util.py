@@ -22,6 +22,18 @@ def farray_from_string(sfl):
     return np.array(arr)
 
 
+def rebin_array(a, stride):
+    """
+    rebins the array according to stride 
+    """
+    lenb = len(a)/int(stride)
+    b = np.zeros(lenb)
+    j=0
+    for i in range(lenb):
+        b[i] = np.sum(a[j:j+stride])
+        j+= stride
+    return b
+
 def drange(start, stop, step):
 	"""
 	a range of doubles
