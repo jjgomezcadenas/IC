@@ -54,7 +54,9 @@ def ISIDORA(argv):
     FIRST_EVT=CFP['FIRST_EVT']
     LAST_EVT=CFP['LAST_EVT']
     RUN_ALL=CFP['RUN_ALL']
+    COEF=CFP['COEF']
     CA=farray_from_string(CFP['CA'])*nF 
+    AC=farray_from_string(CFP['AC']) 
     MAU_LEN=CFP['MAU_LEN']
     NSIGMA1=CFP['NSIGMA1'] 
     NSIGMA2=CFP['NSIGMA2'] 
@@ -196,7 +198,9 @@ def ISIDORA(argv):
             logger.info("-->event number ={}".format(i))
 
             #DBLR
-            coeff_acc = accumulator_coefficients(pmtrd_,CA)
+            coeff_acc = AC
+            if COEF == 0:
+                coeff_acc = accumulator_coefficients(pmtrd_,CA)
 
 
             BLRS = DBLR(pmtrd_, i, coeff_acc, mau_len=MAU_LEN,

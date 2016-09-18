@@ -183,7 +183,7 @@ def BLR(signal_daq, coef, mau_len=250, thr1 = 3*FP.NOISE_ADC, thr2 = 0,
                                                                                                        
     #energy = np.dot(pulse_f,(signal_r-BASELINE)) 
                        
-    #return  signal_r-BASELINE, energy
+    sblr.signal_r[k] = sblr.signal_r[k] - BASELINE
     return  sblr
 
 def accumulator_coefficients(pmtrd,CA):
