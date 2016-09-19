@@ -31,7 +31,7 @@ def DIOMIRA(argv):
     if INFO:
         print(diomira)
 
-    wait()
+    #wait()
     
     print("""
         DIOMIRA:
@@ -55,7 +55,7 @@ def DIOMIRA(argv):
 
         """)
     FP.print_FEE()
-    wait()
+    #wait()
 
     PATH_IN =CFP['PATH_IN']
     PATH_OUT =CFP['PATH_OUT']
@@ -64,6 +64,8 @@ def DIOMIRA(argv):
     FIRST_EVT =CFP['FIRST_EVT']
     LAST_EVT =CFP['LAST_EVT']
     RUN_ALL =CFP['RUN_ALL']
+    CLIB =CFP['CLIB']
+    CLEVEL =CFP['CLEVEL']
     NEVENTS = LAST_EVT - FIRST_EVT
 
     logger.info("input path ={}; output path = {}; file_in ={} file_out ={}".format(
@@ -71,6 +73,9 @@ def DIOMIRA(argv):
 
     logger.info("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
+
+    logger.info("Compression library = {} Compression level = {} ".format(
+        CLIB,CLEVEL))
 
     # open the input file 
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in: 
@@ -92,7 +97,7 @@ def DIOMIRA(argv):
         logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
         PMTWL,SIPMWL,PMTWL_FEE))
 
-        wait()
+        #wait()
 
         #access the geometry and the sensors metadata info
 
@@ -104,7 +109,7 @@ def DIOMIRA(argv):
         
         # open the output file 
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
-            filters=tables.Filters(complib="blosc", complevel=9)) as h5out:
+            filters=tables.Filters(complib=CLIB, complevel=CLEVEL)) as h5out:
  
             # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
@@ -192,6 +197,8 @@ def DIOMIRA(argv):
                  
                 truePMT = rebin_signal(i,pmtrd_)
                 
+                logger.info("truePMT shape ={}".format(truePMT.shape))
+                logger.info("dataPMT shape ={}".format(dataPMT.shape))
                 
                 #RWF for pmts
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))

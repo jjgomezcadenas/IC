@@ -15,7 +15,7 @@ import FEParam as FP
 import SPE as SP
 import FEE2 as FE
 
-import tables
+#import tables
 from FEE2 import down_scale_signal_
 
 
@@ -118,9 +118,14 @@ def decimate_signal(event_number,pmtrd_):
         
         rdata.append(twf)
     return np.array(rdata)
-def rebin_array(a,stride):
+
+def rebin_pmt_array(a,stride):
     """
-    rebins array a according to stride
+    rebins pmt array a according to stride
+    there is a rebin_array in util which uses
+    lenb = (len(a))/int(stride)
+    this version uses (lean(a)+1) to correct from the fact that the
+    MCRD is 599999 channels (should be 600000)
     """
     
     lenb = (len(a)+1)/int(stride)
@@ -142,7 +147,7 @@ def rebin_signal(event_number,pmtrd_):
         logger.debug("-->PMT number ={}".format(j))
                 
         pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-        twf = rebin_array(pmt, int(FP.time_DAQ))
+        twf = rebin_pmt_array(pmt, int(FP.time_DAQ))
         
         rdata.append(twf)
     return np.array(rdata)
