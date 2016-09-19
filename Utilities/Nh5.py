@@ -6,10 +6,10 @@ class DetectorGeometry(tables.IsDescription):
     """
     Stores geometry information for the detector
     """
-    x_det = tables.Float64Col(shape=2, pos=1) #xmin, xmax
-    y_det = tables.Float64Col(shape=2, pos=2) #ymin, ymax
-    z_det = tables.Float64Col(shape=2, pos=3) #zmin, zmax
-    r_det = tables.Float64Col(pos=4) # radius
+    x_det = tables.Float32Col(shape=2, pos=1) #xmin, xmax
+    y_det = tables.Float32Col(shape=2, pos=2) #ymin, ymax
+    z_det = tables.Float32Col(shape=2, pos=3) #zmin, zmax
+    r_det = tables.Float32Col(pos=4) # radius
 
 
 class DataPMT(tables.IsDescription):
@@ -19,9 +19,9 @@ class DataPMT(tables.IsDescription):
     """
     channel = tables.Int16Col(pos=1) #electronic channel
     active = tables.Int16Col(pos=2) # 1 if active. 0 if dead
-    position = tables.Float64Col(shape=3, pos=3)
-    gain =tables.Float64Col(pos=4)
-    adc_to_pes =tables.Float64Col(pos=5)
+    position = tables.Float32Col(shape=3, pos=3)
+    gain =tables.Float32Col(pos=4)
+    adc_to_pes =tables.Float32Col(pos=5)
 
 class DataSiPM(tables.IsDescription):
     """
@@ -30,9 +30,9 @@ class DataSiPM(tables.IsDescription):
     """
     channel = tables.Int16Col(pos=1) #electronic channel
     active = tables.Int16Col(pos=2) # 1 if active. 0 if dead
-    position = tables.Float64Col(shape=3, pos=3)
-    gain =tables.Float64Col(pos=4)
-    adc_to_pes =tables.Float64Col(pos=5)
+    position = tables.Float32Col(shape=3, pos=3)
+    gain =tables.Float32Col(pos=4)
+    adc_to_pes =tables.Float32Col(pos=5)
 
 class MCTrack(tables.IsDescription):
     """
@@ -43,15 +43,15 @@ class MCTrack(tables.IsDescription):
     mctrk_indx = tables.Int16Col(pos=2) 
     particle_name = tables.StringCol(10,pos=3)  #displaces the baseline (e.g, 700)
     pdg_code = tables.Int16Col(pos=4)   # number of PMTs (12) 
-    initial_vertex =tables.Float64Col(shape=3, pos=5)
-    final_vertex =tables.Float64Col(shape=3, pos=6)
-    momentum =tables.Float64Col(shape=3, pos=7)
-    energy =tables.Float64Col(pos=8)
+    initial_vertex =tables.Float32Col(shape=3, pos=5)
+    final_vertex =tables.Float32Col(shape=3, pos=6)
+    momentum =tables.Float32Col(shape=3, pos=7)
+    energy =tables.Float34Col(pos=8)
     nof_hits = tables.Int16Col(pos=9) 
     hit_indx = tables.Int16Col(pos=10)
-    hit_position = tables.Float64Col(shape=3, pos=11)
-    hit_time =tables.Float64Col(pos=12)
-    hit_energy =tables.Float64Col(pos=13)
+    hit_position = tables.Float32Col(shape=3, pos=11)
+    hit_time =tables.Float32Col(pos=12)
+    hit_energy =tables.Float32Col(pos=13)
 
 
 class FEE(tables.IsDescription):
