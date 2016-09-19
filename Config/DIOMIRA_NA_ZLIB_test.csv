@@ -12,6 +12,8 @@
 #        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
 #        the script will run over all elements in the DST, 
 #        otherwise it will exit with a warning.
+#        CLIB = compression library used: values can be 'ZLIB', 'BLOSC' or 'NONE'
+#        CLEVEL = compression level
 #
-PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,END 
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_1Kevts_comp1_chunk32k.h5,WF_Na_test_RWF.h5,0,10,1,1
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL, END 
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/WF-NA-ZLIB/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_1Kevts_comp1_chunk32k.h5,WF_Na_ZLIB_test_RWF.h5,0,100,1,zlib,1,1
