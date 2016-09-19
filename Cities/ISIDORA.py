@@ -19,19 +19,18 @@ from cities import isidora
 from BLR import accumulator_coefficients,DBLR
 import FEParam as FP
 import tables
-import pandas as pd
+#import pandas as pd
 
 
 """
 Code
 """
-
 def ISIDORA(argv):
     INFO, CFP = configure(argv[0],argv[1:])
     if INFO:
         print(isidora)
 
-    wait()
+    #wait()
     
     print("""
         ISIDORA:
@@ -92,7 +91,7 @@ def ISIDORA(argv):
         logger.info("lof PMT WF (MC) = {} ".format(
         PMTWL))
 
-        wait()
+        #wait()
             
         # create an extensible array to store the CWF waveforms
         # if it exists remove and create again
@@ -101,12 +100,12 @@ def ISIDORA(argv):
             pmtcwf = h5in.root.RD.pmtcwf
             h5in.remove_node("/RD","pmtcwf")
             pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
-                                    atom=tables.FloatAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, NPMT, PMTWL), 
                                     expectedrows=NEVENTS_DST)
         except tables.exceptions.NodeError:
             pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf", 
-                                    atom=tables.FloatAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, NPMT, PMTWL), 
                                     expectedrows=NEVENTS_DST)
 
@@ -120,21 +119,22 @@ def ISIDORA(argv):
             rgroup = h5in.create_group(h5in.root, "BLR")
 
         
-        MAU = 0
+        mau = 0
         acum = 0
         pulse_on = 0
         wait_over = 0
+        baseline = 0
 
         try:
             mau = h5in.root.BLR.mau
             h5in.remove_node("/BLR","mau")
             mau = h5in.create_earray(h5in.root.BLR, "mau", 
-                                    atom=tables.FloatAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, PMTWL), 
                                     expectedrows=NEVENTS_DST)
         except tables.exceptions.NodeError:
             mau = h5in.create_earray(h5in.root.BLR, "mau", 
-                                    atom=tables.FloatAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, PMTWL), 
                                     expectedrows=NEVENTS_DST)
         try:
@@ -165,13 +165,25 @@ def ISIDORA(argv):
             acum  = h5in.root.BLR.acum 
             h5in.remove_node("/BLR","acum")
             acum  = h5in.create_earray(h5in.root.BLR, "acum", 
-                                    atom=tables.FloatAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, PMTWL), 
                                     expectedrows=NEVENTS_DST)
         except tables.exceptions.NodeError:
             acum  = h5in.create_earray(h5in.root.BLR, "acum", 
-                                    atom=tables.FloatAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, PMTWL), 
+                                    expectedrows=NEVENTS_DST)
+        try:
+            baseline  = h5in.root.BLR.baseline 
+            h5in.remove_node("/BLR","baseline")
+            baseline  = h5in.create_earray(h5in.root.BLR, "baseline", 
+                                    atom=tables.Float32Atom(), 
+                                    shape=(0, NPMT), 
+                                    expectedrows=NEVENTS_DST)
+        except tables.exceptions.NodeError:
+            baseline  = h5in.create_earray(h5in.root.BLR, "baseline", 
+                                    atom=tables.Float32Atom(), 
+                                    shape=(0, NPMT), 
                                     expectedrows=NEVENTS_DST)
 
             
@@ -216,6 +228,12 @@ def ISIDORA(argv):
             pmtcwf.append(np.array(pmtCWF).reshape(1, NPMT, PMTWL))
 
             # append BLR variables
+            
+            
+            BASELINE = []
+            for blr in BLRS:
+                BASELINE.append(blr.BASELINE)
+            baseline.append(np.array(BASELINE).reshape(1, NPMT))
 
             mau_pmt0 = BLRS[0].MAU
             mau.append(mau_pmt0.reshape(1, PMTWL))
@@ -235,11 +253,11 @@ def ISIDORA(argv):
         pulse_on.flush()
         wait_over.flush()
         acum.flush()
+        baseline.flush()
         
 
     print("Leaving Isidora. Safe travels!")
-
-                                       
+                                  
 
 if __name__ == '__main__':
     ISIDORA(sys.argv)
