@@ -82,6 +82,7 @@ def DIOMIRA(argv):
     # open the input file 
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in: 
         # access the PMT raw data in file 
+
         pmtrd_ = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
 

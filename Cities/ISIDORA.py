@@ -78,7 +78,7 @@ def ISIDORA(argv):
     # open the input file in mode append 
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "a") as h5in: 
         # access the PMT raw data in file 
-        pmtrd_ = h5in.root.RD.pmtrwf
+        pmtrd_ = h5in.root.RD.pmtrwf     #PMT raw data must exist
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)    
         
@@ -118,7 +118,6 @@ def ISIDORA(argv):
             
         except tables.exceptions.NodeError:
             rgroup = h5in.create_group(h5in.root, "BLR")
-
         
         mau = 0
         acum = 0
