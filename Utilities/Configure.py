@@ -104,7 +104,7 @@ def configure(pname,argv):
     CFP = cdf_to_dict(cfp)
     
     logger.info("Configuration Parameters (CFP) dictionary  = {}".format(CFP))
-    return INFO, CFP
+    return DEBUG, INFO, CFP
     
 
 

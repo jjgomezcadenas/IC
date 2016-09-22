@@ -26,7 +26,7 @@ Code
 """
 
 def DIOMIRA(argv):
-    INFO, CFP = configure(argv[0],argv[1:])
+    DEBUG_LEVEL, INFO, CFP = configure(argv[0],argv[1:])
    
     if INFO:
         print(diomira)
@@ -67,6 +67,8 @@ def DIOMIRA(argv):
     CLIB =CFP['CLIB']
     CLEVEL =CFP['CLEVEL']
     NEVENTS = LAST_EVT - FIRST_EVT
+
+    print('Debug level = {}'.format(DEBUG_LEVEL))
 
     logger.info("input path ={}; output path = {}; file_in ={} file_out ={}".format(
         PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))

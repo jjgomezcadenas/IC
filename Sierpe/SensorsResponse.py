@@ -97,8 +97,8 @@ def simulate_pmt_response(event_number,pmtrd_):
         signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE) 
 
         #Signal out of DAQ
-        signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
-
+        signal_daq = fee.daqSignal(signal_fee, noise_rms=0) - FP.offset
+    
         rdata.append(signal_daq)
     return np.array(rdata)
 

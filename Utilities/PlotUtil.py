@@ -58,6 +58,26 @@ def SetPlotLabels(xlabel="", ylabel="",grid=True):
   if grid == True:
     plt.grid(which='both', axis='both')
 
+def plot_waveforms(pmtwfdf, maxlen=0):
+    """
+    Takes as input a df storing the PMT wf and plots the 12 PMT WF
+    """
+    
+    plt.figure(figsize=(12,12))
+    
+    len_pmt = len(pmtwfdf[0])
+    
+    if maxlen > 0:
+        len_pmt = maxlen
+    for i in range(12):
+        ax1 = plt.subplot(3,4,i+1)
+        ax1.set_xlim([0, len_pmt])
+        SetPlotLabels(xlabel='samples', ylabel='adc')
+        plt.plot(pmtwfdf[i])
+
+    
+    plt.show()
+
 def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
     """
     Make a scatter of circles plot of x vs y, where x and y are sequence 

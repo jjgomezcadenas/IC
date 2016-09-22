@@ -46,7 +46,7 @@ class MCTrack(tables.IsDescription):
     initial_vertex =tables.Float32Col(shape=3, pos=5)
     final_vertex =tables.Float32Col(shape=3, pos=6)
     momentum =tables.Float32Col(shape=3, pos=7)
-    energy =tables.Float34Col(pos=8)
+    energy =tables.Float32Col(pos=8)
     nof_hits = tables.Int16Col(pos=9) 
     hit_indx = tables.Int16Col(pos=10)
     hit_position = tables.Float32Col(shape=3, pos=11)

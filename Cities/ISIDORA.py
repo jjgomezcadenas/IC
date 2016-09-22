@@ -26,7 +26,7 @@ import tables
 Code
 """
 def ISIDORA(argv):
-    INFO, CFP = configure(argv[0],argv[1:])
+    DEBUG_LEVEL, INFO, CFP = configure(argv[0],argv[1:])
     if INFO:
         print(isidora)
 
@@ -62,6 +62,7 @@ def ISIDORA(argv):
 
     NEVENTS = LAST_EVT -  FIRST_EVT
 
+    print('Debug level = {}'.format(DEBUG_LEVEL))
 
     logger.info("input path ={}; file_in ={} ".format(
         PATH_IN,FILE_IN))
@@ -217,7 +218,7 @@ def ISIDORA(argv):
 
             BLRS = DBLR(pmtrd_, i, coeff_acc, mau_len=MAU_LEN,
                         thr1 = NSIGMA1*FP.NOISE_ADC, thr2=0, 
-                        thr3 = NSIGMA2*FP.NOISE_ADC, log='INFO')
+                        thr3 = NSIGMA2*FP.NOISE_ADC, log=DEBUG_LEVEL)
 
             
             pmtCWF = []
