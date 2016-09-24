@@ -197,5 +197,105 @@ def pmt_wf(cwfdf,pmtDF):
     
         
     return PMTWF
+
+def pmaps_EP(pmtcwf,pmtDF,list_of_events=[0], thr = 1, stride=40):
+    """
+    computes pmaps in the EP plane
+    Returns a list of S2PMAPS (one entry per event) and a t0 DataFrame
+    S2PMAPS is a list of PMAPS of one entry per S2 found in the sum of PMTs
+    Each EP PMAP is the collection of 12+1 S2s
+    """
+    NPMT = len(pmtDF)
+    S2PMAP = []
+    for event in list_of_events:
+        # compute the sum function (swf), supress zeros (swf_zs) and finds s12 for swf_zs
+        cwfdf = get_waveforms(pmtcwf,event_number=event)
+        swf = add_cwf(cwfdf,pmtDF)
+        swf_zs = wf_thr(swf,threshold =thr)
+        s12 = find_S12(swf_zs, stride=stride)
+        
+        is2=0
+        t0 = -999
+        if len(s12) > 1:  #if s1 exists is s12[0]
+            is2=1  #s2 starts in index 1 if s1 exists in 0 otherwise
+            s1 = s12[0]
+            t0 = find_t0(s1)
+        
+        S2L = []
+        for s2 in s12[is2:]: #loop over s2 found is swf_zs
+            PMTWF = pmt_wf(cwfdf,PMT) #wf for each of the PMTs
+            #scan_pmtwf_s2(PMTWF,s2)
+            
+            PMAP = []
+            s2rb = rebin_waveform(s2, stride = stride)
+            PMAP.append(s2rb)
+            for i in range(NPMT):
+                pmtwf = PMTWF[i]
+                pmtdf = wfdf(pmtwf.time_ns.values[s2.indx.values[0]:s2.indx.values[-1]+1], 
+                                 pmtwf.ene_pes.values[s2.indx.values[0]:s2.indx.values[-1]+1],
+                                 pmtwf.indx.values[s2.indx.values[0]:s2.indx.values[-1]+1])
+                pmtrb = rebin_waveform(pmtdf, stride = stride)
+                
+                PMAP.append(pmtrb)
+            S2L.append(PMAP)
+        S2PMAP.append(S2L)
+    return t0, S2PMAP
+
+def wf_mus(wfns):
+    """
+    Takes as input a waveform expressed in ns and returns a waveform expressed in mus.
+    """
+    swf = {}
+    swf['time_mus'] = wfns['time_ns']/mus
+    swf['ene_pes'] = wfns['ene_pes'] 
+    swf['indx'] = wfns['indx']
+    return pd.DataFrame(swf)
+
+def sipm_panel(sipmrwf, event_number=0):
+    """
+    Organize the SiPM as a PD panel, that is a collection of PD DataFrames 
+
+    1. items = number of sipm
+    2. One DataFrame per SiPM
+    """
+    sipmwf = sipmrwf[event_number]
+    SIPM = {}
+    NSIPM = sipmwf.shape[0]
+    sipmwl = sipmwf.shape[1]
+    for i in range(NSIPM):
+        energy_pes = sipmwf[i]
+        time_ns = np.array(range(sipmwl))*1e+3 #steps are mus
+        indx = np.ones(sipmwl)*i
+        SIPM[i] = wf_mus(wfdf(time_ns,energy_pes,indx))
+    return pd.Panel(SIPM)
+
+def sipm_s2(sipmdf, s2df):
+    """
+    Takes a sipm DF and an s2df
+    Returns a DF with the sipm values in the range specified by s2
+    """
+    s2ti = s2df.time_mus.values[0]
+    s2tf = s2df.time_mus.values[-1]
+    dfl = sipmdf.loc[lambda df: df.time_mus.values >= s2ti, :]
+    dfu = dfl.loc[lambda df: df.time_mus.values < s2tf, :]
+    return dfu
+
+def sipmp_s2(sipmp, s2df, thr=0.5):
+    """
+    Takes a sipm panel and a s2df
+    Returns a sipm panel with a collection of sipm DF such that:
+    1. the range of the sipm is specified by s2
+    2. the sipm energy are above threshold.
+    """
+    SIPM={}
+    j=0
+    for i in sipmp.items:
+        sipm = sipmp[i]
+        sipms2 = sipm_s2(sipm, s2df)
+        if np.sum(sipms2).ene_pes > thr:
+            SIPM[j] = sipms2
+            j+=1
+    return pd.Panel(SIPM)
+    
     
             
