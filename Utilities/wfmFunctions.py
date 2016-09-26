@@ -251,7 +251,34 @@ def wf_mus(wfns):
     swf['indx'] = wfns['indx']
     return pd.DataFrame(swf)
 
-def sipm_panel(sipmrwf, event_number=0):
+    ### PMAPS
+
+class PMAP:
+    """
+    A simple class to hold the EP and TP pmap info
+    """
+    def __init__(self, t0):
+        """
+        inits the class with t0
+        
+        """
+        
+        self.t0 = t0
+        self.s2PMAP  = []
+        self.epPMAP  = []
+        self.sipmS2P  = []
+        
+    def add_pmap(self,s2pmap, sipms2p, epmap):
+        self.s2PMAP.append(s2pmap)
+        self.sipmS2P.append(sipms2p)
+        self.epPMAP.append(epmap)
+    
+    
+    def nof_s2(self):
+        return len(self.s2PMAP)
+    
+
+def sipm_panel(sipmrwf, SIPMDF, event_number=0):
     """
     Organize the SiPM as a PD panel, that is a collection of PD DataFrames 
 
@@ -263,7 +290,8 @@ def sipm_panel(sipmrwf, event_number=0):
     NSIPM = sipmwf.shape[0]
     sipmwl = sipmwf.shape[1]
     for i in range(NSIPM):
-        energy_pes = sipmwf[i]
+        adc_to_pes = SIPMDF.adc_to_pes[i]
+        energy_pes = sipmwf[i]/adc_to_pes
         time_ns = np.array(range(sipmwl))*1e+3 #steps are mus
         indx = np.ones(sipmwl)*i
         SIPM[i] = wf_mus(wfdf(time_ns,energy_pes,indx))
@@ -296,6 +324,62 @@ def sipmp_s2(sipmp, s2df, thr=0.5):
             SIPM[j] = sipms2
             j+=1
     return pd.Panel(SIPM)
+
+def sipm_hit_index(sipmp):
+    """
+    Store the indexes of the (sipm number)
+    """
+    hi =[]
+    for i in sipmp.items:
+        sipm = sipmp[i]
+        hi.append(sipm.indx.values[0])
+    return pd.Series(hi)
+
+def sipmps2p_energy(sipms2p):
+    """
+    Takes a sipms2p as input
+    Returns a DataFrame with the index and the energy in the SiPM as columns:
     
+    """
+    
+    SIPM=[]
+    for i in sipms2p.items:
+        swf = {}
+        swf['ene_pes'] = np.sum(sipms2p[i].ene_pes.values)
+        swf['indx'] = sipms2p[i].indx.values[0]
+        SIPM.append(swf)
+        
+    return pd.DataFrame(SIPM)
+
+def sipm_s2_panel(sipmrwf, SIPMDF, s2df, thr_min=0.5, thr_s2 =1, event_number=0):
+    """
+    Takes the sipmrwf and a s2df
+    Returns a sipm panel with a collection of sipm DF such that:
+    1. the range of the sipm is specified by s2
+    2. the sipm energy are above threshold.
+    """
+    
+    sipmwf = sipmrwf[event_number]
+    SIPM = {}
+    NSIPM = sipmwf.shape[0]
+    sipmwl = sipmwf.shape[1]
+    
+    j=0
+    
+    for i in range(NSIPM):
+        
+        adc_to_pes = SIPMDF.adc_to_pes[i]
+        energy_pes = sipmwf[i]/adc_to_pes
+        if np.sum(energy_pes) < thr:  #only worry about SiPM with energy above threshold
+            continue
+            
+        time_ns = np.array(range(sipmwl))*1e+3 #steps are mus
+        indx = np.ones(sipmwl)*i
+        sipm = wf_mus(wfdf(time_ns,energy_pes,indx))
+        sipms2 = sipm_s2(sipm, s2df)
+        if np.sum(sipms2).ene_pes > thr:
+            SIPM[j] = sipms2
+            j+=1
+    return pd.Panel(SIPM)
     
             
