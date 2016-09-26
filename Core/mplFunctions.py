@@ -6,7 +6,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 import numpy as np
-import PDFunctions as PDF
 import wfmFunctions as wfm
 
 from matplotlib.patches import Circle
@@ -175,7 +174,7 @@ def scan_waveforms(pmtea,list_of_events=[0]):
     """
     
     for event in list_of_events:
-        plot_waveforms(PDF.get_waveforms(pmtea,event_number=event))
+        plot_waveforms(wfm.get_waveforms(pmtea,event_number=event))
         wait()
 
 def plot_pmtwf(PMTWF):

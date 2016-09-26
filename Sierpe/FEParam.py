@@ -9,7 +9,7 @@ import numpy as np
 np.set_printoptions(threshold='nan')
 
 #offset = 700
-offset = 500
+offset = 2500
 n_PMT = 12
 PMT_GAIN=4.5e6
 MAU_WindowSize = 512

@@ -22,7 +22,16 @@ import tables
 
 
 """
-Code
+ChangeLog:
+
+26.9 
+
+Changed types of PMTRWF, SIPMRWF and PMTTWF to Float32 for 
+    (compatibility with ART/GATE)
+
+Do not store EPMT and ESIPM (can be computed on the fly)
+
+Change sign of pmtrwf to negative (as produced by the DAQ)
 """
 
 def DIOMIRA(argv):
@@ -144,33 +153,33 @@ def DIOMIRA(argv):
             
             # create an extensible array to store the RWF waveforms
             pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf", 
-                                    atom=tables.IntAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, NPMT, PMTWL_FEE), 
                                     expectedrows=NEVENTS_DST)
             
             # create an extensible array to store the TWF waveforms
             pmttwf = h5out.create_earray(h5out.root.RD, "pmttwf", 
-                                    atom=tables.IntAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, NPMT, PMTWL_FEE), 
                                     expectedrows=NEVENTS_DST)
             
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf", 
-                                    atom=tables.IntAtom(), 
+                                    atom=tables.Float32Atom(), 
                                     shape=(0, NSIPM, SIPMWL), 
                                     expectedrows=NEVENTS_DST)
 
-            #create an extensible array to store the energy in PES of PMTs 
-            epmt = h5out.create_earray(h5out.root.RD, "epmt", 
-                                    atom=tables.IntAtom(), 
-                                    shape=(0, NPMT), 
-                                    expectedrows=NEVENTS_DST)
+            # #create an extensible array to store the energy in PES of PMTs 
+            # epmt = h5out.create_earray(h5out.root.RD, "epmt", 
+            #                         atom=tables.FloatAtom(), 
+            #                         shape=(0, NPMT), 
+            #                         expectedrows=NEVENTS_DST)
 
-            # create an extensible array to store the energy in PES of SiPMs 
-            esipm = h5out.create_earray(h5out.root.RD, "esipm", 
-                                    atom=tables.IntAtom(), 
-                                    shape=(0, NSIPM), 
-                                    expectedrows=NEVENTS_DST)
+            # # create an extensible array to store the energy in PES of SiPMs 
+            # esipm = h5out.create_earray(h5out.root.RD, "esipm", 
+            #                         atom=tables.FloatAtom(), 
+            #                         shape=(0, NSIPM), 
+            #                         expectedrows=NEVENTS_DST)
 
             
             if NEVENTS > NEVENTS_DST and RUN_ALL == False:
@@ -195,10 +204,13 @@ def DIOMIRA(argv):
 
                 #simulate PMT response and return an array with RWF
                 dataPMT = simulate_pmt_response(i,pmtrd_)
-                
+
+                #convert to float
+                dataPMT.astype(float) 
                 #TWF
                  
-                truePMT = rebin_signal(i,pmtrd_)
+                truePMT = rebin_signal(i,pmtrd_, int(FP.time_DAQ))
+                truePMT.astype(float)
                 
                 logger.info("truePMT shape ={}".format(truePMT.shape))
                 logger.info("dataPMT shape ={}".format(dataPMT.shape))
@@ -213,27 +225,29 @@ def DIOMIRA(argv):
                    
                 #simulate SiPM response and return an array with new WF
                 dataSiPM = simulate_sipm_response(i,sipmrd_)
+                dataSiPM.astype(float)
                 
                 #append to SiPM EARRAY
                 sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
 
-                #fill ene_pmt vector
-                enePMT = energy_pes(i, pmtrd_)
-                #append to epmt EARRAY
-                epmt.append(enePMT.reshape(1, NPMT))
+                # #fill ene_pmt vector
+                # enePMT = energy_pes(i, pmtrd_)
+                # #append to epmt EARRAY
+                # epmt.append(enePMT.reshape(1, NPMT))
 
-                #fill ene_sipm vector
-                eneSIPM = energy_pes(i, sipmrd_)
-                esipm.append(eneSIPM.reshape(1, NSIPM))
+                # #fill ene_sipm vector
+                # eneSIPM = energy_pes(i, sipmrd_)
+                # esipm.append(eneSIPM.reshape(1, NSIPM))
 
             pmtrwf.flush()
             pmttwf.flush()
             sipmrwf.flush()
-            epmt.flush()
-            esipm.flush()
+            #epmt.flush()
+            #esipm.flush()
 
 
     print("Leaving Diomira. Safe travels!")
+
 
 
         

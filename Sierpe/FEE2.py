@@ -1,5 +1,5 @@
 from Util import *
-from PlotUtil import *
+import mplFunctions as mpl
 import FEParam as FP
 import SPE as SP
 from scipy import signal as SGN
@@ -257,22 +257,22 @@ def single_pe(start_pulse=100*ns, end_pulse=500*ns, noise=FP.NOISE_FEE_rms):
     
     ax1 = plt.subplot(2,2,1)
     ax1.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe (muA)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe (muA)')
     plt.plot(signal_t, signal_PE/muA)
 
     ax2 = plt.subplot(2,2,2)
     ax2.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe (mV)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe (mV)')
     plt.plot(signal_t, signal_PE_v/mV)
    
     ax3 = plt.subplot(2,2,3)
     ax3.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE (mV)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE (mV)')
     plt.plot(signal_t, signal_fee/mV)
     
     ax4 = plt.subplot(2,2,4)
     ax4.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE+DAQ (adc)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE+DAQ (adc)')
     plt.plot(signal_t_daq, signal_daq)
     
     area = np.sum(signal_daq)
@@ -297,22 +297,22 @@ def pulse_train(signal_start=2000*ns, signal_length=5000*ns, daq_window = 20*mic
     
     ax1 = plt.subplot(2,2,1)
     ax1.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe train (muA)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe train (muA)')
     plt.plot(signal_t, signal_PE/muA)
 
     ax2 = plt.subplot(2,2,2)
     ax2.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe train (mV)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe train (mV)')
     plt.plot(signal_t, signal_PE_v/mV)
    
     ax3 = plt.subplot(2,2,3)
     ax3.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE (mV)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE (mV)')
     plt.plot(signal_t, signal_fee/mV)
     
     ax4 = plt.subplot(2,2,4)
     ax4.set_xlim([0, len(signal_t)])
-    SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE+DAQ (adc)')
+    mpl.SetPlotLabels(xlabel='t (ns)', ylabel='spe+FEE+DAQ (adc)')
     plt.plot(signal_t_daq, signal_daq)
     
     area = np.sum(signal_daq)
@@ -330,12 +330,12 @@ if __name__ == '__main__':
 	single_pe(start_pulse=100*ns, end_pulse=1000*ns,noise=0.3*mV)
 	signal_t, signal_fee = pulse_train()
 	signal_fee_inv = fee.InverseSignal(signal_t)
-	plot_signal(signal_t/ns,signal_fee_inv,
+	mpl.plot_signal(signal_t/ns,signal_fee_inv,
                 title = 'Inverse FEE', 
                 signal_start=0*ns, signal_end=10*ns, 
                 units='')
 	signal_r = DeconvSimple(signal_fee,signal_fee_inv)
-	plot_signal(signal_t/ns,signal_r/mV,
+	mpl.plot_signal(signal_t/ns,signal_r/mV,
                 	title = 'Deconv simple', 
                 	signal_start=0, signal_end=len(signal_t), 
                 	units='mV')

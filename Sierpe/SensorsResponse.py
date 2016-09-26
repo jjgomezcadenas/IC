@@ -78,7 +78,8 @@ def simulate_pmt_response(event_number,pmtrd_):
     this function produces the PMT raw data (adc counts bins 25 ns)
 
     pmtrd_ dataset that holds the PMT PE data for each PMT
-    pmtrd25 dataset to be created with adc counts, bins 25 ns after convoluting with electronics
+    pmtrd25 dataset to be created with adc counts, bins 25 ns 
+    after convoluting with electronics
     """
   
     rdata = []
@@ -97,7 +98,11 @@ def simulate_pmt_response(event_number,pmtrd_):
         signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE) 
 
         #Signal out of DAQ
-        signal_daq = fee.daqSignal(signal_fee, noise_rms=0) - FP.offset
+        #positive signal convention
+        #signal_daq = fee.daqSignal(signal_fee, noise_rms=0) - FP.offset
+        #negative signals convention!
+
+        signal_daq = FP.offset -fee.daqSignal(signal_fee, noise_rms=0) 
     
         rdata.append(signal_daq)
     return np.array(rdata)
@@ -136,7 +141,7 @@ def rebin_pmt_array(a,stride):
         j+= stride
     return b
 
-def rebin_signal(event_number,pmtrd_):
+def rebin_signal(event_number,pmtrd_, stride):
     """
     rebins the MCRD signal to produce TWF (pes, bins 25 ns)
     """
@@ -147,7 +152,7 @@ def rebin_signal(event_number,pmtrd_):
         logger.debug("-->PMT number ={}".format(j))
                 
         pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-        twf = rebin_pmt_array(pmt, int(FP.time_DAQ))
+        twf = rebin_pmt_array(pmt, stride)
         
         rdata.append(twf)
     return np.array(rdata)
