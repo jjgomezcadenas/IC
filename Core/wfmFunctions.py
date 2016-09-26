@@ -370,14 +370,14 @@ def sipm_s2_panel(sipmrwf, SIPMDF, s2df, thr_min=0.5, thr_s2 =1, event_number=0)
         
         adc_to_pes = SIPMDF.adc_to_pes[i]
         energy_pes = sipmwf[i]/adc_to_pes
-        if np.sum(energy_pes) < thr:  #only worry about SiPM with energy above threshold
+        if np.sum(energy_pes) < thr_min:  #only worry about SiPM with energy above threshold
             continue
             
         time_ns = np.array(range(sipmwl))*1e+3 #steps are mus
         indx = np.ones(sipmwl)*i
         sipm = wf_mus(wfdf(time_ns,energy_pes,indx))
         sipms2 = sipm_s2(sipm, s2df)
-        if np.sum(sipms2).ene_pes > thr:
+        if np.sum(sipms2).ene_pes > thr_s2:
             SIPM[j] = sipms2
             j+=1
     return pd.Panel(SIPM)
