@@ -15,10 +15,12 @@ from Util import *
 from LogConfig import *
 from Configure import configure
 from Nh5 import *
-from cities import diomira
-from SensorsResponse import *
+import FEParam as FP
 
 import tables
+
+#------
+
 
 
 """
@@ -32,17 +34,61 @@ Changed types of PMTRWF, SIPMRWF and PMTTWF to Float32 for
 Do not store EPMT and ESIPM (can be computed on the fly)
 
 Change sign of pmtrwf to negative (as produced by the DAQ)
+
+28.9 add cython
 """
+def FEE_param_table(fee_table):
+    """
+    Stores the parameters of the EP FEE simulation 
+    """
+    row = fee_table.row
+    row['offset'] = FP.offset
+    row['pmt_gain'] = FP.PMT_GAIN
+    row['V_gain'] = FP.V_GAIN
+    row['R'] = FP.R
+    row['C12'] = FP.C12
+    row['CO12'] = FP.C12 # to be rewritten by ISIDORA
+    row['time_step'] = FP.time_step
+    row['time_daq'] = FP.time_DAQ
+    row['freq_LPF'] = FP.freq_LPF
+    row['freq_HPF'] = 1./(2*pi*FP.R*FP.C)
+    row['LSB'] = FP.LSB
+    row['volts_to_adc'] = FP.voltsToAdc/volt
+    row['noise_fee_rms'] = FP.NOISE_FEE
+    row['noise_adc'] = FP.NOISE_ADC
+    
+    row.append()
+
+def rebin_signal(event_number,pmtrd_, stride):
+    """
+    rebins the MCRD signal to produce TWF (pes, bins 25 ns)
+    """
+    from cyic import SensorsResponse as SR
+    rdata = []
+
+    for j in range(pmtrd_.shape[1]):
+        logger.debug("-->PMT number ={}".format(j))
+                
+        pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
+        twf = SR.rebin_pmt_array(pmt, stride)
+        
+        rdata.append(twf)
+    return np.array(rdata)
+
 
 def DIOMIRA(argv):
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0],argv[1:])
+    DEBUG_LEVEL, INFO, CYTHON, CFP = configure(argv[0],argv[1:])
+
+    if CYTHON == True:
+        from cyic import SensorsResponse as SR 
+        print("Running Cython version of DIOMIRA")
+    else:
+        import SensorsResponse as SR
+        print("Running Python version of DIOMIRA")
    
     if INFO:
-        print(diomira)
-
-    #wait()
     
-    print("""
+        print("""
         DIOMIRA:
          1. Reads an MCRD file produced by art/centella, which stores MCRD 
          waveforms for PMTs (bins of 1 ns)
@@ -63,8 +109,8 @@ def DIOMIRA(argv):
 
 
         """)
-    FP.print_FEE()
-    #wait()
+        FP.print_FEE()
+    
 
     PATH_IN =CFP['PATH_IN']
     PATH_OUT =CFP['PATH_OUT']
@@ -203,7 +249,7 @@ def DIOMIRA(argv):
                 logger.info("-->event number ={}".format(i))
 
                 #simulate PMT response and return an array with RWF
-                dataPMT = simulate_pmt_response(i,pmtrd_)
+                dataPMT = SR.simulate_pmt_response(i,pmtrd_)
 
                 #convert to float
                 dataPMT.astype(float) 
@@ -224,7 +270,7 @@ def DIOMIRA(argv):
                 #pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL))
                    
                 #simulate SiPM response and return an array with new WF
-                dataSiPM = simulate_sipm_response(i,sipmrd_)
+                dataSiPM = SR.simulate_sipm_response(i,sipmrd_)
                 dataSiPM.astype(float)
                 
                 #append to SiPM EARRAY
@@ -252,5 +298,8 @@ def DIOMIRA(argv):
 
         
 if __name__ == '__main__':
+    #import cProfile
+
+    #cProfile.run('DIOMIRA(sys.argv)', sort='time')
     DIOMIRA(sys.argv)
     

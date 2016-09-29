@@ -23,28 +23,6 @@ from FEE2 import down_scale_signal_
 Code
 """
 
-def FEE_param_table(fee_table):
-    """
-    Stores the parameters of the EP FEE simulation 
-    """
-    row = fee_table.row
-    row['offset'] = FP.offset
-    row['pmt_gain'] = FP.PMT_GAIN
-    row['V_gain'] = FP.V_GAIN
-    row['R'] = FP.R
-    row['C12'] = FP.C12
-    row['CO12'] = FP.C12 # to be rewritten by ISIDORA
-    row['time_step'] = FP.time_step
-    row['time_daq'] = FP.time_DAQ
-    row['freq_LPF'] = FP.freq_LPF
-    row['freq_HPF'] = 1./(2*pi*FP.R*FP.C)
-    row['LSB'] = FP.LSB
-    row['volts_to_adc'] = FP.voltsToAdc/volt
-    row['noise_fee_rms'] = FP.NOISE_FEE
-    row['noise_adc'] = FP.NOISE_ADC
-    
-    row.append()
-    
 
 def energy_pes(event_number, sensord):
     """

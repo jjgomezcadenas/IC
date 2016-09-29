@@ -68,15 +68,17 @@ def configure(pname,argv):
     DEBUG='INFO'
     INFO = False
     cfile =''
+    CYTHON = False
 
     try:
-        opts, args = getopt.getopt(argv, "hid:c:", ["help","info","debug","cfile"])
+        opts, args = getopt.getopt(argv, "hixd:c:", ["help","info","cython","debug","cfile"])
 
     except getopt.GetoptError:
         usage(pname)
         sys.exit(2)
 
     #print("opts ={}".format(opts))
+    #print("args ={}".format(args))
 
     for opt, arg in opts:
         #print("opt ={}, arg = {}".format(opt,arg))
@@ -89,6 +91,8 @@ def configure(pname,argv):
             INFO = True
         elif opt in ("-c", "--cfile"):
             cfile = arg
+        elif opt in ("-x", "--cython"):
+            CYTHON = True
  
     lg = 'logging.'+DEBUG
     
@@ -104,7 +108,7 @@ def configure(pname,argv):
     CFP = cdf_to_dict(cfp)
     
     logger.info("Configuration Parameters (CFP) dictionary  = {}".format(CFP))
-    return DEBUG, INFO, CFP
+    return DEBUG, INFO, CYTHON, CFP
     
 
 
