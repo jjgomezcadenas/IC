@@ -64,7 +64,7 @@ class FEE(tables.IsDescription):
     V_gain =tables.Float32Col(pos=3)  #FE gain (250*ohm)
     R = tables.Float32Col(pos=4) # resistor in Ohms (2350*ohm)
     C12 = tables.Float32Col(shape=12,pos=5) #6.2*nF  decoupling capacitor in pF
-    CO12 = tables.Float32Col(shape=12,pos=6) #Accumulator coefficients
+    AC = tables.Float32Col(shape=12,pos=6) #Accumulator coefficients
     time_step=tables.Float32Col(pos=7) #1*ns input MC time bins
     time_daq=tables.Float32Col(pos=8) #25*ns DAQ time 
     freq_LPF=tables.Float32Col(pos=9) #3E6*hertz
