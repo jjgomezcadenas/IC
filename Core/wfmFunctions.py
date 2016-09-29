@@ -8,6 +8,7 @@ import numpy as np
 import FEParam as FP
 
 
+
 def get_waveforms(pmtea,event_number=0):
     """
     Takes the earray pmtea and returns a DF for event_number
@@ -63,6 +64,15 @@ def wfdf(time_ns,energy_pes,indx):
     swf['time_ns'] = time_ns
     swf['ene_pes'] = energy_pes 
     swf['indx'] = indx
+    return pd.DataFrame(swf)
+
+def wf2df(time_ns,energy_pes):
+    """
+    takes two vectors (time, energy) and returns a data frame representing a waveform
+    """
+    swf = {}
+    swf['time_ns'] = time_ns
+    swf['ene_pes'] = energy_pes 
     return pd.DataFrame(swf)
 
 def add_cwf(cwfdf,pmtDF):
