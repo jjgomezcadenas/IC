@@ -8,7 +8,35 @@ import numpy as np
 import FEParam as FP
 
 
-
+def read_twf(table, event_number):
+    """
+    Reads back the TWF
+    """
+    
+    PMT={}
+    for row in table.where("event == event_number"):
+        pmt = row['pmt']
+        time_ns = row['time_ns'] 
+        ene_pes =  row['ene_pes']
+        
+        #print('pmt = {},time_ns = {},ene_pes = {}'.format(pmt,time_ns,ene_pes))
+        if pmt not in PMT:
+            WF={}
+            TIME =[]
+            ENE = []
+            TIME.append(time_ns)
+            ENE.append(ene_pes)
+            WF['time_ns'] = TIME
+            WF['ene_pes'] = ENE
+            PMT[pmt] = WF
+        else:
+            WF = PMT[pmt]
+            TIME = WF['time_ns']
+            ENE  = WF['ene_pes']
+            TIME.append(time_ns)
+            ENE.append(ene_pes)
+                
+    return PMT
 def get_waveforms(pmtea,event_number=0):
     """
     Takes the earray pmtea and returns a DF for event_number
