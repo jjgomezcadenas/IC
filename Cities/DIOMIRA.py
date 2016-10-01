@@ -1,6 +1,6 @@
 """
 DIOMIRA
-JJGC August 2016
+JJGC August-October 2016
 
 What DIOMIRA does:
 1) Reads a MCRD file containing MC waveforms for the 12 PMTs of the EP.
@@ -13,21 +13,22 @@ What DIOMIRA does:
 from __future__ import print_function
 from Util import *
 from LogConfig import *
-from Configure import configure
+from Configure import *
 from Nh5 import *
 import FEParam as FP
 import SPE as SP
 import FEE2 as FE
 
 import tables
-
+from time import time 
 import wfmFunctions as wfm
 import pandas as pd
 #------
 
 
-
 """
+
+DIOMIRA
 ChangeLog:
 
 26.9 
@@ -45,6 +46,8 @@ Change sign of pmtrwf to negative (as produced by the DAQ)
 before: --> full waveform (in bins of 25 ns) in an EArray
 now--> ZS waveform rebinned at 1 mus in a Table
 (adavantages:) faster processing less space
+
+01.10 moved loop definition to Configure.py and added index to TWF table
 """
 def FEE_param_table(fee_table):
     """
@@ -68,14 +71,6 @@ def FEE_param_table(fee_table):
     
     row.append()
 
-def wf2df(time_ns,energy_pes):
-    """
-    takes two vectors (time, energy) and returns a data frame representing a waveform
-    """
-    swf = {}
-    swf['time_ns'] = time_ns
-    swf['ene_pes'] = energy_pes 
-    return pd.DataFrame(swf)
 
 def store_twf(event, table, TWF):
     """
@@ -145,6 +140,15 @@ def twf_signal(event_number,pmtrd, stride):
         
         rdata.append(twf)
     return rdata
+
+def wf2df(time_ns,energy_pes):
+    """
+    takes two vectors (time, energy) and returns a data frame representing a waveform
+    """
+    swf = {}
+    swf['time_ns'] = time_ns
+    swf['ene_pes'] = energy_pes 
+    return pd.DataFrame(swf)
 
 def simulate_sipm_response(event_number,sipmrd_):
     """
@@ -261,6 +265,7 @@ def DIOMIRA(argv):
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2] 
         PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
+        #PMTWL_FEE = int(PMTWL/FP.time_DAQ)  #old format
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
@@ -312,6 +317,9 @@ def DIOMIRA(argv):
             twf_table = h5out.create_table(twfgroup, "TWF", TWF, "Store for TWF",
                                 tables.Filters(complib=CLIB, complevel=CLEVEL))
 
+            #and index in event column
+            twf_table.cols.event.create_index()
+
             # fill FEE table
             FEE_param_table(fee_table)
 
@@ -323,56 +331,21 @@ def DIOMIRA(argv):
                                     atom=tables.Float32Atom(), 
                                     shape=(0, NPMT, PMTWL_FEE), 
                                     expectedrows=NEVENTS_DST)
-            
-            # 29.9 tWF now stored in a table---
-            # create an extensible array to store the TWF waveforms
-#             pmttwf = h5out.create_earray(h5out.root.RD, "pmttwf", 
-#                                     atom=tables.Float32Atom(), 
-#                                     shape=(0, NPMT, PMTWL_FEE), 
-#                                     expectedrows=NEVENTS_DST)
-            
+              
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf", 
                                     atom=tables.Float32Atom(), 
                                     shape=(0, NSIPM, SIPMWL), 
                                     expectedrows=NEVENTS_DST)
 
-            #29.9 not needed---
-
-            # #create an extensible array to store the energy in PES of PMTs 
-            # epmt = h5out.create_earray(h5out.root.RD, "epmt", 
-            #                         atom=tables.FloatAtom(), 
-            #                         shape=(0, NPMT), 
-            #                         expectedrows=NEVENTS_DST)
-
-            # # create an extensible array to store the energy in PES of SiPMs 
-            # esipm = h5out.create_earray(h5out.root.RD, "esipm", 
-            #                         atom=tables.FloatAtom(), 
-            #                         shape=(0, NSIPM), 
-            #                         expectedrows=NEVENTS_DST)
-
+            #LOOP
+            first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST,RUN_ALL)
             
-            if NEVENTS > NEVENTS_DST and RUN_ALL == False:
-                print("""
-                Refusing to run: you have requested
-                FIRST_EVT = {}
-                LAST_EVT  = {}
-                Thus you want to run over {} events
-                but the size of the DST is {} events.
-                Please change your choice or select RUN_ALL = TRUE
-                to run over the whole DST when this happens
-                """.format(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST))
-                sys.exit(0)
-            elif  NEVENTS > NEVENTS_DST and RUN_ALL == True:
-                FIRST_EVT = 0
-                LAST_EVT = NEVENTS_DST
-                NEVENTS = NEVENTS_DST
-
-
-            for i in range(FIRST_EVT,LAST_EVT):
+            t0 = time()
+            for i in range(first_evt,last_evt):
                 logger.info("-->event number ={}".format(i))
                 
-                #truePMT = rebin_signal(i,pmtrd_, int(FP.time_DAQ))
+                # supress zeros in MCRD and rebins the ZS function in 1 mus bins
 
                 rebin = int(1*mus/1*ns)  #rebins zs function in 1 mus bin
 
@@ -381,50 +354,29 @@ def DIOMIRA(argv):
                 
                 #store in table
                 store_twf(i, twf_table, truePMT)
-                
-                #truePMT.astype(float)
 
                 #simulate PMT response and return an array with RWF
                 dataPMT = simulate_pmt_response(i,pmtrd_)
 
                 #convert to float
                 dataPMT.astype(float) 
-            
                 
-                #logger.info("truePMT shape ={}".format(truePMT.shape))
-                #logger.info("dataPMT shape ={}".format(dataPMT.shape))
-                
-                #RWF for pmts
+                #append to EVECTOR
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
                 
-                
-                #TWF for pmts
-                #pmttwf.append(truePMT.reshape(1, NPMT, PMTWL_FEE))
-                #pmtrd.append(dataPMT.reshape(1, NPMT, PMTWL))
                    
-                #simulate SiPM response and return an array with new WF
+                #simulate SiPM response and return an array with RWF
+                #convert to float, append to EVector
+
                 dataSiPM = simulate_sipm_response(i,sipmrd_)
                 dataSiPM.astype(float)
-                
-                #append to SiPM EARRAY
                 sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
 
-                # #fill ene_pmt vector
-                # enePMT = energy_pes(i, pmtrd_)
-                # #append to epmt EARRAY
-                # epmt.append(enePMT.reshape(1, NPMT))
-
-                # #fill ene_sipm vector
-                # eneSIPM = energy_pes(i, sipmrd_)
-                # esipm.append(eneSIPM.reshape(1, NSIPM))
-
+            t1 = time()
             pmtrwf.flush()
-            #pmttwf.flush()
             sipmrwf.flush()
-            #epmt.flush()
-            #esipm.flush()
 
-
+            print("Run over {} events in {} seconds".format(i, t1-t0))
     print("Leaving Diomira. Safe travels!")
 
 if __name__ == '__main__':

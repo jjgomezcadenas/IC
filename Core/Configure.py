@@ -5,6 +5,7 @@ JJGC August 2016
 from LogConfig import *
 import pandas as pd
 import getopt
+import sys
 
 
 def cdf_to_dict(cdf):
@@ -109,7 +110,36 @@ def configure(pname,argv):
     
     #logger.info("Configuration Parameters (CFP) dictionary  = {}".format(CFP))
     return DEBUG, INFO, CYTHON, CFP
+
+
+def define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST,RUN_ALL):
+    """
+    defines the number of events to run in the loop
+    """
     
+    first = FIRST_EVT
+    last = LAST_EVT
+
+    if NEVENTS > NEVENTS_DST and RUN_ALL == False:
+        print("""
+                Refusing to run: you have requested
+                FIRST_EVT = {}
+                LAST_EVT  = {}
+                Thus you want to run over {} events
+                but the size of the DST is {} events.
+                Please change your choice or select RUN_ALL = TRUE
+                to run over the whole DST when this happens
+                """.format(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST))
+        sys.exit(0)
+
+    elif  NEVENTS > NEVENTS_DST and RUN_ALL == True:
+        first = 0
+        last = NEVENTS_DST 
+
+    return first,last
+
+
+                
 
 
 if __name__ == '__main__':

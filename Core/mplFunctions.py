@@ -22,7 +22,18 @@ def hbins(x, nsigma=5, nbins=10):
   xmax =np.average(x) + nsigma*np.std(x)
   bins = np.linspace(xmin, xmax, nbins)
   return bins
+
+def histo(x,nbins,title='hsimple',xlabel = '', ylabel = 'Frequency'):
+  """
+  histograms
+  """
   
+  plt.hist(x, nbins, histtype='bar', alpha=0.75)
+  plt.title(title)
+  plt.xlabel(xlabel)
+  plt.ylabel(ylabel)
+  
+
 def HSimple1(x,nbins,title='hsimple',xlabel = '', ylabel = 'Frequency', 
              save=False,filename='hsimple.png', filepath='./'):
   """
