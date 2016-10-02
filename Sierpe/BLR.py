@@ -226,7 +226,8 @@ def DBLR(pmtrd, event_number, coeff_acc, mau_len=250,
     
     BLRS =[]
     for j in range(NPMT):
-        sblr = BLR(pmtrd[event_number, j], coeff_acc[j], mau_len, thr1, thr2, thr3, log)
+        sgn_raw = FP.ceiling - pmtrd[event_number, j]
+        sblr = BLR(sgn_raw, coeff_acc[j], mau_len, thr1, thr2, thr3, log)
         BLRS.append(sblr)
        
     return BLRS

@@ -376,7 +376,7 @@ def DIOMIRA(argv):
             pmtrwf.flush()
             sipmrwf.flush()
 
-            print("Run over {} events in {} seconds".format(i, t1-t0))
+            print("DIOMIRA has run over {} events in {} seconds".format(i, t1-t0))
     print("Leaving Diomira. Safe travels!")
 
 if __name__ == '__main__':

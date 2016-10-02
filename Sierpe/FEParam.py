@@ -10,6 +10,7 @@ np.set_printoptions(threshold='nan')
 
 #offset = 700
 offset = 2500
+ceiling = 4096
 n_PMT = 12
 PMT_GAIN=4.5e6
 MAU_WindowSize = 512

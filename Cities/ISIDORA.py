@@ -12,13 +12,12 @@ What ISIDORA does:
 from __future__ import print_function
 from Util import *
 from LogConfig import *
-from Configure import configure
-
-from cities import isidora
+from Configure import *
 
 from BLR import accumulator_coefficients,DBLR
 import FEParam as FP
 import tables
+from time import time 
 #import pandas as pd
 
 
@@ -26,13 +25,12 @@ import tables
 Code
 """
 def ISIDORA(argv):
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0],argv[1:])
-    if INFO:
-        print(isidora)
-
-    #wait()
+    DEBUG_LEVEL, INFO, CYTHON, CFP = configure(argv[0],argv[1:])
     
-    print("""
+    if INFO:
+        
+    
+        print("""
         ISIDORA:
         1. Reads an Nh5 file produced by DIOMIRA, which stores the
             raw waveforms (RWF) for the PMTs and SiPMs waveforms, as well as
@@ -59,20 +57,22 @@ def ISIDORA(argv):
     MAU_LEN=CFP['MAU_LEN']
     NSIGMA1=CFP['NSIGMA1'] 
     NSIGMA2=CFP['NSIGMA2'] 
+    NSIGMA3=CFP['NSIGMA3'] 
 
     NEVENTS = LAST_EVT -  FIRST_EVT
 
     print('Debug level = {}'.format(DEBUG_LEVEL))
 
-    logger.info("input path ={}; file_in ={} ".format(
+    print("input path ={}; file_in ={} ".format(
         PATH_IN,FILE_IN))
 
-    logger.info("first event = {} last event = {} nof events requested = {} ".format(
+    print("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
-    logger.info("MAU length = {} n_sigma1 = {} n_sigma2 = {} ".format(
+    print("MAU length = {} n_sigma1 = {} n_sigma2 = {} ".format(
         MAU_LEN,NSIGMA1,NSIGMA2))
-    logger.info("CA sigma(nf) = {}  ".format(CA/nF))
+    print("CA  = {} nF ".format(CA/nF))
+    print("Accumulator Coefficients = {}  ".format(AC))
     
 
     # open the input file in mode append 
@@ -86,10 +86,10 @@ def ISIDORA(argv):
         PMTWL = pmtrd_.shape[2] 
         NEVENTS_DST = pmtrd_.shape[0]
 
-        logger.info("nof PMTs = {} nof events in input DST = {} ".format(
+        print("nof PMTs = {} nof events in input DST = {} ".format(
         NPMT,NEVENTS_DST))
 
-        logger.info("lof PMT WF (MC) = {} ".format(
+        print("lof PMT WF (MC) = {} ".format(
         PMTWL))
 
         #wait()
@@ -110,7 +110,9 @@ def ISIDORA(argv):
                                     shape=(0, NPMT, PMTWL), 
                                     expectedrows=NEVENTS_DST)
 
-        # create a group to store BLR configuration (por PMT0)
+        # create a group to store BLR configuration 
+        # mau, acummulator, pulse_on and wait_over stored for pmt 0
+        # baseline stored for all PMTs.
 
         rgroup = 0
         try:
@@ -187,25 +189,11 @@ def ISIDORA(argv):
                                     expectedrows=NEVENTS_DST)
 
             
-        if NEVENTS > NEVENTS_DST and RUN_ALL == False:
-            print("""
-                Refusing to run: you have requested
-                FIRST_EVT = {}
-                LAST_EVT  = {}
-                Thus you want to run over {} events
-                but the size of the DST is {} events.
-                Please change your choice or select RUN_ALL = TRUE
-                to run over the whole DST when this happens
-                """.format(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST))
-            sys.exit(0)
-
-        elif  NEVENTS > NEVENTS_DST and RUN_ALL == True:
-            FIRST_EVT = 0
-            LAST_EVT = NEVENTS_DST
-            NEVENTS = NEVENTS_DST
-
+        #LOOP
+        first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST,RUN_ALL)
             
-        for i in range(FIRST_EVT,LAST_EVT):
+        t0 = time()
+        for i in range(first_evt,last_evt):
             
             logger.info("-->event number ={}".format(i))
 
@@ -216,8 +204,8 @@ def ISIDORA(argv):
 
 
             BLRS = DBLR(pmtrd_, i, coeff_acc, mau_len=MAU_LEN,
-                        thr1 = NSIGMA1*FP.NOISE_ADC, thr2=0, 
-                        thr3 = NSIGMA2*FP.NOISE_ADC, log=DEBUG_LEVEL)
+                        thr1 = NSIGMA1*FP.NOISE_ADC, thr2=NSIGMA2*FP.NOISE_ADC, 
+                        thr3 = NSIGMA3*FP.NOISE_ADC, log=DEBUG_LEVEL)
 
             
             pmtCWF = []
@@ -247,7 +235,7 @@ def ISIDORA(argv):
             acum0  = BLRS[0].acum
             acum.append(acum0.reshape(1, PMTWL))
                 
-                
+        t1 = time()
         pmtcwf.flush()
         mau.flush()
         pulse_on.flush()
@@ -255,8 +243,8 @@ def ISIDORA(argv):
         acum.flush()
         baseline.flush()
         
-
-    print("Leaving Isidora. Safe travels!")
+        print("ISIDORA has run over {} events in {} seconds".format(i, t1-t0))
+    print("Leaving ISIDORA. Safe travels!")
                                   
 
 if __name__ == '__main__':
