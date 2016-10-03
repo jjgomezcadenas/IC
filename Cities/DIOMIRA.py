@@ -264,8 +264,8 @@ def DIOMIRA(argv):
         NPMT = pmtrd_.shape[1]
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2] 
-        PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
-        #PMTWL_FEE = int(PMTWL/FP.time_DAQ)  #old format
+        #PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
+        PMTWL_FEE = int(PMTWL/FP.time_DAQ)  #old format
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
