@@ -23,4 +23,4 @@ class SiPMNoiseSampler:
 
     def Sample( self, size = 1, smear = True ):
         x = np.array( [ np.random.choice(self.xbins, size=size, p=prob) for prob in self.probs ] )
-        return x if not smear else x + np.random.uniform(-self.d,self.d,size=x.shape[0])
+        return x if not smear else x + np.random.uniform(-self.d,self.d,size=x.shape)
