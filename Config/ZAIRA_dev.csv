@@ -1,10 +1,9 @@
-# Configuration file for DIOMIRA
-# The parameters for DIOMIRA are:
+# Configuration file for ZAIRA
+# The parameters for ZAIRA are:
 #
 #        PATH_IN = path to input DST file (must be a MCRD file)
 #        FILE_IN = name of input DST file
-#        PATH_OUT = path to output DST file (RWF file)
-#        FILE_OUT = name of ouput DST file (RWF file)
+#		 DB_FE_SIPM = name of the BD file with the noise and darknoise
 #        FIRST_EVT,LAST_EVT,RUN_ALL,
 #
 #        RUN_ALL is used to decide whether to run all the events in the file
@@ -15,5 +14,5 @@
 #        CLIB = compression library used: values can be 'ZLIB', 'BLOSC' or 'NONE'
 #        CLEVEL = compression level
 #
-PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL, END 
-/Users/hernando/Investigacion/NEXT/NEXT-Reco/icnew/Data/,/Users/hernando/Investigacion/NEXT/NEXT-Reco/icnew/Data/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,diomira_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,0,10,0,zlib,1,1
+PATH_IN,FILE_IN,DB_FE_SIPM,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL,END 
+/Users/hernando/Investigacion/NEXT/NEXT-Reco/icnew/Data,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,/Users/hernando/Investigacion/NEXT/NEXT-Reco/icnew/IC/Config/DB_FESiPMs_161006.txt,0,10,1,zlib,1,1
