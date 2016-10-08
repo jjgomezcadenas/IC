@@ -20,20 +20,22 @@ import SPE as SP
 import FEE2 as FE
 
 import tables
-from time import time 
+from time import time
 import wfmFunctions as wfm
 import pandas as pd
-#------
 
+from RandomSampling3 import *
+
+#------
 
 """
 
 DIOMIRA
 ChangeLog:
 
-26.9 
+26.9
 
-Changed types of PMTRWF, SIPMRWF and PMTTWF to Float32 for 
+Changed types of PMTRWF, SIPMRWF and PMTTWF to Float32 for
     (compatibility with ART/GATE)
 
 Do not store EPMT and ESIPM (can be computed on the fly)
@@ -42,7 +44,7 @@ Change sign of pmtrwf to negative (as produced by the DAQ)
 
 28.9 add cython
 
-29.9 changed the way true waveforms are treated. 
+29.9 changed the way true waveforms are treated.
 before: --> full waveform (in bins of 25 ns) in an EArray
 now--> ZS waveform rebinned at 1 mus in a Table
 (adavantages:) faster processing less space
@@ -51,7 +53,7 @@ now--> ZS waveform rebinned at 1 mus in a Table
 """
 def FEE_param_table(fee_table):
     """
-    Stores the parameters of the EP FEE simulation 
+    Stores the parameters of the EP FEE simulation
     """
     row = fee_table.row
     row['offset'] = FP.offset
@@ -59,7 +61,7 @@ def FEE_param_table(fee_table):
     row['V_gain'] = FP.V_GAIN
     row['R'] = FP.R
     row['C12'] = FP.C12
-    row['AC'] = FP.AC 
+    row['AC'] = FP.AC
     row['time_step'] = FP.time_step
     row['time_daq'] = FP.time_DAQ
     row['freq_LPF'] = FP.freq_LPF
@@ -68,7 +70,7 @@ def FEE_param_table(fee_table):
     row['volts_to_adc'] = FP.voltsToAdc/volt
     row['noise_fee_rms'] = FP.NOISE_FEE
     row['noise_adc'] = FP.NOISE_ADC
-    
+
     row.append()
 
 
@@ -89,32 +91,32 @@ def store_twf(event, table, TWF):
 
 def rebin_twf(t, e, stride = 40):
     """
-    rebins the a waveform according to stride 
+    rebins the a waveform according to stride
     The input waveform is a vector such that the index expresses time bin and the
     contents expresses energy (e.g, in pes)
     The function returns a DataFrame. The time bins and energy are rebinned according to stride
     """
-    
+
     n = len(t)/int(stride)
     r = len(t)%int(stride)
-    
+
     lenb = n
-    if r > 0: 
+    if r > 0:
         lenb = n+1
-    
+
     T = np.zeros(lenb,dtype=np.float32)
     E = np.zeros(lenb,dtype=np.float32)
-    
+
     j=0
     for i in range(n):
         E[i] = np.sum(e[j:j+stride])
         T[i] = np.mean(t[j:j+stride])
         j+= stride
-        
+
     if r > 0:
         E[n] = np.sum(e[j:])
         T[n] = np.mean(t[j:])
-    
+
     return T,E
 
 def twf_signal(event_number,pmtrd, stride):
@@ -123,21 +125,21 @@ def twf_signal(event_number,pmtrd, stride):
     2) Performs ZS
     3) Rebins resulting wf according to stride
     """
-    
+
     rdata = []
 
     for j in range(pmtrd.shape[1]):
         logger.debug("-->PMT number ={}".format(j))
-                
+
         energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
         time_ns = np.array(range(pmtrd.shape[2]))
 
         twf_zs = wfm.wf_thr(wf2df(time_ns,energy_pes),0.5)
         time_ns, ene_pes = rebin_twf(twf_zs.time_ns.values,twf_zs.ene_pes.values,stride)
         twf = wf2df(time_ns, ene_pes)
-        
+
         logger.debug("-->len(twf) ={}".format(len(twf)))
-        
+
         rdata.append(twf)
     return rdata
 
@@ -147,78 +149,76 @@ def wf2df(time_ns,energy_pes):
     """
     swf = {}
     swf['time_ns'] = time_ns
-    swf['ene_pes'] = energy_pes 
+    swf['ene_pes'] = energy_pes
     return pd.DataFrame(swf)
 
-def simulate_sipm_response(event_number,sipmrd_):
+def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
     """
     For the moment use a dummy rutne that simply copies the sipm EARRAY
     """
-    rdata = []
-
-    for j in range(sipmrd_.shape[1]):
-        rdata.append(sipmrd_[event_number, j])
-    return np.array(rdata)
+    return sipmrd_[event_number] + sipms_noise_sampler.Sample(sipmrd_.shape[2]), sipmrd_[event_number,:,:]
+    # for j in range(sipmrd_.shape[1]):
+    #     rdata.append(sipmrd_[event_number, j] + samples[j])
+    # return np.array(rdata)
 
 
 def simulate_pmt_response(event_number,pmtrd_):
     """
     Sensor Response
-    Given a signal in PE (photoelectrons in bins of 1 ns) and the response function of 
+    Given a signal in PE (photoelectrons in bins of 1 ns) and the response function of
     for a single photoelectron (spe) and front-end electronics (fee)
     this function produces the PMT raw data (adc counts bins 25 ns)
 
     pmtrd_ dataset that holds the PMT PE data for each PMT
-    pmtrd25 dataset to be created with adc counts, bins 25 ns 
+    pmtrd25 dataset to be created with adc counts, bins 25 ns
     after convoluting with electronics
     """
-  
+
     rdata = []
 
     for j in range(pmtrd_.shape[1]):
         logger.debug("-->PMT number ={}".format(j))
-                
+
         pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-        
-        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN) 
+
+        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
         spe = SP.SPE(pmt_gain=FP.PMT_GAIN,x_slope = 5*ns,x_flat = 1*ns)
-    
+
         signal_PMT = spe.SpePulseFromVectorPE(pmt) #PMT response
 
         #Front end response to PMT pulse (in volts)
-        signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE) 
+        signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE)
 
         #Signal out of DAQ
         #positive signal convention
         #signal_daq = fee.daqSignal(signal_fee, noise_rms=0) - FP.offset
         #negative signals convention!
 
-        signal_daq = FP.offset -fee.daqSignal(signal_fee, noise_rms=0) 
-    
+        signal_daq = FP.offset -fee.daqSignal(signal_fee, noise_rms=0)
+
         rdata.append(signal_daq)
     return np.array(rdata)
-
 
 def DIOMIRA(argv):
     """
     Diomira driver
     """
     DEBUG_LEVEL, INFO, CYTHON, CFP = configure(argv[0],argv[1:])
-   
+
     if INFO:
-        
+
         print("""
         DIOMIRA:
-         1. Reads an MCRD file produced by art/centella, which stores MCRD 
+         1. Reads an MCRD file produced by art/centella, which stores MCRD
          waveforms for PMTs (bins of 1 ns)
         and the SiPMs (bins of 1 mus)
-            
 
-        2. Simulates the response of the energy plane in the PMTs MCRD, 
+
+        2. Simulates the response of the energy plane in the PMTs MCRD,
         and produces both RWF and TWF:
         see: http://localhost:8931/notebooks/Nh5-Event-Model.ipynb#Reconstructed-Objects
-        
-            
+
+
         3. Simulates the response of the tracking plane in the SiPMs MCRD and outputs
             SiPM RWF (not yet implemented, for the time being simply copy the MCRD)
 
@@ -252,9 +252,9 @@ def DIOMIRA(argv):
     print("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
 
-    # open the input file 
-    with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in: 
-        # access the PMT raw data in file 
+    # open the input file
+    with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r") as h5in:
+        # access the PMT raw data in file
 
         pmtrd_ = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
@@ -263,7 +263,7 @@ def DIOMIRA(argv):
 
         NPMT = pmtrd_.shape[1]
         NSIPM = sipmrd_.shape[1]
-        PMTWL = pmtrd_.shape[2] 
+        PMTWL = pmtrd_.shape[2]
         #PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
         PMTWL_FEE = int(PMTWL/FP.time_DAQ)  #old format
         SIPMWL = sipmrd_.shape[2]
@@ -283,11 +283,13 @@ def DIOMIRA(argv):
         sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
 
-        
-        # open the output file 
+        index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
+        sipms_noise_sampler_ = SiPMNoiseSampler("../data/NoiseSiPM_NEW.dat",index_map)
+
+        # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
             filters=tables.Filters(complib=CLIB, complevel=CLEVEL)) as h5out:
- 
+
             # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
             # copy the mctrk table
@@ -308,11 +310,11 @@ def DIOMIRA(argv):
             # create a table to store Energy plane FEE data and hang it from MC group
             fee_table = h5out.create_table(mcgroup, "FEE", FEE,
                           "EP-FEE parameters",tables.Filters(0))
-            
-            
+
+
             # create a group to store True waveform data
             twfgroup = h5out.create_group(h5out.root, "TWF")
-                                          
+
             # create a table to store true waveform (zs, rebinned)
             twf_table = h5out.create_table(twfgroup, "TWF", TWF, "Store for TWF",
                                 tables.Filters(complib=CLIB, complevel=CLEVEL))
@@ -325,33 +327,38 @@ def DIOMIRA(argv):
 
             # create a group to store RawData
             rgroup = h5out.create_group(h5out.root, "RD")
-            
-            # create an extensible array to store the RWF waveforms
-            pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf", 
-                                    atom=tables.Float32Atom(), 
-                                    shape=(0, NPMT, PMTWL_FEE), 
-                                    expectedrows=NEVENTS_DST)
-              
 
-            sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf", 
-                                    atom=tables.Float32Atom(), 
-                                    shape=(0, NSIPM, SIPMWL), 
+            # create an extensible array to store the RWF waveforms
+            pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
+                                    atom=tables.Float32Atom(),
+                                    shape=(0, NPMT, PMTWL_FEE),
+                                    expectedrows=NEVENTS_DST)
+
+
+            sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
+                                    atom=tables.Float32Atom(),
+                                    shape=(0, NSIPM, SIPMWL),
+                                    expectedrows=NEVENTS_DST)
+
+            sipmrwfnl = h5out.create_earray(h5out.root.RD, "sipmrwfnoiseless",
+                                    atom=tables.Float32Atom(),
+                                    shape=(0, NSIPM, SIPMWL),
                                     expectedrows=NEVENTS_DST)
 
             #LOOP
             first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST,RUN_ALL)
-            
+
             t0 = time()
             for i in range(first_evt,last_evt):
                 logger.info("-->event number ={}".format(i))
-                
+
                 # supress zeros in MCRD and rebins the ZS function in 1 mus bins
 
                 rebin = int(1*mus/1*ns)  #rebins zs function in 1 mus bin
 
                 #list with zs twf
                 truePMT = twf_signal(i,pmtrd_, rebin)
-                
+
                 #store in table
                 store_twf(i, twf_table, truePMT)
 
@@ -359,18 +366,19 @@ def DIOMIRA(argv):
                 dataPMT = simulate_pmt_response(i,pmtrd_)
 
                 #convert to float
-                dataPMT.astype(float) 
-                
+                dataPMT.astype(float)
+
                 #append to EVECTOR
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
-                
-                   
+
+
                 #simulate SiPM response and return an array with RWF
                 #convert to float, append to EVector
 
-                dataSiPM = simulate_sipm_response(i,sipmrd_)
-                dataSiPM.astype(float)
+                dataSiPM, dataSiPMnl = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
+                dataSiPM.astype(float);dataSiPMnl.astype(float)
                 sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
+                sipmrwfnl.append(dataSiPMnl.reshape(1, NSIPM, SIPMWL))
 
             t1 = time()
             pmtrwf.flush()
@@ -384,4 +392,3 @@ if __name__ == '__main__':
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
     DIOMIRA(sys.argv)
-    
