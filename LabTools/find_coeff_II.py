@@ -7,7 +7,7 @@ Created on Thu Jul 28 00:24:52 2016
 
 import numpy as np
 import matplotlib.pyplot as plt
-from BLR import BLR
+from DBLR_cal import BLRc
 from panel_to_hdf5 import read_panel_hdf5
 from scipy.optimize import curve_fit
 from scipy.optimize import leastsq
@@ -43,20 +43,28 @@ def find_coeff_II(  LIMIT_L, LIMIT_H, PULSE_R,
 	
 	############## AUXILIARY TOOLS #########################################
 	
+
+	def area(signal, start, stop):
+		mec = signal[start:stop].sum()
+		return mec
+
 	def BLR_pulse(x, coef, f, X_x):
 		# Applies BLR reconstruction function to f signal using coef
-		signal = BLR(signal_daq=(4096-f[X_x].flatten().astype(float)), 
-									coef=coef, mau_len=250,	thr1 = 1.5*FP.NOISE_ADC, thr2 = 0, thr3= thr3_a)
-		return signal.signal_r[x]
+		signal = BLRc(signal_daq=(f[X_x].flatten().astype(float)), 
+								  coef=coef, 
+								  thr1 = 1.5*FP.NOISE_ADC)
+		return signal[x]
 		
-
 	def find_baseline(x):
 	    # Finds baseline in a given sequence 
 		length_signal = np.size(x)
-		baseline = x.sum() / length_signal
-		
+		baseline = x.sum() / length_signal		
 		return baseline	
+
+
+
 	
+
 	########################################################################	
 	
 
@@ -74,15 +82,20 @@ def find_coeff_II(  LIMIT_L, LIMIT_H, PULSE_R,
 
 	# Signal baseline
 	baseline 	   = 4096-find_baseline(signal[0:PULSE_R])					
-	print ('BASELINE= ', baseline)	
+	signal_p = (4096 - signal) - baseline
+	final_area_AC = area(signal_p,0,np.size(signal_p)-1)
+	print ('BASELINE = ', baseline)
+	print ('AREA FINAL = ', final_area_AC)
 
     # X axis data						
-	X = np.array(range(0,np.size(signal)))
-	
+	X = np.array(range(0,np.size(signal_p)))
+
 	# Function for LS minimization
-	func = lambda coef,x: BLR_pulse(x, coef, signal, X)
+	func = lambda coef,x: BLR_pulse(x, coef, signal_p, X)
 	# Error function for LS minimization
-	ErrorFunc = lambda coef,x: np.std(func(coef,x),ddof=0)
+	ErrorFunc = lambda coef,x: np.std(func(coef,x))
+							   #(area(signal_p,0,length(signal_p))/length(signal_p))**2 
+	#ErrorFunc = lambda coef,x: final_area_AC*coef-func(coef,x)
 
 	p0 = 1.4E-3
 	coeff,cov,infodict,mesg,ier = leastsq(ErrorFunc,p0,
@@ -100,38 +113,32 @@ def find_coeff_II(  LIMIT_L, LIMIT_H, PULSE_R,
 # beginning of the tail just after the failing edge and the LED transient
 
 
-	out1 = BLR(signal_daq=(4096-signal[X].flatten().astype(float)),
+	out1 = BLRc(signal_daq=(signal_p[X].flatten().astype(float)),
 							coef=coeff,
-							mau_len=250,
-							thr1 = 1.5*FP.NOISE_ADC, thr2 = 0, 
-							thr3 = thr3_a)
+							thr1 = 1.5*FP.NOISE_ADC)
 
-	out2 = BLR(signal_daq=(4096-signal[X].flatten().astype(float)),
-							coef=coeff*1.1,
-							mau_len=250,
-							thr1 = 1.5*FP.NOISE_ADC, thr2 = 0, 
-							thr3 = thr3_a)
+	out2 = BLRc(signal_daq=(signal_p[X].flatten().astype(float)),
+							coef=coeff*1.025,
+							thr1 = 1.5*FP.NOISE_ADC)
 
-	out3 = BLR(signal_daq=(4096-signal[X].flatten().astype(float)),
-							coef=coeff*0.9,
-							mau_len=250,
-							thr1 = 1.5*FP.NOISE_ADC, thr2 = 0, 
-							thr3 = thr3_a)
+	out3 = BLRc(signal_daq=(signal_p[X].flatten().astype(float)),
+							coef=coeff*0.975,
+							thr1 = 1.5*FP.NOISE_ADC)
 
 	# This is to keep an eye on the evolution of the error (+-2.5% change in coeff)
 
 	plt.figure()
-	plt.plot(X, 4096-signal)			
-	plt.plot(X, out1.signal_r, 'r--', linewidth=1)
-	plt.plot(X, out2.signal_r, 'b--', linewidth=2)
-	plt.plot(X, out3.signal_r, 'b--', linewidth=2)
+	plt.plot(X, signal_p)			
+	plt.plot(X, out1, 'r--', linewidth=1)
+	plt.plot(X, out2, 'b--', linewidth=2)
+	plt.plot(X, out3, 'g--', linewidth=2)
 	plt.show()
 
 	thr_ener = thr_ener_delta
 
-	ener1=(out1.signal_r>thr_ener)*out1.signal_r
-	ener2=(out2.signal_r>thr_ener)*out2.signal_r
-	ener3=(out3.signal_r>thr_ener)*out3.signal_r
+	ener1=(out1>thr_ener)*out1
+	ener2=(out2>thr_ener)*out2
+	ener3=(out3>thr_ener)*out3
 
 	print (100*(ener2.sum()-ener1.sum())/ener1.sum(), ener1.sum(), 100*(ener3.sum()-ener1.sum())/ener1.sum())
 
@@ -152,54 +159,54 @@ def main():
 	#							a long decay -> make decay as flat (linear) as posible
 	#							minimizing std of the "bump" zone
 
-	# for i in range(2,24,1): 
-	#    	LIMIT_L       = 1870
-	#    	LIMIT_H       = 8000
-	#    	PULSE_R  	 = 1738
-	# 	PULSE_L 	 = 40
-	#    	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_1u.h5.z'
-	#    	Channel 		     = i
-	#    	event_range      = range(0,500,1)
+	for i in range(2,24,1): 
+	   	LIMIT_L       = 1990
+	   	LIMIT_H       = LIMIT_L+3040 #2 TAU
+	   	PULSE_R  	 = 1738
+		PULSE_L 	 = 40
+	   	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_1u.h5.z'
+	   	Channel 		     = i
+	   	event_range      = range(0,500,1)
 
-	# 	coeff[i,0] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R, PULSE_L,
-	# 								hdf5_file, Channel, event_range )	
-	# 	print (coeff)
-
-
-	# for i in range(2,24,1): 
-	#    	LIMIT_L       = 1980
-	#    	LIMIT_H       = 8000
-	#    	PULSE_R  	 = 1735
-	#		PULSE_L 	 = 1600
-	#    	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_2u5.h5.z'
-	#    	Channel 		     = i
-	#    	event_range      = range(0,500,1)
-
-	# 	coeff[i,1] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R, PULSE_L,
-	# 								hdf5_file, Channel, event_range )	
-	# 	print (coeff)
+		coeff[i,0] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R,
+									hdf5_file, Channel, event_range )	
+		print (coeff)
 
 
-	# for i in range(2,24,1): 
-	#    	LIMIT_L       = 2230
-	#    	LIMIT_H       = 8000
-	#    	PULSE_R  	 = 1736
-	#    	PULSE_L 	 = 400
-	#    	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_10u.h5.z'
-	#    	Channel 		     = i
-	#    	event_range      = range(0,500,1)
+	for i in range(2,24,1): 
+	   	LIMIT_L       = 2040
+	   	LIMIT_H       = LIMIT_L+3040 #2 TAU
+	   	PULSE_R  	 = 1735
+		PULSE_L 	 = 1600
+	   	hdf5_file 	 = 'F:/DATOS_DAC/CALIBRATION/cal_2u5.h5.z'
+	   	Channel 		     = i
+	   	event_range      = range(0,500,1)
 
-	# 	coeff[i,2] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R, PULSE_L,
-	# 								hdf5_file, Channel, event_range )	
-	# 	print (coeff)
+		coeff[i,1] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R, 
+									hdf5_file, Channel, event_range )	
+		print (coeff)
+
+
+	for i in range(2,24,1): 
+	   	LIMIT_L       = 2350
+	   	LIMIT_H       = LIMIT_L+3040 #2 TAU
+	   	PULSE_R  	 = 1736
+	   	PULSE_L 	 = 400
+	   	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_10u.h5.z'
+	   	Channel 		     = i
+	   	event_range      = range(0,500,1)
+
+		coeff[i,2] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R, 
+									hdf5_file, Channel, event_range )	
+		print (coeff)
 	   	
 
-	for i in range(23,24,1): 
-	   	LIMIT_L       = 3850
-	   	LIMIT_H       = 4250
+	for i in range(2,24,1): 
+	   	LIMIT_L       = 3840
+	   	LIMIT_H       = LIMIT_L+3040 #2 TAU
 	   	PULSE_R  	 = 1736
 		PULSE_L 	 = 2000
-	   	hdf5_file 	 = '/mnt/WINDOWS_ntfs/DATOS_DAC/CALIBRATION/cal_50u.h5.z'
+	   	hdf5_file 	 = 'F:/DATOS_DAC/CALIBRATION/cal_50u.h5.z'
 	   	Channel 		     = i
 	   	event_range      = range(0,500,1)
 
@@ -208,22 +215,28 @@ def main():
 		print (coeff)
 
 
-	# for i in range(2,24,1): 
-	#    	LIMIT_L       = 5820
-	#    	LIMIT_H       = 16000
-	#    	PULSE_R  	 = 1736
-	# 	PULSE_L 	 = 4000
-	#    	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_100u.h5.z'
-	#    	Channel 		     = i
-	#    	event_range      = range(0,500,1)
+	for i in range(2,24,1): 
+	   	LIMIT_L       = 5820
+	   	LIMIT_H       = LIMIT_L+3040 #2 TAU
+	   	PULSE_R  	 = 1736
+		PULSE_L 	 = 4000
+	   	hdf5_file 	 = 'F:\DATOS_DAC\CALIBRATION\cal_100u.h5.z'
+	   	Channel 		     = i
+	   	event_range      = range(0,500,1)
 
-	# 	coeff[i,4] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R, PULSE_L,
-	# 								hdf5_file, Channel, event_range )	
-	#	print (coeff)
+		coeff[i,4] = find_coeff_II( LIMIT_L, LIMIT_H, PULSE_R,
+									hdf5_file, Channel, event_range )	
+		print (coeff)
 
 
-	#aux_frame = pd.DataFrame(coeff)
 	
+	coeff_aux=np.array(np.zeros((24,1)))
+	coeff_aux[:,0] = np.mean(coeff,axis=1,dtype=np.float64)
+	# Add a new column with the mean of the 5 values for each channel
+	coeff=np.concatenate((coeff,coeff_aux),axis=1)
+	aux_frame = pd.DataFrame(coeff)
+	aux_frame.to_csv('coeff_ptp.txt')
+
 
 if __name__ == "__main__":
 	main()
