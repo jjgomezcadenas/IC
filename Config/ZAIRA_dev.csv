@@ -1,0 +1,18 @@
+# Configuration file for ZAIRA
+# The parameters for ZAIRA are:
+#
+#        PATH_IN = path to input DST file (must be a MCRD file)
+#        FILE_IN = name of input DST file
+#		 DB_FE_SIPM = name of the BD file with the noise and darknoise
+#        FIRST_EVT,LAST_EVT,RUN_ALL,
+#
+#        RUN_ALL is used to decide whether to run all the events in the file
+#        in case that the total number of events requested (LAST_EVT-FIRST_EVT) 
+#        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
+#        the script will run over all elements in the DST, 
+#        otherwise it will exit with a warning.
+#        CLIB = compression library used: values can be 'ZLIB', 'BLOSC' or 'NONE'
+#        CLEVEL = compression level
+#
+PATH_IN,FILE_IN,DB_FE_SIPM,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL,END 
+/Users/hernando/Investigacion/NEXT/NEXT-Reco/icnew/Data,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,/Users/hernando/Investigacion/NEXT/NEXT-Reco/icnew/IC/Config/DB_FESiPMs_161006.txt,0,10,1,zlib,1,1
