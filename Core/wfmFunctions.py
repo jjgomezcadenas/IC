@@ -94,6 +94,15 @@ def wfdf(time_ns,energy_pes,indx):
     swf['indx'] = indx
     return pd.DataFrame(swf)
 
+def wf2df(time_ns,energy_pes):
+    """
+    takes two vectors (time, energy) and returns a data frame representing a waveform
+    """
+    swf = {}
+    swf['time_ns'] = time_ns
+    swf['ene_pes'] = energy_pes 
+    return pd.DataFrame(swf)
+
 
 def add_cwf(cwfdf,pmtDF):
     """
