@@ -1,0 +1,17 @@
+## FEE CALIBRATION STUFF ##
+
+The hdf5 files databases measured at IFIC (16/9/2016) are stored
+in dateuser@daqdell01.ific.uv.es. They have not been added to GitHub Repo
+for disk space reasons (over 350 MB compressed)
+
+The FEE_CALIBRATION.ipynb (Jupyter Notebook - forgive me it's my first JPN :-)
+carries the calibration process. Please read all the notes and contact me if
+you need any help. Remmember that 50u and 100u pulses have been excluded from
+calibration
+
+find_coeff_II is used by FEE_CALIBRATION. It is still based on old DBLR_cal since
+it only applies the basic algorithm BLRc
+
+
+
+
