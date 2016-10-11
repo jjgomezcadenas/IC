@@ -20,7 +20,7 @@ class DataPMT(tables.IsDescription):
     channel = tables.Int16Col(pos=1) #electronic channel
     active = tables.Int16Col(pos=2) # 1 if active. 0 if dead
     position = tables.Float32Col(shape=3, pos=3)
-    gain =tables.Float32Col(pos=4)
+    gain =tables.Float32Col(pos=4)   #for PMT gain is the accumulator coeff
     adc_to_pes =tables.Float32Col(pos=5)
 
 class DataSiPM(tables.IsDescription):
@@ -59,7 +59,7 @@ class PMT_TWF(tables.IsDescription):
     """
     event = tables.UInt32Col(pos=0)
     pmt = tables.UInt32Col(pos=1)
-    time_ns = tables.Float32Col(pos=2)
+    time_mus = tables.Float32Col(pos=2)
     ene_pes = tables.Float32Col(pos=3)
 
 class SiPM_TWF(tables.IsDescription):
@@ -68,8 +68,8 @@ class SiPM_TWF(tables.IsDescription):
     """
     event = tables.UInt32Col(pos=0)
     sipm = tables.UInt32Col(pos=1)
-    time_us = tables.Float32Col(pos=2)
-    amp_pes = tables.Float32Col(pos=3)
+    time_mus = tables.Float32Col(pos=2)
+    ene_pes = tables.Float32Col(pos=3)
 
 class FEE(tables.IsDescription):
     """

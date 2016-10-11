@@ -84,10 +84,10 @@ def store_pmt_twf(event, table, TWF):
     """
     row = table.row
     for ipmt,twf in TWF.items():
-        for t,e in zip(twf.time_ns, twf.ene_pes):
+        for t,e in zip(twf.time_mus, twf.ene_pes):
             row['event'] = event
             row['pmt'] = ipmt
-            row['time_ns'] = t
+            row['time_mus'] = t
             row['ene_pes'] = e
             row.append()
     table.flush()
@@ -99,11 +99,11 @@ def store_sipm_twf(event, table, TWF):
     """
     row = table.row
     for isipm,twf in TWF.items():
-        for t,e in zip(twf.time_us, twf.amp_pes):
+        for t,e in zip(twf.time_mus, twf.ene_pes):
             row['event'] = event
             row['sipm'] = isipm
-            row['time_us'] = t
-            row['amp_pes'] = e
+            row['time_mus'] = t
+            row['ene_pes'] = e
             row.append()
     table.flush()
 
@@ -152,12 +152,12 @@ def pmt_twf_signal(event_number,pmtrd, stride):
         logger.debug("-->PMT number ={}".format(j))
 
         energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
-        time_ns = np.arange(pmtrd.shape[2])
+        time_mus = np.arange(pmtrd.shape[2])*ns/mus
 
-        twf_zs = wfm.wf_thr(wf2df(time_ns,energy_pes),0.5)
-        time_ns, ene_pes = rebin_twf(twf_zs.time_ns.values,twf_zs.ene_pes.values,stride)
-        if not time_ns.any(): continue
-        twf = wf2df(time_ns, ene_pes)
+        twf_zs = wfm.wf_thr(wf2df(time_mus,energy_pes),0.5)
+        time_mus, ene_pes = rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
+        if not time_mus.any(): continue
+        twf = wf2df(time_mus, ene_pes)
 
         logger.debug("-->len(twf) ={}".format(len(twf)))
 
@@ -171,19 +171,19 @@ def sipm_twf_signal(event_number,sipmrd):
     '''
     out = {}
     for index,wfm in enumerate(sipmrd[event_number]):
-        time_us = np.where( wfm > 0. )[0]
-        if not time_us.any(): continue
-        amp_pes = wfm[time_us]
-        out[index] = pd.DataFrame( {'time_us':time_us, 'amp_pes':amp_pes} )
+        time_mus = np.where( wfm > 0. )[0]
+        if not time_mus.any(): continue
+        ene_pes = wfm[time_mus]
+        out[index] = pd.DataFrame( {'time_mus':time_mus, 'ene_pes':ene_pes} )
     return out
 
 
-def wf2df(time_ns,energy_pes):
+def wf2df(time_mus,energy_pes):
     """
     takes two vectors (time, energy) and returns a data frame representing a waveform
     """
     swf = {}
-    swf['time_ns'] = time_ns
+    swf['time_mus'] = time_mus
     swf['ene_pes'] = energy_pes
     return pd.DataFrame(swf)
 
