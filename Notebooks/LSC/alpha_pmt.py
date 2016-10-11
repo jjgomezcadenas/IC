@@ -1,6 +1,27 @@
-def pmt_alpha(pmtrwf,pmtdf, geomdf, thr=7*pes, t_trigger = 600, log='INFO', plot=False, event_list=[0]):
+from __future__ import print_function
+import time
+import matplotlib.pyplot as plt
+import pandas as pd
+import tables as tb
+import numpy as np
+import mplFunctions as mpl
+import wfmFunctions as wfm
+import sensorFunctions as snf
+from Util import *
+import FEParam as FP
+from scipy import signal as SGN
+
+import logging
+import sys
+logger = logging.getLogger()
+logger.handlers[0].stream = sys.stdout
+logger.setLevel(logging.DEBUG)
+pes = 1
+
+def alpha(pmtrwf,pmtdf, geomdf, thr_pmt=10*pes, thr_sipm=4*pes,
+              t_trigger = 600, log='INFO', plot=False, event_list=[2]):
     """
-    alpha analysis based on PMTs
+    alpha analysis 
     """
     lg = 'logging.'+DEBUG
     logger.setLevel(eval(lg))
@@ -27,7 +48,7 @@ def pmt_alpha(pmtrwf,pmtdf, geomdf, thr=7*pes, t_trigger = 600, log='INFO', plot
             plt.show()
             wait()
 
-        s12 = find_S12(wf_thr(sPMT(PMT),threshold=thr))
+        s12 = find_S12(wf_thr(sPMT(PMT),threshold=thr_pmt))
 
         logger.debug('length of s12 = {}'.format(len(s12)))
         S1 = []
@@ -109,6 +130,7 @@ def pmt_alpha(pmtrwf,pmtdf, geomdf, thr=7*pes, t_trigger = 600, log='INFO', plot
         t[event] = find_t(s1,s2)
         xb[event], yb[event] = pmt_barycenter(pmtdf, epmt)
         s2l[event] = s12_length(s2)
+
 
 
 def get_vectors(h5f):
@@ -330,12 +352,12 @@ def s12_length(s12):
     """
 
     return s12.describe().time_mus['max'] - s12.describe().time_mus['min']
-def s12_peak(s2):
+def s12_peak(s12):
     """
     s2 peak in mus
     """
 
-    return s12.describe().time_mus['max'], s2.describe().ene_pes['max']
+    return s12.describe().time_mus['max'], s12.describe().ene_pes['max']
 def find_t(s1,s2):
     """
     returns the time of the interaction
@@ -343,3 +365,63 @@ def find_t(s1,s2):
     t0 = find_t0(s1).time_mus.values[0]
     ts2,es2 = s12_peak(s2)
     return ts2 - t0
+def pmt_barycenter(geom_df,sensor_df, energy):
+    """
+    plots the energy of the sensors
+    """
+    x =sensor_df['x'].values
+    y =sensor_df['y'].values
+    etot = np.sum(energy)
+    xb = np.dot(x,energy)/etot
+    yb = np.dot(y,energy)/etot
+
+    return xb,yb
+
+def sPMT(pmt_panel):
+    return pmt_panel[pmt_panel.items[-1]]
+def sipm_corona(esipmzs, sipmdf, n=2):
+    pitch = 10*mm
+    sipm_max = esipmzs.loc[lambda df: df.values == df.describe().max()]
+
+    imax = sipm_max.index[0]
+    xmax = sipmdf.ix[imax].x
+    ymax = sipmdf.ix[imax].y
+
+    CRNA = []
+    ALL = []
+
+    #print('sipmmax = {}, x = {} mm y = {} mm'.format(imax,xmax,ymax))
+    xr = np.arange(xmax - n*pitch, xmax + (n+1)*pitch, pitch)
+    yr = np.arange(ymax - n*pitch, ymax + (n+1)*pitch, pitch)
+    #print('xr = {}, yr ={}'.format(xr,yr))
+
+    for isipm in esipmzs.index:
+        x = sipmdf.ix[isipm].x
+        y = sipmdf.ix[isipm].y
+        #print('sipm = {}, x = {} mm y = {} mm'.format(isipm,x,y))
+
+        ALL.append(isipm)
+        if x in xr and y in yr:
+            CRNA.append(isipm)
+
+    #print('CRNA  = {}'.format(CRNA))
+    #print('ALL = {}'.format(ALL))
+
+    #left = np.setdiff1d(np.array(ALL),np.array(CRNA))
+    #print('left = {}'.format(left))
+
+    xb = 0.
+    yb = 0.
+    etot = 0.
+    for i in CRNA:
+        x = sipmdf.ix[i].x
+        y = sipmdf.ix[i].y
+        e = esipmzs.ix[i]
+        xb += x*e
+        yb += y*e
+        etot+=e
+
+    xb/=etot
+    yb/=etot
+    #print('xb = {}, yb = {}'.format(xb,yb))
+    return xb,yb
