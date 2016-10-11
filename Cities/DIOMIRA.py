@@ -24,7 +24,7 @@ from time import time
 import wfmFunctions as wfm
 import pandas as pd
 
-from RandomSampling import SiPMsNoiseSampler
+from RandomSampling import NoiseSampler as SiPMsNoiseSampler
 #------
 
 

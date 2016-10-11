@@ -4,9 +4,9 @@
 from __future__ import print_function
 import numpy as np
 
-class SiPMsNoiseSampler:
+class NoiseSampler:
     def __init__(self,filename,index_map,sample_size = 1,smear = True):
-        print("Initializing SiPMNoiseSampler",end=" ")
+        print("Initializing NoiseSampler...",end=" ")
         data = np.loadtxt(filename )
 
         self.xbins = data[0,1:] # xbins are stored in the first line. First value is dummy.
