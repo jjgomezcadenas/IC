@@ -50,6 +50,10 @@ now--> ZS waveform rebinned at 1 mus in a Table
 (adavantages:) faster processing less space
 
 01.10 moved loop definition to Configure.py and added index to TWF table
+
+11.10 introduced SiPM noise. SiPMs' true waveforms stored under TWF group.
+Some variables, classes and functions renamed for clarity.
+
 """
 def FEE_param_table(fee_table):
     """
