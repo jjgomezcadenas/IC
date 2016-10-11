@@ -19,9 +19,10 @@ logger.setLevel(logging.DEBUG)
 pes = 1
 
 def alpha(pmtrwf,pmtdf, geomdf, thr_pmt=10*pes, thr_sipm=4*pes,
-              t_trigger = 600, log='INFO', plot=False, event_list=[2]):
+              t_trigger = 600, thr_s1 = 30*pes, thr_s2 = 5000*pes,
+              log='INFO', plot=False, event_list=[2]):
     """
-    alpha analysis 
+    alpha analysis
     """
     lg = 'logging.'+DEBUG
     logger.setLevel(eval(lg))
