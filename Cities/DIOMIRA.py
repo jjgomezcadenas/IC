@@ -268,6 +268,7 @@ def DIOMIRA(argv):
     PATH_OUT =CFP['PATH_OUT']
     FILE_IN =CFP['FILE_IN']
     FILE_OUT =CFP['FILE_OUT']
+    PATH_DB =CFP['PATH_DB']
     FIRST_EVT =CFP['FIRST_EVT']
     LAST_EVT =CFP['LAST_EVT']
     RUN_ALL =CFP['RUN_ALL']
@@ -298,8 +299,8 @@ def DIOMIRA(argv):
         NPMT = pmtrd_.shape[1]
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2]
-        #PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
-        PMTWL_FEE = int(PMTWL/FP.time_DAQ)  #old format
+        #PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ) #old format
+        PMTWL_FEE = int(PMTWL/FP.time_DAQ)
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
@@ -320,7 +321,7 @@ def DIOMIRA(argv):
         # Map of the SiPMs' sensorID to the index used by tables
         index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
         # Create instance of the noise sampler
-        sipms_noise_sampler_ = SiPMsNoiseSampler("../Database/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
