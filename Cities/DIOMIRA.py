@@ -316,7 +316,7 @@ def DIOMIRA(argv):
         # Map of the SiPMs' sensorID to the index used by tables
         index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
         # Create instance of the noise sampler
-        sipms_noise_sampler_ = SiPMNoiseSampler("../NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
+        sipms_noise_sampler_ = SiPMsNoiseSampler("../NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
