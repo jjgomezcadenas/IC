@@ -389,7 +389,7 @@ def DIOMIRA(argv):
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
                 dataSiPM.astype(float)
 
-                zs_wfms = sns.sensor_wise_zero_suppresion(dataSiPM,thresholds)
+                zs_wfms = sns.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
 
                 store_wf( i, sipm_rwf_table, zs_wfms )
 
