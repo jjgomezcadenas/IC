@@ -298,7 +298,7 @@ def DIOMIRA(argv):
         index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
         # Create instance of the noise sampler
         sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
-        sipms_noise_thresholds_ = SiPMsNoiseSampler.ComputeThresholds(NOISE_CUT_FRACTION)
+        sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_FRACTION)
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
             filters=tables.Filters(complib=CLIB, complevel=CLEVEL)) as h5out:
