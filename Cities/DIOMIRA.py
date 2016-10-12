@@ -353,10 +353,10 @@ def DIOMIRA(argv):
             twfgroup = h5out.create_group(h5out.root, "TWF")
 
             # create a table to store true waveform (zs, rebinned)
-            pmt_twf_table = h5out.create_table( twfgroup, "PMT", PMT_TWF, "Store for PMTs TWF",
+            pmt_twf_table = h5out.create_table( twfgroup, "PMT", SENSOR_WF, "Store for PMTs TWF",
                                                 tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
-            sipm_twf_table = h5out.create_table( twfgroup, "SiPM", SiPM_TWF, "Store for SiPMs TWF",
+            sipm_twf_table = h5out.create_table( twfgroup, "SiPM", SENSOR_WF, "Store for SiPMs TWF",
                                                  tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
             #and index in event column
