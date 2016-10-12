@@ -2,4 +2,4 @@
 *.pyc
 *.h5
 setup.sh
-*.ipynb
+.ipynb*
