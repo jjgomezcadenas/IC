@@ -23,7 +23,6 @@ import FEE2 as FE
 import tables
 from time import time
 import wfmFunctions as wfm
-import sensorFunctions as sns
 import pandas as pd
 
 from RandomSampling import NoiseSampler as SiPMsNoiseSampler
@@ -81,52 +80,6 @@ def FEE_param_table(fee_table):
 
     row.append()
 
-
-def store_wf(event, table, WF):
-    """
-    Store WF in table
-    """
-    row = table.row
-    for isens,wf in WF.items():
-        for t,e in zip(wf.time_mus, wf.ene_pes):
-            row['event'] = event
-            row['ID'] = isens
-            row['time_mus'] = t
-            row['ene_pes'] = e
-            row.append()
-    table.flush()
-
-def rebin_twf(t, e, stride = 40):
-    """
-    rebins the a waveform according to stride
-    The input waveform is a vector such that the index expresses time bin and the
-    contents expresses energy (e.g, in pes)
-    The function returns the rebinned times and energies
-    """
-
-    n = len(t)/int(stride)
-    r = len(t)%int(stride)
-
-    lenb = n
-    if r > 0:
-        lenb = n+1
-
-    T = np.zeros(lenb,dtype=np.float32)
-    E = np.zeros(lenb,dtype=np.float32)
-
-    j=0
-    for i in range(n):
-        E[i] = np.sum(e[j:j+stride])
-        T[i] = np.mean(t[j:j+stride])
-        j+= stride
-
-    if r > 0:
-        E[n] = np.sum(e[j:])
-        T[n] = np.mean(t[j:])
-
-    return T,E
-
-
 def pmt_twf_signal(event_number,pmtrd, stride):
     """
     1) takes pmtrd
@@ -143,7 +96,7 @@ def pmt_twf_signal(event_number,pmtrd, stride):
         time_mus = np.arange(pmtrd.shape[2])*ns/mus
 
         twf_zs = wfm.wf_thr(wfm.wf2df(time_mus,energy_pes),0.5)
-        time_mus, ene_pes = rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
+        time_mus, ene_pes = wfm.rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
         if not time_mus.any(): continue
         twf = wfm.wf2df(time_mus, ene_pes)
 
@@ -151,20 +104,6 @@ def pmt_twf_signal(event_number,pmtrd, stride):
 
         rdata[j] = twf
     return rdata
-
-
-def sipm_twf_signal(event_number,sipmrd):
-    '''
-        Removes zeros from SiPM RD.
-    '''
-    out = {}
-    for index,wfm in enumerate(sipmrd[event_number]):
-        time_mus = np.where( wfm > 0. )[0]
-        if not time_mus.any(): continue
-        ene_pes = wfm[time_mus]
-        out[index] = pd.DataFrame( {'time_mus':time_mus, 'ene_pes':ene_pes} )
-    return out
-
 
 def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
     """
@@ -373,11 +312,11 @@ def DIOMIRA(argv):
 
                 #list with zs twf
                 truePMT  =  pmt_twf_signal(i,pmtrd_, rebin)
-                trueSiPM = sipm_twf_signal(i,sipmrd_)
+                trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i],np.zeros(sipmrd_.shape[1]))
 
                 #store in table
-                store_wf(i, pmt_twf_table, truePMT)
-                store_wf(i, sipm_twf_table, trueSiPM)
+                wfm.store_wf(i, pmt_twf_table, truePMT)
+                wfm.store_wf(i, sipm_twf_table, trueSiPM)
 
                 #simulate PMT response and return an array with RWF
                 dataPMT = simulate_pmt_response(i,pmtrd_)
@@ -395,9 +334,9 @@ def DIOMIRA(argv):
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
                 dataSiPM.astype(float)
 
-                zs_wfms = sns.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
+                zs_wfms = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
 
-                store_wf( i, sipm_rwf_table, zs_wfms )
+                wfm.store_wf( i, sipm_rwf_table, zs_wfms )
 
             t1 = time()
             pmtrwf.flush()
