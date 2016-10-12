@@ -9,39 +9,53 @@ ChangeLog
 import pandas as pd
 import numpy as np
 import FEParam as FP
+from system_of_units import *
 
-
-def read_twf(pmttwf, event_number):
+def store_wf(event, table, WF):
     """
-    Reads back the TWF: old version kept for backward compatibility to
-    be deleted asap
+    Store a wavform in a table
     """
-    PMT={}
-    for row in table.where("event == event_number"):
-        pmt = row['ID']
-        time_mus = row['time_mus']
-        ene_pes =  row['ene_pes']
+    row = table.row
+    for isens,wf in WF.items():
+        for t,e in zip(wf.time_mus, wf.ene_pes):
+            row['event'] = event
+            row['ID'] = isens
+            row['time_mus'] = t
+            row['ene_pes'] = e
+            row.append()
+    table.flush()
 
-        #print('pmt = {},time_mus = {},ene_pes = {}'.format(pmt,time_mus,ene_pes))
-        if pmt not in PMT:
-            WF={}
-            TIME =[]
-            ENE = []
-            TIME.append(time_mus)
-            ENE.append(ene_pes)
-            WF['time_mus'] = TIME
-            WF['ene_pes'] = ENE
-            PMT[pmt] = WF
-        else:
-            WF = PMT[pmt]
-            TIME = WF['time_mus']
-            ENE  = WF['ene_pes']
-            TIME.append(time_mus)
-            ENE.append(ene_pes)
+# def read_twf(pmttwf, event_number):
+#     """
+#     Reads back the TWF: old version kept for backward compatibility to
+#     be deleted asap
+#     """
+#     PMT={}
+#     for row in table.where("event == event_number"):
+#         pmt = row['ID']
+#         time_mus = row['time_mus']
+#         ene_pes =  row['ene_pes']
+#
+#         #print('pmt = {},time_mus = {},ene_pes = {}'.format(pmt,time_mus,ene_pes))
+#         if pmt not in PMT:
+#             WF={}
+#             TIME =[]
+#             ENE = []
+#             TIME.append(time_mus)
+#             ENE.append(ene_pes)
+#             WF['time_mus'] = TIME
+#             WF['ene_pes'] = ENE
+#             PMT[pmt] = WF
+#         else:
+#             WF = PMT[pmt]
+#             TIME = WF['time_mus']
+#             ENE  = WF['ene_pes']
+#             TIME.append(time_mus)
+#             ENE.append(ene_pes)
+#
+#     return PMT
 
-    return PMT
-
-def read_sensor_twf(twf, sensor_list, event_number):
+def read_twf(twf, sensor_list, event_number):
     """
     Reads back the TWF of the PMTs/SiPMs for event number:
     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
@@ -58,6 +72,36 @@ def read_sensor_twf(twf, sensor_list, event_number):
             exit()
 
     return pd.Panel(sensors)
+
+def rebin_twf(t, e, stride = 40):
+    """
+    rebins the a waveform according to stride
+    The input waveform is a vector such that the index expresses time bin and the
+    contents expresses energy (e.g, in pes)
+    The function returns the ned times and energies
+    """
+
+    n = len(t)/int(stride)
+    r = len(t)%int(stride)
+
+    lenb = n
+    if r > 0:
+        lenb = n+1
+
+    T = np.zeros(lenb,dtype=np.float32)
+    E = np.zeros(lenb,dtype=np.float32)
+
+    j=0
+    for i in range(n):
+        E[i] = np.sum(e[j:j+stride])
+        T[i] = np.mean(t[j:j+stride])
+        j+= stride
+
+    if r > 0:
+        E[n] = np.sum(e[j:])
+        T[n] = np.mean(t[j:])
+
+    return T,E
 
 
 def get_waveforms(pmtea,event_number=0):
@@ -139,6 +183,22 @@ def wf_thr(wf,threshold=1):
     return a zero supressed waveform (more generally, the vaules of wf above threshold)
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
+
+def sensor_wise_zero_suppresion(data,thresholds, to_mus=1.0):
+    '''
+        takes an array of waveforms, applies the corresponding threshold to
+        each row and returns a dictionary with the data frames of the survivors.
+    '''
+    def zs_df(waveform,threshold):
+        '''
+            Get the zero-supressed wfms. Return None if it is completely suppresed.
+        '''
+        t = np.argwhere(waveform>threshold).flatten()
+        if not t.any(): return None
+        return wf2df(t*to_mus,waveform[t])
+
+    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
+
 
 def find_S12(swf, stride=40):
     """
@@ -294,16 +354,6 @@ def pmaps_EP(pmtcwf,pmtDF,list_of_events=[0], thr = 1, stride=40):
             S2L.append(PMAP)
         S2PMAP.append(S2L)
     return t0, S2PMAP
-
-def wf_mus(wfns):
-    """
-    Takes as input a waveform expressed in ns and returns a waveform expressed in mus.
-    """
-    swf = {}
-    swf['time_mus'] = wfns['time_mus']/mus
-    swf['ene_pes'] = wfns['ene_pes']
-    swf['indx'] = wfns['indx']
-    return pd.DataFrame(swf)
 
     ### PMAPS
 

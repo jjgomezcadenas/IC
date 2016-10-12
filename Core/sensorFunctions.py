@@ -5,7 +5,6 @@ JJGC, September 2016
 #from __future__ import print_function
 import pandas as pd
 import numpy as np
-import wfmFunctions as wfm
 
 def read_data_geom(geom_t):
     """
@@ -68,18 +67,3 @@ def get_energy_sensors(energy_v):
     reads the sensors energy and returns a data frame
     """
     return pd.DataFrame(energy_v.read())
-
-def sensor_wise_zero_suppresion(data,thresholds):
-    '''
-        takes an array of waveforms, applies the corresponding threshold to
-        each row and returns a dictionary with the data frames of the survivors.
-    '''
-    def zs_df(waveform,threshold):
-        '''
-            Get the zero-supressed wfms. Return None if it is completely suppresed.
-        '''
-        t = np.argwhere(waveform>threshold).flatten()
-        if not t.any(): return None
-        return wfm.wf2df(t,waveform[t])
-
-    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
