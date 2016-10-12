@@ -74,12 +74,12 @@ def sensor_wise_zero_suppresion(data,thresholds):
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
-    def zs_df(wfm,thrsh):
+    def zs_df(waveform,threshold):
         '''
             Get the zero-supressed wfms. Return None if it is completely suppresed.
         '''
-        t = np.argwhere(wfm>thrsh).flatten()
+        t = np.argwhere(waveform>threshold).flatten()
         if not t.any(): return None
-        return wfmF.wf2df(t,wfm[t])
+        return wfm.wf2df(t,waveform[t])
 
     return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
