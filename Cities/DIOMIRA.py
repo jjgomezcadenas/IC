@@ -22,6 +22,7 @@ import FEE2 as FE
 import tables
 from time import time
 import wfmFunctions as wfm
+import sensorFunctions as sns
 import pandas as pd
 
 from RandomSampling import NoiseSampler as SiPMsNoiseSampler
@@ -92,6 +93,20 @@ def store_twf(event, table, TWF):
             row.append()
     table.flush()
 
+
+def store_sipm_rwf( event, table, RWF ):
+    """
+    Store SiPM RWF in table
+    """
+    row = table.row
+    for isipm,rwf in RWF.items():
+        for t,e in zip(rwf.time_mus, rwf.amp_pes):
+            row['event'] = event
+            row['ID'] = isipm
+            row['time_mus'] = t
+            row['amp_pes'] = e
+            row.append()
+    table.flush()
 
 def rebin_twf(t, e, stride = 40):
     """
@@ -249,6 +264,7 @@ def DIOMIRA(argv):
     RUN_ALL =CFP['RUN_ALL']
     CLIB =CFP['CLIB']
     CLEVEL =CFP['CLEVEL']
+    NOISE_CUT_FRACTION = CFP['NOISE_CUT_FRACTION']
     NEVENTS = LAST_EVT - FIRST_EVT
 
     print('Debug level = {}'.format(DEBUG_LEVEL))
@@ -297,7 +313,7 @@ def DIOMIRA(argv):
         index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
         # Create instance of the noise sampler
         sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
-
+        sipms_noise_thresholds_ = SiPMsNoiseSampler.ComputeThresholds(NOISE_CUT_FRACTION)
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
             filters=tables.Filters(complib=CLIB, complevel=CLEVEL)) as h5out:
@@ -350,11 +366,8 @@ def DIOMIRA(argv):
                                     shape=(0, NPMT, PMTWL_FEE),
                                     expectedrows=NEVENTS_DST)
 
-
-            sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
-                                    atom=tables.Float32Atom(),
-                                    shape=(0, NSIPM, SIPMWL),
-                                    expectedrows=NEVENTS_DST)
+            sipm_rwf_table = h5out.create_table( rgroup, "sipmrwf", SENSOR_WF, "Store for SiPMs RWF",
+                                                 tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
             #LOOP
             first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST,RUN_ALL)
@@ -390,11 +403,13 @@ def DIOMIRA(argv):
 
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
                 dataSiPM.astype(float)
-                sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
+
+                zs_wfms = sns.sensor_wise_zero_suppresion(dataSiPM,thresholds)
+
+                store_sipm_rwf( i, sipm_rwf_table, zs_wfms )
 
             t1 = time()
             pmtrwf.flush()
-            sipmrwf.flush()
 
             print("DIOMIRA has run over {} events in {} seconds".format(i, t1-t0))
     print("Leaving Diomira. Safe travels!")
