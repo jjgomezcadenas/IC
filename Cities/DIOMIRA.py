@@ -139,10 +139,10 @@ def pmt_twf_signal(event_number,pmtrd, stride):
         energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
         time_mus = np.arange(pmtrd.shape[2])*ns/mus
 
-        twf_zs = wfm.wf_thr(wf2df(time_mus,energy_pes),0.5)
+        twf_zs = wfm.wf_thr(wfm.wf2df(time_mus,energy_pes),0.5)
         time_mus, ene_pes = rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
         if not time_mus.any(): continue
-        twf = wf2df(time_mus, ene_pes)
+        twf = wfm.wf2df(time_mus, ene_pes)
 
         logger.debug("-->len(twf) ={}".format(len(twf)))
 
@@ -161,16 +161,6 @@ def sipm_twf_signal(event_number,sipmrd):
         ene_pes = wfm[time_mus]
         out[index] = pd.DataFrame( {'time_mus':time_mus, 'ene_pes':ene_pes} )
     return out
-
-
-def wf2df(time_mus,energy_pes):
-    """
-    takes two vectors (time, energy) and returns a data frame representing a waveform
-    """
-    swf = {}
-    swf['time_mus'] = time_mus
-    swf['ene_pes'] = energy_pes
-    return pd.DataFrame(swf)
 
 
 def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
