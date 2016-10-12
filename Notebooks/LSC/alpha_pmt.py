@@ -175,7 +175,7 @@ def waveform_panel(pmtrwf,pmtdf,mau_len = 500, calib_constat =True, adc_to_pes=2
                    type = 'PMT', daq_ceiling=4096, event=0):
     """
     input: sensor (pmt or sipm) data vector, sensor data frame (position, calibration)
-    returns: a panel holding waveforms for all sensors, and a series for the baselines
+    returns: a panel holding DataFrames with waveforms for all sensors, and a series for the baselines
     """
     PMT = {}
     nm = mau_len
