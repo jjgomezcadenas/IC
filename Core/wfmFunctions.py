@@ -111,21 +111,13 @@ def wfdf(time_mus,energy_pes,indx):
     takes three vectors (time, energy and indx) and returns a data frame
     representing a waveform
     """
-    swf = {}
-    swf['time_mus'] = time_mus
-    swf['ene_pes'] = energy_pes
-    swf['indx'] = indx
-    return pd.DataFrame(swf)
+    return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes,'indx':indx})
 
 def wf2df(time_mus,energy_pes):
     """
     takes two vectors (time, energy) and returns a data frame representing a waveform
     """
-    swf = {}
-    swf['time_mus'] = time_mus
-    swf['ene_pes'] = energy_pes
-    return pd.DataFrame(swf)
-
+    return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
 
 def add_cwf(cwfdf,pmtDF):
     """
