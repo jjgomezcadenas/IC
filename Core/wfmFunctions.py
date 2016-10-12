@@ -18,7 +18,7 @@ def read_twf(pmttwf, event_number):
     """
     PMT={}
     for row in table.where("event == event_number"):
-        pmt = row['pmt']
+        pmt = row['ID']
         time_mus = row['time_mus']
         ene_pes =  row['ene_pes']
 
@@ -48,16 +48,16 @@ def read_sensor_twf(twf, sensor_list, event_number):
     outputs: a PMT/SiPM panel
 
     """
-    PMT ={}
+    sensors ={}
     for isensor in sensor_list:
         try:
-            time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['pmt']== isensor])
-            PMT[isensor] = wf2df(time_mus,ene_pes)
+            time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
+            sensors[isensor] = wf2df(time_mus,ene_pes)
         except ValueError:
             logger.error('found an empty sensor')
             exit()
 
-    return pd.Panel(PMT)
+    return pd.Panel(sensors)
 
 
 def get_waveforms(pmtea,event_number=0):
@@ -111,21 +111,13 @@ def wfdf(time_mus,energy_pes,indx):
     takes three vectors (time, energy and indx) and returns a data frame
     representing a waveform
     """
-    swf = {}
-    swf['time_mus'] = time_mus
-    swf['ene_pes'] = energy_pes
-    swf['indx'] = indx
-    return pd.DataFrame(swf)
+    return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes,'indx':indx})
 
 def wf2df(time_mus,energy_pes):
     """
     takes two vectors (time, energy) and returns a data frame representing a waveform
     """
-    swf = {}
-    swf['time_mus'] = time_mus
-    swf['ene_pes'] = energy_pes
-    return pd.DataFrame(swf)
-
+    return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
 
 def add_cwf(cwfdf,pmtDF):
     """
