@@ -257,12 +257,15 @@ def DIOMIRA(argv):
     print("input path ={}; output path = {}; file_in ={} file_out ={}".format(
         PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))
 
+    print("path to database = {}".format(PATH_DB))
+
     print("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
     print("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
 
+    print("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r") as h5in:
         # access the PMT raw data in file
