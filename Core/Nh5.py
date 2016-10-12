@@ -58,7 +58,7 @@ class SENSOR_TWF(tables.IsDescription):
     Describes a true waveform (zero supressed)
     """
     event = tables.UInt32Col(pos=0)
-    pmt = tables.UInt32Col(pos=1)
+    ID = tables.UInt32Col(pos=1)
     time_mus = tables.Float32Col(pos=2)
     ene_pes = tables.Float32Col(pos=3)
 

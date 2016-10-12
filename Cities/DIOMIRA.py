@@ -78,30 +78,15 @@ def FEE_param_table(fee_table):
     row.append()
 
 
-def store_pmt_twf(event, table, TWF):
+def store_twf(event, table, TWF):
     """
-    Store PMT TWF in table
-    """
-    row = table.row
-    for ipmt,twf in TWF.items():
-        for t,e in zip(twf.time_mus, twf.ene_pes):
-            row['event'] = event
-            row['pmt'] = ipmt
-            row['time_mus'] = t
-            row['ene_pes'] = e
-            row.append()
-    table.flush()
-
-
-def store_sipm_twf(event, table, TWF):
-    """
-    Store SiPM TWF in table
+    Store TWF in table
     """
     row = table.row
-    for isipm,twf in TWF.items():
+    for isens,twf in TWF.items():
         for t,e in zip(twf.time_mus, twf.ene_pes):
             row['event'] = event
-            row['sipm'] = isipm
+            row['ID'] = isens
             row['time_mus'] = t
             row['ene_pes'] = e
             row.append()
@@ -397,8 +382,8 @@ def DIOMIRA(argv):
                 trueSiPM = sipm_twf_signal(i,sipmrd_)
 
                 #store in table
-                store_pmt_twf(i, pmt_twf_table, truePMT)
-                store_sipm_twf(i, sipm_twf_table, trueSiPM)
+                store_twf(i, pmt_twf_table, truePMT)
+                store_twf(i, sipm_twf_table, trueSiPM)
 
                 #simulate PMT response and return an array with RWF
                 dataPMT = simulate_pmt_response(i,pmtrd_)
