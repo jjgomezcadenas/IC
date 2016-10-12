@@ -82,4 +82,4 @@ def sensor_wise_zero_suppresion(data,thresholds):
         if not t.any(): return None
         return wfmF.wf2df(t,wfm[t])
 
-    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if df }
+    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
