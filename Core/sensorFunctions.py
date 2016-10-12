@@ -5,12 +5,13 @@ JJGC, September 2016
 #from __future__ import print_function
 import pandas as pd
 import numpy as np
+import wfmFunctions as wfm
 
 def read_data_geom(geom_t):
     """
     Reads the geom table en returns a PD Series
     """
-        
+
     ga = geom_t.read()
     G = pd.Series([ga[0][0][0],ga[0][0][1],ga[0][1][0],ga[0][1][1],
                     ga[0][2][0],ga[0][2][1],ga[0][3]],
@@ -20,10 +21,10 @@ def read_data_geom(geom_t):
 
 def read_data_FEE(fee_t):
     """
-    Reads the FEE table en returns a PD Series for the simulation parameters 
+    Reads the FEE table en returns a PD Series for the simulation parameters
     and a PD series for the values of the capacitors used in the simulation
     """
-        
+
     fa = fee_t.read()
     F = pd.Series([fa[0][0],fa[0][1],fa[0][2],fa[0][3],fa[0][5],fa[0][6],fa[0][7],fa[0][8],fa[0][9],fa[0][10],
                    fa[0][11],fa[0][12]],
@@ -46,7 +47,7 @@ def get_column_(pmta,ic):
     for i in range(pmta.shape[0]):
         col.append(pmta[i][ic])
     return np.array(col)
- 
+
 def read_data_sensors(sensor_table):
     """
     reads the sensors table and returns a data frame
@@ -59,11 +60,26 @@ def read_data_sensors(sensor_table):
     PMT['y'] = get_column_(pmta,2).T[1]
     PMT['gain'] = get_column_(pmta,3)
     PMT['adc_to_pes'] = get_column_(pmta,4)
-        
+
     return pd.DataFrame(PMT)
 
 def get_energy_sensors(energy_v):
     """
     reads the sensors energy and returns a data frame
-    """        
+    """
     return pd.DataFrame(energy_v.read())
+
+def sensor_wise_zero_suppresion(data,thresholds):
+    '''
+        takes an array of waveforms, applies the corresponding threshold to
+        each row and returns a dictionary with the data frames of the survivors.
+    '''
+    def zs_df(wfm,thrsh):
+        '''
+            Get the zero-supressed wfms. Return None if it is completely suppresed.
+        '''
+        t = np.argwhere(wfm>thrsh).flatten()
+        if not t.any(): return None
+        return wfmF.wf2df(t,wfm[t])
+
+    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if df }
