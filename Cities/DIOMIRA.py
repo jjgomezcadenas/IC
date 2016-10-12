@@ -79,32 +79,17 @@ def FEE_param_table(fee_table):
     row.append()
 
 
-def store_twf(event, table, TWF):
+def store_wf(event, table, WF):
     """
-    Store TWF in table
+    Store WF in table
     """
     row = table.row
-    for isens,twf in TWF.items():
-        for t,e in zip(twf.time_mus, twf.ene_pes):
+    for isens,wf in WF.items():
+        for t,e in zip(wf.time_mus, wf.ene_pes):
             row['event'] = event
             row['ID'] = isens
             row['time_mus'] = t
             row['ene_pes'] = e
-            row.append()
-    table.flush()
-
-
-def store_sipm_rwf( event, table, RWF ):
-    """
-    Store SiPM RWF in table
-    """
-    row = table.row
-    for isipm,rwf in RWF.items():
-        for t,e in zip(rwf.time_mus, rwf.amp_pes):
-            row['event'] = event
-            row['ID'] = isipm
-            row['time_mus'] = t
-            row['amp_pes'] = e
             row.append()
     table.flush()
 
@@ -385,8 +370,8 @@ def DIOMIRA(argv):
                 trueSiPM = sipm_twf_signal(i,sipmrd_)
 
                 #store in table
-                store_twf(i, pmt_twf_table, truePMT)
-                store_twf(i, sipm_twf_table, trueSiPM)
+                store_wf(i, pmt_twf_table, truePMT)
+                store_wf(i, sipm_twf_table, trueSiPM)
 
                 #simulate PMT response and return an array with RWF
                 dataPMT = simulate_pmt_response(i,pmtrd_)
@@ -406,7 +391,7 @@ def DIOMIRA(argv):
 
                 zs_wfms = sns.sensor_wise_zero_suppresion(dataSiPM,thresholds)
 
-                store_sipm_rwf( i, sipm_rwf_table, zs_wfms )
+                store_wf( i, sipm_rwf_table, zs_wfms )
 
             t1 = time()
             pmtrwf.flush()
