@@ -1,6 +1,7 @@
 """
 DIOMIRA
 JJGC August-October 2016
+GML October 2016
 
 What DIOMIRA does:
 1) Reads a MCRD file containing MC waveforms for the 12 PMTs of the EP.
@@ -55,6 +56,8 @@ now--> ZS waveform rebinned at 1 mus in a Table
 11.10 introduced SiPM noise. SiPMs' true waveforms stored under TWF group.
 Some variables, classes and functions renamed for clarity.
 
+12.10 ZS functions to store the SiPMs
+
 """
 def FEE_param_table(fee_table):
     """
@@ -98,7 +101,7 @@ def rebin_twf(t, e, stride = 40):
     rebins the a waveform according to stride
     The input waveform is a vector such that the index expresses time bin and the
     contents expresses energy (e.g, in pes)
-    The function returns a DataFrame. The time bins and energy are rebinned according to stride
+    The function returns the rebinned times and energies
     """
 
     n = len(t)/int(stride)
@@ -402,8 +405,8 @@ def DIOMIRA(argv):
             print("DIOMIRA has run over {} events in {} seconds".format(i, t1-t0))
     print("Leaving Diomira. Safe travels!")
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     #import cProfile
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
-    DIOMIRA(sys.argv)
+    #DIOMIRA(sys.argv)
