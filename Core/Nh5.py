@@ -53,7 +53,7 @@ class MCTrack(tables.IsDescription):
     hit_time =tables.Float32Col(pos=12)
     hit_energy =tables.Float32Col(pos=13)
 
-class SENSOR_TWF(tables.IsDescription):
+class SENSOR_WF(tables.IsDescription):
     """
     Describes a true waveform (zero supressed)
     """
