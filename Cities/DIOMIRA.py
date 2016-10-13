@@ -80,30 +80,30 @@ def FEE_param_table(fee_table):
 
     row.append()
 
-def pmt_twf_signal(event_number,pmtrd, stride):
-    """
-    1) takes pmtrd
-    2) Performs ZS
-    3) Rebins resulting wf according to stride
-    """
-
-    rdata = {}
-
-    for j in range(pmtrd.shape[1]):
-        logger.debug("-->PMT number ={}".format(j))
-
-        energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
-        time_mus = np.arange(pmtrd.shape[2])*ns/mus
-
-        twf_zs = wfm.wf_thr(wfm.wf2df(time_mus,energy_pes),0.5)
-        time_mus, ene_pes = wfm.rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
-        if not time_mus.any(): continue
-        twf = wfm.wf2df(time_mus, ene_pes)
-
-        logger.debug("-->len(twf) ={}".format(len(twf)))
-
-        rdata[j] = twf
-    return rdata
+# def pmt_twf_signal(event_number,pmtrd, stride):
+#     """
+#     1) takes pmtrd
+#     2) Performs ZS
+#     3) Rebins resulting wf according to stride
+#     """
+#
+#     rdata = {}
+#
+#     for j in range(pmtrd.shape[1]):
+#         logger.debug("-->PMT number ={}".format(j))
+#
+#         energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
+#         time_mus = np.arange(pmtrd.shape[2])*ns/mus
+#
+#         twf_zs = wfm.wf_thr(wfm.wf2df(time_mus,energy_pes),0.5)
+#         time_mus, ene_pes = wfm.rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
+#         if not time_mus.any(): continue
+#         twf = wfm.wf2df(time_mus, ene_pes)
+#
+#         logger.debug("-->len(twf) ={}".format(len(twf)))
+#
+#         rdata[j] = twf
+#     return rdata
 
 def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
     """
@@ -311,8 +311,11 @@ def DIOMIRA(argv):
                 rebin = int(1*mus/1*ns)  #rebins zs function in 1 mus bin
 
                 #list with zs twf
-                truePMT  =  pmt_twf_signal(i,pmtrd_, rebin)
-                trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i],np.zeros(sipmrd_.shape[1]))
+                #truePMT  =  pmt_twf_signal(i,pmtrd_, rebin)
+                # dict_map applies a function to the dictionary values
+                truePMT  = dict_map( lambda df: wfm.rebin_df(df,rebin),
+                                     wfm.sensor_wise_zero_suppresion(pmtrd_[i],0.,to_mus=ns/ms))
+                trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i],0.)
 
                 #store in table
                 wfm.store_wf(i, pmt_twf_table, truePMT)
