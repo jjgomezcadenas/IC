@@ -194,25 +194,25 @@ def DIOMIRA(argv):
     NOISE_CUT_FRACTION = CFP['NOISE_CUT_FRACTION']
     NEVENTS = LAST_EVT - FIRST_EVT
 
-    print('Debug level = {}'.format(DEBUG_LEVEL))
+    logger.info('Debug level = {}'.format(DEBUG_LEVEL))
 
-    print("input path ={}; output path = {}; file_in ={} file_out ={}".format(
+    logger.info("input path ={}; output path = {}; file_in ={} file_out ={}".format(
         PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))
 
-    print("path to database = {}".format(PATH_DB))
+    logger.info("path to database = {}".format(PATH_DB))
 
-    print("first event = {} last event = {} nof events requested = {} ".format(
+    logger.info("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
-    print("Compression library = {} Compression level = {} ".format(
+    logger.info("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
 
-    print("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
+    logger.info("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r") as h5in:
         # access the PMT raw data in file
 
-        pmtrd_ = h5in.root.pmtrd
+        pmtrd_  = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
@@ -225,10 +225,10 @@ def DIOMIRA(argv):
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
-        print("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
+        logger.info("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
         NPMT,NSIPM,NEVENTS_DST))
 
-        print("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
+        logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
         PMTWL,SIPMWL,PMTWL_FEE))
 
 
@@ -241,9 +241,11 @@ def DIOMIRA(argv):
 
         # Map of the SiPMs' sensorID to the index used by tables
         index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
-        # Create instance of the noise sampler
+
+        # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
         sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_FRACTION)
+
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
             filters=tables.Filters(complib=CLIB, complevel=CLEVEL)) as h5out:
@@ -322,24 +324,17 @@ def DIOMIRA(argv):
                 wfm.store_wf(i, sipm_twf_table, trueSiPM)
 
                 #simulate PMT response and return an array with RWF
+                #convert to float, append to EVector
                 dataPMT = simulate_pmt_response(i,pmtrd_)
-
-                #convert to float
                 dataPMT.astype(float)
-
-                #append to EVECTOR
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
 
-
                 #simulate SiPM response and return an array with RWF
-                #convert to float, append to EVector
-
+                #convert to float, zero suppress and dump to table
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
                 dataSiPM.astype(float)
-
-                zs_wfms = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
-
-                wfm.store_wf( i, sipm_rwf_table, zs_wfms )
+                zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
+                wfm.store_wf( i, sipm_rwf_table, zs_wfs )
 
             t1 = time()
             pmtrwf.flush()
@@ -351,4 +346,4 @@ def DIOMIRA(argv):
     #import cProfile
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
-    #DIOMIRA(sys.argv)
+    DIOMIRA(sys.argv)
