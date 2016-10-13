@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import FEParam as FP
 from system_of_units import *
+from Util import dict_map
 
 def store_wf(event, table, WF):
     """
@@ -90,8 +91,8 @@ def read_twf( twf, event_number ):
         except:
             logger.error('[read_twf]: empty sensor found: {}'.format(isensor))
 
-    sensor_list = set(pmtwf.read_where('event == {}'.format(event_number),field='ID'))
-    return pd.Panel({ isens : wf2df(*unzip_wf(isens)) for isens in sensor_list)})
+    sensor_list = set(twf.read_where('event == {}'.format(event_number),field='ID'))
+    return pd.Panel({ isens : wf2df(*unzip_wf(isens)) for isens in sensor_list})
 
 
 def rebin_twf(t, e, stride = 40):
@@ -124,6 +125,11 @@ def rebin_twf(t, e, stride = 40):
 
     return T,E
 
+def rebin_df(df,stride=40):
+    '''
+        applies the rebin_wf function to a dataframe.
+    '''
+    return wf2df(*rebin_twf(*df2wf(df), stride = stride))
 
 def get_waveforms(pmtea,event_number=0):
     """
@@ -184,6 +190,12 @@ def wf2df(time_mus,energy_pes):
     """
     return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
 
+def df2wf(df):
+    '''
+        takes a data frame and returns the array of times and the array of energies.
+    '''
+    return df['time_mus'], df['ene_pes']
+
 def add_cwf(cwfdf,pmtDF):
     """
     input: cwfdf: each colum is the wf for one PMT.
@@ -205,18 +217,21 @@ def wf_thr(wf,threshold=1):
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
 
-def sensor_wise_zero_suppresion(data,thresholds, to_mus=1.0):
+def sensor_wise_zero_suppresion(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
+    # If threshold is a single value, transform it into an array
+    if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
+
     def zs_df(waveform,threshold):
         '''
             Get the zero-supressed wfms. Return None if it is completely suppresed.
         '''
         t = np.argwhere(waveform>threshold).flatten()
         if not t.any(): return None
-        return wf2df(t*to_mus,waveform[t])
+        return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
 
     return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
 
