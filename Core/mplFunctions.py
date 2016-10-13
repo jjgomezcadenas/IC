@@ -253,40 +253,37 @@ def plot_ene_pmt(geom_df,sensor_df, epmt, event_number=0, radius=10):
     ylim(geom_df['ydet_min'],geom_df['ydet_max'])
     return col
 
-def plot_best(sipmrwf,sipmtwfm, sipmdf, evt = 0):
+def plot_best(sipmrwf,sipmtwf, sipmdf, evt = 0):
     '''
         Plot the noisy waveform of the SiPM with greatest charge and superimpose the true waveform.
     '''
     #Find SiPM with greatest peak
     maxsipm = np.unravel_index(sipmrwf[evt].argmax(),sipmrwf[evt].shape)[0]
     print("SiPM with greatest peak is at index {} with ID {}".format(maxsipm,sipmdf.ix[maxsipm].channel))
+
     # Plot noisy waveform in red and noiseless waveform in blue
-    true_times, true_amps = zip(*[ (row['time_mus'],row['ene_pes']) for row in sipmtwfm.iterrows() if row['event'] == evt and row['ID'] == maxsipm ])
+    true_times, true_amps = wfm.read_wf(sipmtwf,evt,maxsipm)
     plt.plot(sipmrwf[evt,maxsipm,:])
     plt.plot(true_times,true_amps)
 
-def plot_best_group(sipmrwf,sipmtwfm,evt = 0, nsipms = 6, nrows = 2, ncols = 3):
+def plot_best_group(sipmrwf,sipmtwf,evt = 0, nsipms = 8, ncols = 3):
     '''
         Plot the noisy (red) and true (blue) waveforms of the nsipms SiPMs with greatest charge.
     '''
     #Find SiPM with greatest peak
     sipms = sorted( enumerate(sipmrwf[evt]), key = lambda x: max(x[1]), reverse = True )[:nsipms]
     plt.figure(figsize=(45,60))
-    f, axes = plt.subplots(nrows, ncols)
-    i,j=0,0
-    for sipm_index, sipm_wfm in sipms:
+    f, axes = plt.subplots(int(ceil(nsipms*1.0/ncols)), ncols)
+    for i,(sipm_index, sipm_wfm) in enumerate(sipms):
         try:
-            true_times, true_amps = zip(*[ (row['time_mus'],row['ene_pes']) for row in sipmtwfm.iterrows() if row['event'] == evt and row['ID'] == sipm_index ])
+            true_times, true_amps = wfm.read_wf(sipmtwf,evt,sipm_index)
         except:
             continue
-        if j==ncols:
-            i,j = i+1,0
-        axes[i,j].plot(sipm_wfm)
-        axes[i,j].plot(true_times,true_amps)
-        j += 1
+        axes[i//ncols,i%ncols].plot(sipm_wfm)
+        axes[i//ncols,i%ncols].plot(true_times,true_amps)
 
-    [ plt.setp([a.get_xticklabels() for a in axes[i, :]], visible=False) for i in range(0,nrows-1) ]
-    [ plt.setp([a.get_yticklabels() for a in axes[:, i]], visible=False) for i in range(1,ncols) ]
+    # [ plt.setp([a.get_xticklabels() for a in axes[i, :]], visible=False) for i in range(0,nrows-1) ]
+    # [ plt.setp([a.get_yticklabels() for a in axes[:, i]], visible=False) for i in range(1,ncols) ]
 
 def plot_track(geom_df,mchits_df,vox_size=10, zoom = False):
     """
