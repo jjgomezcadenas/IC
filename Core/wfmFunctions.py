@@ -11,6 +11,7 @@ import numpy as np
 import FEParam as FP
 from system_of_units import *
 from Util import dict_map
+from math import *
 
 def store_wf(event, table, WF):
     """
@@ -103,26 +104,16 @@ def rebin_twf(t, e, stride = 40):
     contents expresses energy (e.g, in pes)
     The function returns the ned times and energies
     """
+    n = int(ceil(len(t)/float(stride)))
 
-    n = len(t)/int(stride)
-    r = len(t)%int(stride)
-
-    lenb = n
-    if r > 0:
-        lenb = n+1
-
-    T = np.zeros(lenb,dtype=np.float32)
-    E = np.zeros(lenb,dtype=np.float32)
+    T = np.zeros(n,dtype=np.float32)
+    E = np.zeros(n,dtype=np.float32)
 
     j=0
     for i in range(n):
         E[i] = np.sum(e[j:j+stride])
         T[i] = np.mean(t[j:j+stride])
         j+= stride
-
-    if r > 0:
-        E[n] = np.sum(e[j:])
-        T[n] = np.mean(t[j:])
 
     return T,E
 
