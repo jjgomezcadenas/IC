@@ -12,6 +12,7 @@ import FEParam as FP
 from system_of_units import *
 from Util import dict_map
 from math import *
+from LogConfig import *
 
 def store_wf(event, table, WF):
     """
