@@ -258,7 +258,7 @@ def plot_best(sipmrwf,sipmtwfm, sipmdf, evt = 0):
         Plot the noisy waveform of the SiPM with greatest charge and superimpose the true waveform.
     '''
     #Find SiPM with greatest peak
-    maxsipm = np.unravel_index(sipmrwf[evt,:,:].argmax(),sipmrwf[evt,:,:].shape)[0]
+    maxsipm = np.unravel_index(sipmrwf[evt].argmax(),sipmrwf[evt].shape)[0]
     print("SiPM with greatest peak is at index {} with ID {}".format(maxsipm,sipmdf.ix[maxsipm].channel))
     # Plot noisy waveform in red and noiseless waveform in blue
     true_times, true_amps = zip(*[ (row['time_mus'],row['ene_pes']) for row in sipmtwfm.iterrows() if row['event'] == evt and row['sipm'] == maxsipm ])
