@@ -1,5 +1,5 @@
 #PMT map
-# September 2016
+# October 2016
 sensor_id = range(11)
 PMT_id = ['1','2','3','4','C','B','A','9','8','7','6','5']
 elec_id = [0,1,18,19,27,26,9,8,23,22,5,4]
