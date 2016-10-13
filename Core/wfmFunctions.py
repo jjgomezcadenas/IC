@@ -55,23 +55,44 @@ def store_wf(event, table, WF):
 #
 #     return PMT
 
-def read_twf(twf, sensor_list, event_number):
+# def read_twf(twf, event_number):
+#     """
+#     Reads back the TWF of the PMTs/SiPMs for event number:
+#     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
+#     outputs: a PMT/SiPM panel
+#
+#     """
+#     sensors ={}
+#     for isensor in sensor_list:
+#         try:
+#             time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
+#             sensors[isensor] = wf2df(time_mus,ene_pes)
+#         except ValueError:
+#             logger.error('found an empty sensor')
+#             exit()
+#
+#     return pd.Panel(sensors)
+
+def read_twf( twf, event_number ):
     """
     Reads back the TWF of the PMTs/SiPMs for event number:
     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
     outputs: a PMT/SiPM panel
 
     """
-    sensors ={}
-    for isensor in sensor_list:
-        try:
-            time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
-            sensors[isensor] = wf2df(time_mus,ene_pes)
-        except ValueError:
-            logger.error('found an empty sensor')
-            exit()
 
-    return pd.Panel(sensors)
+    def unzip_wf(isensor):
+        '''
+            Returns two lists: time_mus and ene_pes
+        '''
+        try:
+            return zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
+        except:
+            logger.error('[read_twf]: empty sensor found: {}'.format(isensor))
+
+    sensor_list = set(pmtwf.read_where('event == {}'.format(event_number),field='ID'))
+    return pd.Panel({ isens : wf2df(*unzip_wf(isens)) for isens in sensor_list)})
+
 
 def rebin_twf(t, e, stride = 40):
     """
