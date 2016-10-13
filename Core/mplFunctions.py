@@ -1,6 +1,7 @@
 """
 A utility module for plots with matplotlib
 """
+from __future__ import print_function
 from Util import *
 import matplotlib
 import matplotlib.pyplot as plt
