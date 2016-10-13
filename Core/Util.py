@@ -15,6 +15,12 @@ def dict_map(F,D):
     '''
     return { key:F(val) for key,val in D.iteritems() }
 
+def dict_filter(C,D):
+    '''
+        Apply filter to dictionary values without losing correspondence.
+    '''
+    return { key:val for key,val in D.iteritems() if C(val) }
+
 def farray_from_string(sfl):
     """
     returns a np array of floats from a string (sfl)
