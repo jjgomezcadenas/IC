@@ -209,7 +209,7 @@ def DIOMIRA(argv):
     logger.info("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
 
-    logger.info("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
+    # logger.info("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r") as h5in:
         # access the PMT raw data in file
