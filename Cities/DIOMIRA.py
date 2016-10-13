@@ -57,7 +57,8 @@ Some variables, classes and functions renamed for clarity.
 
 12.10 ZS functions to store the SiPMs
 
-13.10 Reutilization of functions and some duplicities removed
+13.10 Reutilization of functions and some duplicities removed.
+      SiPMs' waveforms to be stored without ZS.
 
 """
 def FEE_param_table(fee_table):
