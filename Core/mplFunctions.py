@@ -36,7 +36,7 @@ def HSimple1(x,nbins,title='hsimple',xlabel = '', ylabel = 'Frequency',
   
   if save:
     pathfile = filepath+filename
-    print "saving histogram %s in %s"%(filename, pathfile)
+    print("saving histogram %s in %s"%(filename, pathfile))
     plt.savefig(pathfile, bbox_inches='tight')
     plt.close()
   else:
