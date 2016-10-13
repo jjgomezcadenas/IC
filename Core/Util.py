@@ -9,6 +9,18 @@ import numpy as np
 def wait():
 	raw_input("Press a key...")
 
+def dict_map(F,D):
+    '''
+        Apply map to dictionary values without losing correspondence.
+    '''
+    return { key:F(val) for key,val in D.iteritems() }
+
+def dict_filter(C,D):
+    '''
+        Apply filter to dictionary values without losing correspondence.
+    '''
+    return { key:val for key,val in D.iteritems() if C(val) }
+
 def farray_from_string(sfl):
     """
     returns a np array of floats from a string (sfl)
@@ -24,7 +36,7 @@ def farray_from_string(sfl):
 
 def rebin_array(a, stride):
     """
-    rebins the array according to stride 
+    rebins the array according to stride
     """
     lenb = len(a)/int(stride)
     b = np.zeros(lenb)
@@ -47,7 +59,7 @@ def lin(x,x0,y0,x1,y1):
 	"""
 	lineal extrapolation
 	"""
-	
+
 	return y0 + (x-x0)*(y1-y0)/(x1-x0)
 
 def inRange(x,xmin,xmax):
@@ -75,7 +87,5 @@ def MeanWOL(x,nmean=5, nsigma=5):
 	for y in np.nditer(x):
 		if inRange(y,xmin,xmax) == True:
 			x2.append(y)
-            
+
 	return(np.array(x2))
-
-

@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import FEParam as FP
 from system_of_units import *
+from Util import dict_map
+from math import *
 
 def store_wf(event, table, WF):
     """
@@ -55,23 +57,45 @@ def store_wf(event, table, WF):
 #
 #     return PMT
 
-def read_twf(twf, sensor_list, event_number):
+# def read_twf(twf, event_number):
+#     """
+#     Reads back the TWF of the PMTs/SiPMs for event number:
+#     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
+#     outputs: a PMT/SiPM panel
+#
+#     """
+#     sensors ={}
+#     for isensor in sensor_list:
+#         try:
+#             time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
+#             sensors[isensor] = wf2df(time_mus,ene_pes)
+#         except ValueError:
+#             logger.error('found an empty sensor')
+#             exit()
+#
+#     return pd.Panel(sensors)
+
+def read_wf(table,event_number,isens):
+    '''
+        Reads table and returns the waveform (time_mus and ene_pes) corresponding
+        to sensor isens of event event_number.
+    '''
+    try:
+        return zip(*[ (row['time_mus'],row['ene_pes']) for row in table.iterrows() if row['event']== event_number and row['ID']== isens])
+    except:
+        logger.error('[read_wf]: empty sensor found: {}'.format(isens))
+
+
+def read_wf_table( table, event_number ):
     """
     Reads back the TWF of the PMTs/SiPMs for event number:
     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
     outputs: a PMT/SiPM panel
 
     """
-    sensors ={}
-    for isensor in sensor_list:
-        try:
-            time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
-            sensors[isensor] = wf2df(time_mus,ene_pes)
-        except ValueError:
-            logger.error('found an empty sensor')
-            exit()
+    sensor_list = set(table.read_where('event == {}'.format(event_number),field='ID'))
+    return pd.Panel({ isens : wf2df(*read_wf(table,event_number,isens)) for isens in sensor_list})
 
-    return pd.Panel(sensors)
 
 def rebin_twf(t, e, stride = 40):
     """
@@ -80,16 +104,10 @@ def rebin_twf(t, e, stride = 40):
     contents expresses energy (e.g, in pes)
     The function returns the ned times and energies
     """
+    n = int(ceil(len(t)/float(stride)))
 
-    n = len(t)/int(stride)
-    r = len(t)%int(stride)
-
-    lenb = n
-    if r > 0:
-        lenb = n+1
-
-    T = np.zeros(lenb,dtype=np.float32)
-    E = np.zeros(lenb,dtype=np.float32)
+    T = np.zeros(n,dtype=np.float32)
+    E = np.zeros(n,dtype=np.float32)
 
     j=0
     for i in range(n):
@@ -97,12 +115,13 @@ def rebin_twf(t, e, stride = 40):
         T[i] = np.mean(t[j:j+stride])
         j+= stride
 
-    if r > 0:
-        E[n] = np.sum(e[j:])
-        T[n] = np.mean(t[j:])
-
     return T,E
 
+def rebin_df(df,stride=40):
+    '''
+        applies the rebin_wf function to a dataframe.
+    '''
+    return wf2df(*rebin_twf(*df2wf(df), stride = stride))
 
 def get_waveforms(pmtea,event_number=0):
     """
@@ -163,6 +182,12 @@ def wf2df(time_mus,energy_pes):
     """
     return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
 
+def df2wf(df):
+    '''
+        takes a data frame and returns the array of times and the array of energies.
+    '''
+    return df['time_mus'], df['ene_pes']
+
 def add_cwf(cwfdf,pmtDF):
     """
     input: cwfdf: each colum is the wf for one PMT.
@@ -184,18 +209,21 @@ def wf_thr(wf,threshold=1):
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
 
-def sensor_wise_zero_suppresion(data,thresholds, to_mus=1.0):
+def sensor_wise_zero_suppresion(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
+    # If threshold is a single value, transform it into an array
+    if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
+
     def zs_df(waveform,threshold):
         '''
             Get the zero-supressed wfms. Return None if it is completely suppresed.
         '''
         t = np.argwhere(waveform>threshold).flatten()
         if not t.any(): return None
-        return wf2df(t*to_mus,waveform[t])
+        return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
 
     return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
 
