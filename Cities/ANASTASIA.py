@@ -18,7 +18,9 @@ from FEParam import NOISE_ADC
 
 import tables
 from time import time
+import sensorFunctions as snf
 import wfmFunctions as wfm
+import tblFunctions as tbl
 import pandas as pd
 #------
 
@@ -73,9 +75,12 @@ def ANASTASIA(argv):
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in:
         # access the PMT raw data in file
 
-        pmttwf, sipmtwf, pmtrwf, sipmrwf, pmtdf, sipmdf, gdf = tbl.get_vectors(h5f)
+        pmtcwf  = h5f.root.RD.pmtcwf
+        sipmrwf = h5f.root.RD.sipmrwf
+        pmtdf   = snf.read_data_sensors(h5f.root.Sensors.DataPMT)
+        sipmdf  = snf.read_data_sensors(h5f.root.Sensors.DataSiPM)
 
-        NEVT, NPMT , PMTWL  = pmtrwf.shape
+        NEVT, NPMT , PMTWL  = pmtcwf.shape
         NEVT, NSIPM, SIPMWL = sipmrwf.shape
 
         logger.info("#PMTs = {}; #SiPMs = {}; #events in DST = {}".format(NPMT,NSIPM,NEVT))
@@ -103,7 +108,7 @@ def ANASTASIA(argv):
         for i in range(first_evt,last_evt):
             logger.info("-->event number ={}".format(i))
 
-            dataPMT = wfm.sensor_wise_zero_suppresion(pmtrwf[i],pmt_noise_thresholds_)
+            dataPMT = wfm.sensor_wise_zero_suppresion(pmtcwf[i],pmt_noise_thresholds_)
             tbl.store_wf( i, pmt_zs_table, scale_to_pes(dataPMT,pmtdf) )
 
             dataSiPM = wfm.sensor_wise_zero_suppresion(sipmrwf[i],sipms_noise_thresholds_)
