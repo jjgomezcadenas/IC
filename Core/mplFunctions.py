@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 import numpy as np
 import wfmFunctions as wfm
+import tblFunctions as tbl
 
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
@@ -263,7 +264,7 @@ def plot_best(sipmrwf,sipmtwf, sipmdf, evt = 0):
     print("SiPM with greatest peak is at index {} with ID {}".format(maxsipm,sipmdf.ix[maxsipm].channel))
 
     # Plot noisy waveform in red and noiseless waveform in blue
-    true_times, true_amps = wfm.read_wf(sipmtwf,evt,maxsipm)
+    true_times, true_amps = tbl.read_wf(sipmtwf,evt,maxsipm)
     plt.plot(sipmrwf[evt,maxsipm,:])
     plt.plot(true_times,true_amps)
 
@@ -277,7 +278,7 @@ def plot_best_group(sipmrwf,sipmtwf,evt = 0, nsipms = 8, ncols = 3):
     f, axes = plt.subplots(int(ceil(nsipms*1.0/ncols)), ncols)
     for i,(sipm_index, sipm_wfm) in enumerate(sipms):
         try:
-            true_times, true_amps = wfm.read_wf(sipmtwf,evt,sipm_index)
+            true_times, true_amps = tbl.read_wf(sipmtwf,evt,sipm_index)
         except:
             continue
         axes[i//ncols,i%ncols].plot(sipm_wfm)

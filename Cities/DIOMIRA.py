@@ -23,6 +23,7 @@ import FEE2 as FE
 import tables
 from time import time
 import wfmFunctions as wfm
+import tblFunctions as tbl
 import pandas as pd
 
 from RandomSampling import NoiseSampler as SiPMsNoiseSampler
@@ -333,8 +334,8 @@ def DIOMIRA(argv):
                 trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i],0.)
 
                 #store in table
-                wfm.store_wf(i, pmt_twf_table, truePMT)
-                wfm.store_wf(i, sipm_twf_table, trueSiPM)
+                tbl.store_wf(i, pmt_twf_table, truePMT)
+                tbl.store_wf(i, sipm_twf_table, trueSiPM)
 
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
@@ -347,7 +348,7 @@ def DIOMIRA(argv):
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
                 dataSiPM.astype(int)
                 # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
-                # wfm.store_wf( i, sipm_rwf_table, zs_wfs )
+                # tbl.store_wf( i, sipm_rwf_table, zs_wfs )
                 sipmrwf.append( dataSiPM.reshape(1,NSIPM,SIPMWL) )
 
             t1 = time()
@@ -361,4 +362,4 @@ if __name__ == '__main__':
     #import cProfile
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
-    #DIOMIRA(sys.argv)
+    DIOMIRA(sys.argv)
