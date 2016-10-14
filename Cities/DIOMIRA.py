@@ -245,7 +245,7 @@ def DIOMIRA(argv):
         sipmdf  = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipm_t,SIPMWL,True)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL,True)
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
@@ -355,7 +355,7 @@ def DIOMIRA(argv):
             print("DIOMIRA has run over {} events in {} seconds".format(i, t1-t0))
     print("Leaving Diomira. Safe travels!")
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
     #import cProfile
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
