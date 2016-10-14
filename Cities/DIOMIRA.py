@@ -23,6 +23,7 @@ import FEE2 as FE
 import tables
 from time import time
 import wfmFunctions as wfm
+import sensorFunctions as snf
 import tblFunctions as tbl
 import pandas as pd
 
@@ -237,18 +238,14 @@ def DIOMIRA(argv):
 
 
         #access the geometry and the sensors metadata info
-
-        geom_t = h5in.root.Detector.DetectorGeometry
-        pmt_t = h5in.root.Sensors.DataPMT
-        sipm_t = h5in.root.Sensors.DataSiPM
+        geom_t  = h5in.root.Detector.DetectorGeometry
+        pmt_t   = h5in.root.Sensors.DataPMT
+        sipm_t  = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
+        sipmdf  = snf.read_data_sensors(sipm_t)
 
-        # Map of the SiPMs' sensorID to the index used by tables
-        index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
-
-        # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
-        # sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_FRACTION)
+        # Create instance of the noise sampler
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipm_t,SIPMWL,True)
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
