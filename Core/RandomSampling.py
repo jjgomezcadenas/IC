@@ -5,13 +5,13 @@ from __future__ import print_function
 import numpy as np
 
 class NoiseSampler:
-    def __init__(self,filename,index_map,sample_size = 1,smear = True):
+    def __init__(self,filename,sipmdf,sample_size = 1,smear = True):
         print("Initializing NoiseSampler...",end=" ")
         data = np.loadtxt(filename )
 
         self.xbins = data[0,1:] # xbins are stored in the first line. First value is dummy.
         self.dx    = np.diff(self.xbins)[0]*0.5 # half of the bin size
-        data = data[ np.where(map(index_map.__contains__,data[:,0]))[0] ] #Remove masked channels
+        data = data[ np.where(map(sipmdf['channel'].__contains__,data[:,0]))[0] ] #Remove masked channels
 
         self.probs = np.apply_along_axis( lambda probs: probs/np.sum(probs), 1, data[:,1:] ) # normalize probabilities
         self.nsamples = sample_size
