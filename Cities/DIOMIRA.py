@@ -154,9 +154,6 @@ def simulate_pmt_response(event_number,pmtrd_):
         rdata.append(signal_daq)
     return np.array(rdata)
 
-def to_adc( wfs, sensdf ):
-    return wfs * 1.0/sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
-
 def DIOMIRA(argv):
     """
     Diomira driver
@@ -339,13 +336,13 @@ def DIOMIRA(argv):
 
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
-                dataPMT = to_adc(simulate_pmt_response(i,pmtrd_),pmtdf)
+                dataPMT = wfm.to_adc(simulate_pmt_response(i,pmtrd_),pmtdf)
                 dataPMT.astype(int)
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
 
                 #simulate SiPM response and return an array with RWF
                 #convert to float, zero suppress and dump to table
-                dataSiPM = to_adc(simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_),sipmdf)
+                dataSiPM = wfm.to_adc(simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_),sipmdf)
                 dataSiPM.astype(int)
                 # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
                 # tbl.store_wf( i, sipm_rwf_table, zs_wfs )
