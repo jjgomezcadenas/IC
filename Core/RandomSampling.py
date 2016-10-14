@@ -38,9 +38,19 @@ class NoiseSampler:
     def Sample( self ):
         return self._sampler()
 
-    def ComputeThresholds( self, noise_cut = 0.99 ):
+    def ComputeThresholds( self, noise_cut = 0.99, **kwargs ):
         '''
             Find the number of pes at which each noise distribution leaves behind
-            the noise_cut fraction of its population.
+            the noise_cut fraction of its population. Options passed through kwargs:
+            - pes_to_adc : float or nsensor-sized array of floats
+            - sipmdf     : data frame with the adc_to_pes conversion
+            - if neither of the above is present, the thresholds are given in pes.
         '''
-        return np.array( [ self.xbins[i,np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] )
+        # If any of the options is present, perform pes-to-adc conversion
+        if 'sipmdf' in kwargs:
+            pes_to_adc = 1.0 / kwargs['sipmdf']['adc_to_pes']
+        elif 'pes_to_adc' in kwargs:
+            if not hasattr(kwargs['pes_to_adc'],__iter__):
+                pes_to_adc = np.ones(self.nsensors) * kwargs['pes_to_adc']
+
+        return np.array( [ self.xbins[np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] ) * np.array(adc_to_pes)
