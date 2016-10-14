@@ -11,6 +11,20 @@ import pandas as pd
 import wfmFunctions as wfm
 from LogConfig import *
 
+def get_vectors(h5f):
+    '''
+        Return the most relevant fields stored in a raw data file.
+    '''
+    pmtrwf = h5f.root.RD.pmtrwf
+    sipmrwf = h5f.root.RD.sipmrwf
+    geom_t = h5f.root.Detector.DetectorGeometry
+    pmt_t = h5f.root.Sensors.DataPMT
+    sipm_t = h5f.root.Sensors.DataSiPM
+    gdf = snf.read_data_geom(geom_t)
+    pmtdf = snf.read_data_sensors(pmt_t)
+    sipmdf = snf.read_data_sensors(sipm_t)
+    return pmtrwf,sipmrwf,pmtdf,sipmdf,gdf
+
 def store_wf(event, table, WF):
     """
     Store a wavform in a table

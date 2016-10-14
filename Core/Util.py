@@ -5,6 +5,7 @@ Utilities
 from math import *
 from system_of_units import *
 import numpy as np
+import pandas as pd
 
 def wait():
 	raw_input("Press a key...")
@@ -14,6 +15,14 @@ def dict_map(F,D):
         Apply map to dictionary values without losing correspondence.
     '''
     return { key:F(val) for key,val in D.iteritems() }
+
+def df_map(F,DF,field):
+    '''
+        Apply map to some DataFrame field.
+    '''
+    out = pd.DataFrame(DF)
+    out[field] = map(F,out[field])
+    return out
 
 def dict_filter(C,D):
     '''
