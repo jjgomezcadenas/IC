@@ -6,7 +6,6 @@
 #        PATH_OUT = path to output DST file (RWF file)
 #        FILE_OUT = name of ouput DST file (RWF file)
 #        PATH_DB  = path to the database directory
-#        NOISE_CUT_FRACTION = fraction of noise rejected by algo
 #        FIRST_EVT,LAST_EVT,RUN_ALL,
 #
 #        RUN_ALL is used to decide whether to run all the events in the file
@@ -17,5 +16,5 @@
 #        CLIB = compression library used: values can be 'ZLIB', 'BLOSC' or 'NONE'
 #        CLEVEL = compression level
 #
-PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,NOISE_CUT_FRACTION,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL, END
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/test/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,Kr_ACTIVE_5bar_evt_10.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0.999,0,10,1,zlib,1,1
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL, END
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/test/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,Kr_ACTIVE_5bar_int_10.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0,10,1,zlib,1,1

@@ -296,15 +296,21 @@ def DIOMIRA(argv):
 
             # create an extensible array to store the RWF waveforms
             pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
-                                    atom=tables.Float32Atom(),
+                                    atom=tables.Int32Atom(),     #not Float32! bad for compression
                                     shape=(0, NPMT, PMTWL_FEE),
                                     expectedrows=NEVENTS_DST)
+
+            # # create an extensible array to store the RWF waveforms
+            # pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
+            #                         atom=tables.Float32Atom(),
+            #                         shape=(0, NPMT, PMTWL_FEE),
+            #                         expectedrows=NEVENTS_DST)
 
             # sipm_rwf_table = h5out.create_table( rgroup, "sipmrwf", SENSOR_WF, "Store for SiPMs RWF",
             #                                      tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
-                                    atom=tables.Float32Atom(),
+                                    atom=tables.Int32Atom(), #not Float32! bad for compression
                                     shape=(0, NSIPM, SIPMWL),
                                     expectedrows=NEVENTS_DST)
             #LOOP
@@ -332,13 +338,13 @@ def DIOMIRA(argv):
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
                 dataPMT = simulate_pmt_response(i,pmtrd_)
-                dataPMT.astype(float)
+                dataPMT.astype(int)
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
 
                 #simulate SiPM response and return an array with RWF
                 #convert to float, zero suppress and dump to table
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
-                dataSiPM.astype(float)
+                dataSiPM.astype(int)
                 # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
                 # wfm.store_wf( i, sipm_rwf_table, zs_wfs )
                 sipmrwf.append( dataSiPM.reshape(1,NSIPM,SIPMWL) )
@@ -354,4 +360,4 @@ if __name__ == '__main__':
     #import cProfile
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
-    DIOMIRA(sys.argv)
+    #DIOMIRA(sys.argv)
