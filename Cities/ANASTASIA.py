@@ -24,14 +24,14 @@ import tblFunctions as tbl
 import pandas as pd
 #------
 
-"""
+'''
 
 ANASTASIA
 ChangeLog:
 
 14.10 First version.
 
-"""
+'''
 
 def scale_to_pes( sens_wf, sensdf ):
     '''
@@ -40,9 +40,9 @@ def scale_to_pes( sens_wf, sensdf ):
     return { key : pd.DataFrame( {'time_mus' : df.time_mus, 'ene_pes' : df.ene_pes * sensdf['adc_to_pes'][key]} ) for key,df in sens_wf.items() }
 
 def ANASTASIA(argv):
-    """
-    ANASTASIA driver
-    """
+    '''
+        ANASTASIA driver
+    '''
     DEBUG_LEVEL, INFO, CYTHON, CFP = configure(argv[0],argv[1:])
 
     if INFO:
@@ -108,10 +108,10 @@ def ANASTASIA(argv):
         for i in range(first_evt,last_evt):
             logger.info("-->event number ={}".format(i))
 
-            dataPMT = wfm.sensor_wise_zero_suppresion(pmtcwf[i],pmt_noise_thresholds_)
+            dataPMT = wfm.sensor_wise_zero_suppresion(pmtcwf[i],pmt_noise_thresholds_,25*ns/mus)
             tbl.store_wf( i, pmt_zs_table, scale_to_pes(dataPMT,pmtdf) )
 
-            dataSiPM = wfm.sensor_wise_zero_suppresion(sipmrwf[i],sipms_noise_thresholds_)
+            dataSiPM = wfm.sensor_wise_zero_suppresion(sipmrwf[i],sipms_noise_thresholds_,1.0)
             tbl.store_wf( i, sipm_zs_table, scale_to_pes(dataSiPM,sipmdf) )
 
         t1 = time()
