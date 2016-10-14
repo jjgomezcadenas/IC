@@ -19,9 +19,10 @@ logger.setLevel(logging.DEBUG)
 pes = 1
 
 def alpha(pmtrwf,pmtdf, geomdf, thr_pmt=10*pes, thr_sipm=4*pes,
-              t_trigger = 600, log='INFO', plot=False, event_list=[2]):
+              t_trigger = 600, thr_s1 = 30*pes, thr_s2 = 5000*pes,
+              log='INFO', plot=False, event_list=[2]):
     """
-    alpha analysis 
+    alpha analysis
     """
     lg = 'logging.'+DEBUG
     logger.setLevel(eval(lg))
@@ -174,7 +175,7 @@ def waveform_panel(pmtrwf,pmtdf,mau_len = 500, calib_constat =True, adc_to_pes=2
                    type = 'PMT', daq_ceiling=4096, event=0):
     """
     input: sensor (pmt or sipm) data vector, sensor data frame (position, calibration)
-    returns: a panel holding waveforms for all sensors, and a series for the baselines
+    returns: a panel holding DataFrames with waveforms for all sensors, and a series for the baselines
     """
     PMT = {}
     nm = mau_len

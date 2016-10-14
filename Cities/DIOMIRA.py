@@ -1,6 +1,7 @@
 """
 DIOMIRA
 JJGC August-October 2016
+GML October 2016
 
 What DIOMIRA does:
 1) Reads a MCRD file containing MC waveforms for the 12 PMTs of the EP.
@@ -54,6 +55,10 @@ now--> ZS waveform rebinned at 1 mus in a Table
 11.10 introduced SiPM noise. SiPMs' true waveforms stored under TWF group.
 Some variables, classes and functions renamed for clarity.
 
+12.10 ZS functions to store the SiPMs
+
+13.10 Reutilization of functions and some duplicities removed
+
 """
 def FEE_param_table(fee_table):
     """
@@ -77,116 +82,30 @@ def FEE_param_table(fee_table):
 
     row.append()
 
-
-def store_pmt_twf(event, table, TWF):
-    """
-    Store PMT TWF in table
-    """
-    row = table.row
-    for ipmt,twf in TWF.items():
-        for t,e in zip(twf.time_ns, twf.ene_pes):
-            row['event'] = event
-            row['pmt'] = ipmt
-            row['time_ns'] = t
-            row['ene_pes'] = e
-            row.append()
-    table.flush()
-
-
-def store_sipm_twf(event, table, TWF):
-    """
-    Store SiPM TWF in table
-    """
-    row = table.row
-    for isipm,twf in TWF.items():
-        for t,e in zip(twf.time_us, twf.amp_pes):
-            row['event'] = event
-            row['sipm'] = isipm
-            row['time_us'] = t
-            row['amp_pes'] = e
-            row.append()
-    table.flush()
-
-
-def rebin_twf(t, e, stride = 40):
-    """
-    rebins the a waveform according to stride
-    The input waveform is a vector such that the index expresses time bin and the
-    contents expresses energy (e.g, in pes)
-    The function returns a DataFrame. The time bins and energy are rebinned according to stride
-    """
-
-    n = len(t)/int(stride)
-    r = len(t)%int(stride)
-
-    lenb = n
-    if r > 0:
-        lenb = n+1
-
-    T = np.zeros(lenb,dtype=np.float32)
-    E = np.zeros(lenb,dtype=np.float32)
-
-    j=0
-    for i in range(n):
-        E[i] = np.sum(e[j:j+stride])
-        T[i] = np.mean(t[j:j+stride])
-        j+= stride
-
-    if r > 0:
-        E[n] = np.sum(e[j:])
-        T[n] = np.mean(t[j:])
-
-    return T,E
-
-
-def pmt_twf_signal(event_number,pmtrd, stride):
-    """
-    1) takes pmtrd
-    2) Performs ZS
-    3) Rebins resulting wf according to stride
-    """
-
-    rdata = {}
-
-    for j in range(pmtrd.shape[1]):
-        logger.debug("-->PMT number ={}".format(j))
-
-        energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
-        time_ns = np.arange(pmtrd.shape[2])
-
-        twf_zs = wfm.wf_thr(wf2df(time_ns,energy_pes),0.5)
-        time_ns, ene_pes = rebin_twf(twf_zs.time_ns.values,twf_zs.ene_pes.values,stride)
-        if not time_ns.any(): continue
-        twf = wf2df(time_ns, ene_pes)
-
-        logger.debug("-->len(twf) ={}".format(len(twf)))
-
-        rdata[j] = twf
-    return rdata
-
-
-def sipm_twf_signal(event_number,sipmrd):
-    '''
-        Removes zeros from SiPM RD.
-    '''
-    out = {}
-    for index,wfm in enumerate(sipmrd[event_number]):
-        time_us = np.where( wfm > 0. )[0]
-        if not time_us.any(): continue
-        amp_pes = wfm[time_us]
-        out[index] = pd.DataFrame( {'time_us':time_us, 'amp_pes':amp_pes} )
-    return out
-
-
-def wf2df(time_ns,energy_pes):
-    """
-    takes two vectors (time, energy) and returns a data frame representing a waveform
-    """
-    swf = {}
-    swf['time_ns'] = time_ns
-    swf['ene_pes'] = energy_pes
-    return pd.DataFrame(swf)
-
+# def pmt_twf_signal(event_number,pmtrd, stride):
+#     """
+#     1) takes pmtrd
+#     2) Performs ZS
+#     3) Rebins resulting wf according to stride
+#     """
+#
+#     rdata = {}
+#
+#     for j in range(pmtrd.shape[1]):
+#         logger.debug("-->PMT number ={}".format(j))
+#
+#         energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
+#         time_mus = np.arange(pmtrd.shape[2])*ns/mus
+#
+#         twf_zs = wfm.wf_thr(wfm.wf2df(time_mus,energy_pes),0.5)
+#         time_mus, ene_pes = wfm.rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
+#         if not time_mus.any(): continue
+#         twf = wfm.wf2df(time_mus, ene_pes)
+#
+#         logger.debug("-->len(twf) ={}".format(len(twf)))
+#
+#         rdata[j] = twf
+#     return rdata
 
 def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
     """
@@ -268,29 +187,34 @@ def DIOMIRA(argv):
     PATH_OUT =CFP['PATH_OUT']
     FILE_IN =CFP['FILE_IN']
     FILE_OUT =CFP['FILE_OUT']
+    PATH_DB =CFP['PATH_DB']
     FIRST_EVT =CFP['FIRST_EVT']
     LAST_EVT =CFP['LAST_EVT']
     RUN_ALL =CFP['RUN_ALL']
     CLIB =CFP['CLIB']
     CLEVEL =CFP['CLEVEL']
+    # NOISE_CUT_FRACTION = CFP['NOISE_CUT_FRACTION']
     NEVENTS = LAST_EVT - FIRST_EVT
 
-    print('Debug level = {}'.format(DEBUG_LEVEL))
+    logger.info('Debug level = {}'.format(DEBUG_LEVEL))
 
-    print("input path ={}; output path = {}; file_in ={} file_out ={}".format(
+    logger.info("input path ={}; output path = {}; file_in ={} file_out ={}".format(
         PATH_IN,PATH_OUT,FILE_IN, FILE_OUT))
 
-    print("first event = {} last event = {} nof events requested = {} ".format(
+    logger.info("path to database = {}".format(PATH_DB))
+
+    logger.info("first event = {} last event = {} nof events requested = {} ".format(
         FIRST_EVT,LAST_EVT,NEVENTS))
 
-    print("Compression library = {} Compression level = {} ".format(
+    logger.info("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
 
+    # logger.info("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r") as h5in:
         # access the PMT raw data in file
 
-        pmtrd_ = h5in.root.pmtrd
+        pmtrd_  = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
 
         #pmtrd_.shape = (nof_events, nof_sensors, wf_length)
@@ -298,15 +222,15 @@ def DIOMIRA(argv):
         NPMT = pmtrd_.shape[1]
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2]
-        #PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ)
-        PMTWL_FEE = int(PMTWL/FP.time_DAQ)  #old format
+        #PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ) #old format
+        PMTWL_FEE = int(PMTWL/FP.time_DAQ)
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
-        print("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
+        logger.info("nof PMTs = {} nof  SiPMs = {} nof events in input DST = {} ".format(
         NPMT,NSIPM,NEVENTS_DST))
 
-        print("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
+        logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} lof PMT WF (FEE) = {}".format(
         PMTWL,SIPMWL,PMTWL_FEE))
 
 
@@ -319,8 +243,10 @@ def DIOMIRA(argv):
 
         # Map of the SiPMs' sensorID to the index used by tables
         index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
-        # Create instance of the noise sampler
-        sipms_noise_sampler_ = SiPMsNoiseSampler("../Database/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
+
+        # Create instance of the noise sampler and compute noise thresholds
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
+        # sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_FRACTION)
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
@@ -352,10 +278,10 @@ def DIOMIRA(argv):
             twfgroup = h5out.create_group(h5out.root, "TWF")
 
             # create a table to store true waveform (zs, rebinned)
-            pmt_twf_table = h5out.create_table( twfgroup, "PMT", PMT_TWF, "Store for PMTs TWF",
+            pmt_twf_table = h5out.create_table( twfgroup, "PMT", SENSOR_WF, "Store for PMTs TWF",
                                                 tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
-            sipm_twf_table = h5out.create_table( twfgroup, "SiPM", SiPM_TWF, "Store for SiPMs TWF",
+            sipm_twf_table = h5out.create_table( twfgroup, "SiPM", SENSOR_WF, "Store for SiPMs TWF",
                                                  tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
             #and index in event column
@@ -370,16 +296,23 @@ def DIOMIRA(argv):
 
             # create an extensible array to store the RWF waveforms
             pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
-                                    atom=tables.Float32Atom(),
+                                    atom=tables.Int32Atom(),     #not Float32! bad for compression
                                     shape=(0, NPMT, PMTWL_FEE),
                                     expectedrows=NEVENTS_DST)
 
+            # # create an extensible array to store the RWF waveforms
+            # pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
+            #                         atom=tables.Float32Atom(),
+            #                         shape=(0, NPMT, PMTWL_FEE),
+            #                         expectedrows=NEVENTS_DST)
+
+            # sipm_rwf_table = h5out.create_table( rgroup, "sipmrwf", SENSOR_WF, "Store for SiPMs RWF",
+            #                                      tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
-                                    atom=tables.Float32Atom(),
+                                    atom=tables.Int32Atom(), #not Float32! bad for compression
                                     shape=(0, NSIPM, SIPMWL),
                                     expectedrows=NEVENTS_DST)
-
             #LOOP
             first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVENTS_DST,RUN_ALL)
 
@@ -392,29 +325,29 @@ def DIOMIRA(argv):
                 rebin = int(1*mus/1*ns)  #rebins zs function in 1 mus bin
 
                 #list with zs twf
-                truePMT  =  pmt_twf_signal(i,pmtrd_, rebin)
-                trueSiPM = sipm_twf_signal(i,sipmrd_)
+                #truePMT  =  pmt_twf_signal(i,pmtrd_, rebin)
+                # dict_map applies a function to the dictionary values
+                truePMT  = dict_map( lambda df: wfm.rebin_df(df,rebin),
+                                     wfm.sensor_wise_zero_suppresion(pmtrd_[i],0.,to_mus=ns/ms))
+                trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i],0.)
 
                 #store in table
-                store_pmt_twf(i, pmt_twf_table, truePMT)
-                store_sipm_twf(i, sipm_twf_table, trueSiPM)
+                wfm.store_wf(i, pmt_twf_table, truePMT)
+                wfm.store_wf(i, sipm_twf_table, trueSiPM)
 
                 #simulate PMT response and return an array with RWF
+                #convert to float, append to EVector
                 dataPMT = simulate_pmt_response(i,pmtrd_)
-
-                #convert to float
-                dataPMT.astype(float)
-
-                #append to EVECTOR
+                dataPMT.astype(int)
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
 
-
                 #simulate SiPM response and return an array with RWF
-                #convert to float, append to EVector
-
+                #convert to float, zero suppress and dump to table
                 dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
-                dataSiPM.astype(float)
-                sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
+                dataSiPM.astype(int)
+                # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
+                # wfm.store_wf( i, sipm_rwf_table, zs_wfs )
+                sipmrwf.append( dataSiPM.reshape(1,NSIPM,SIPMWL) )
 
             t1 = time()
             pmtrwf.flush()
@@ -427,4 +360,4 @@ if __name__ == '__main__':
     #import cProfile
 
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
-    DIOMIRA(sys.argv)
+    #DIOMIRA(sys.argv)
