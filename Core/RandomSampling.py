@@ -20,7 +20,7 @@ class NoiseSampler:
         data  = np.loadtxt(filename)
         xbins = data[0,1:]
         data  = data[ np.where(map(sipmdf['channel'].__contains__,data[:,0]))[0] ]
-        probs = np.apply_along_axis( lambda ps: ps/np.sum(ps), 1, data[:,1:] )
+        self.probs = np.apply_along_axis( lambda ps: ps/np.sum(ps), 1, data[:,1:] )
 
         self.nsamples = sample_size
         self.nsensors = len(probs)
@@ -32,15 +32,13 @@ class NoiseSampler:
         elif not hasattr(pes2adc,__iter__):
             pes2adc = np.ones(self.nsensors) * pes2adc
 
-        xbins   = np.tile(xbins,(self.nsensors,1)) * np.array(pes2adc).reshape(self.nsensors,1)
-        self.dx = np.tile(np.diff(self.xbins,axis=1)[:,0]*0.5, self.nsamples)
-
-        # data array has shape (nsensors,2*self.nsamples) for efficiency
-        self.data  = np.concatenate((self.xbins,self.probs),axis=1)
+        self.xbins = np.tile(xbins,(self.nsensors,1)) * np.array(pes2adc).reshape(self.nsensors,1)
+        self.dx    = np.tile(np.diff(self.xbins,axis=1)[:,0]*0.5, self.nsamples)
 
         # Sampling functions
-        self._sample_sensor      = lambda data: np.random.choice( data[:data.shape/2], size = self.nsamples, p=data[:data.shape/2] )
-        self._discrete_sampler   = lambda: np.apply_along_axis( self._sample_sensor, 1, self.data )
+        self.indices             = np.arange(self.nsensors).reshape(nsensors,1)
+        self._sample_sensor      = lambda i: np.random.choice( self.xbins[i], size = self.nsamples, p=self.probs[i] )
+        self._discrete_sampler   = lambda: np.apply_along_axis( self._sample_sensor, 1, self.indices )
         self._continuous_sampler = lambda: self._discrete_sampler() + np.random.uniform(-self.dx,self.dx)
 
         self._sampler = self._continuous_sampler if smear else self._discrete_sampler
@@ -54,4 +52,4 @@ class NoiseSampler:
             Find the number of pes at which each noise distribution leaves behind
             the noise_cut fraction of its population.
         '''
-        return np.array( [ self.xbins[np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] )
+        return np.array( [ self.xbins[i,np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] )
