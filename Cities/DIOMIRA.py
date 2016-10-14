@@ -154,6 +154,8 @@ def simulate_pmt_response(event_number,pmtrd_):
         rdata.append(signal_daq)
     return np.array(rdata)
 
+def to_adc( wfs, sensdf ):
+    return wfs * 1.0/sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
 
 def DIOMIRA(argv):
     """
@@ -242,6 +244,7 @@ def DIOMIRA(argv):
         pmt_t   = h5in.root.Sensors.DataPMT
         sipm_t  = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
+        pmtdf   = snf.read_data_sensors(pmt_t)
         sipmdf  = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
@@ -336,13 +339,13 @@ def DIOMIRA(argv):
 
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
-                dataPMT = simulate_pmt_response(i,pmtrd_)
+                dataPMT = to_adc(simulate_pmt_response(i,pmtrd_),pmtdf)
                 dataPMT.astype(int)
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
 
                 #simulate SiPM response and return an array with RWF
                 #convert to float, zero suppress and dump to table
-                dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
+                dataSiPM = to_adc(simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_),sipmdf)
                 dataSiPM.astype(int)
                 # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
                 # tbl.store_wf( i, sipm_rwf_table, zs_wfs )
