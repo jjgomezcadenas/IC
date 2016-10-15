@@ -101,7 +101,7 @@ def to_adc( wfs, sensdf ):
     '''
         Scale waveform in pes to adc.
     '''
-    return wfs / sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
+    return wfs * sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
 
 
 def rebin_twf(t, e, stride = 40):

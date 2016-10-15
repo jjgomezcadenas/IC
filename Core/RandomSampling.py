@@ -20,11 +20,12 @@ class NoiseSampler:
         self.dx    = np.diff(self.xbins)[0] * 0.5
 
         # Remove masked channels and normalize probabilities
-        data  = data[ np.where(map(sipmdf['channel'].__contains__,data[:,0]))[0] ]
+        data  = data[ np.where(map(sipmdf['channel'].values.__contains__,data[:,0])) ]
+        print(len(data))
         self.probs = np.apply_along_axis( lambda ps: ps/np.sum(ps), 1, data[:,1:] )
 
         self.nsamples = sample_size
-        self.nsensors = len(probs)
+        self.nsensors = len(self.probs)
         self.output_shape = (self.nsensors,self.nsamples)
 
         # Sampling functions
@@ -48,7 +49,7 @@ class NoiseSampler:
         '''
         # If any of the options is present, perform pes-to-adc conversion
         if 'sipmdf' in kwargs:
-            pes_to_adc = 1.0 / kwargs['sipmdf']['adc_to_pes']
+            pes_to_adc = kwargs['sipmdf']['adc_to_pes']
         elif 'pes_to_adc' in kwargs:
             if not hasattr(kwargs['pes_to_adc'],__iter__):
                 pes_to_adc = np.ones(self.nsensors) * kwargs['pes_to_adc']
