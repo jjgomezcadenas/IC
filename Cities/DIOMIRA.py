@@ -118,16 +118,12 @@ def simulate_pmt_response(event_number,pmtrd_, BLR):
         signal_PMT = spe.SpePulseFromVectorPE(pmt) #PMT response
 
         #Front end response to PMT pulse (in volts)
-        signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE)
-        signal_daq = FP.offset -fee.daqSignal(signal_fee, noise_rms=0)
-        FEE.append(signal_daq)
+        signal_fee, signal_blr = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE)
+        signal_daq = FP.offset - fee.daqSignal(signal_fee, noise_rms=0)
+        signal_daq_blr = FP.offset - fee.daqSignal(signal_blr, noise_rms=0) if BLR else 0.
 
-        if BLR:
-            signal_blr = fee.BLRSignal(signal_PMT, noise_rms=FP.NOISE_FEE)
-            signal_daq_blr = FP.offset -fee.daqSignal(signal_blr, noise_rms=0)
-            BLRX.append(signal_daq_blr)
-        else:
-            BLRX.append(0.)
+        FEE.append(signal_daq)
+        BLRX.append(signal_daq_blr)
 
     return np.array(FEE),np.array(BLRX)
 
@@ -187,6 +183,9 @@ def DIOMIRA(argv):
 
     logger.info("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
+
+    logger.info("BLR simulation on(1)/off(0) = {}  ".format(
+        BLR))
 
     # logger.info("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
     # open the input file
@@ -312,15 +311,13 @@ def DIOMIRA(argv):
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
 
-                dataPMT,blrPMT = simulate_pmt_response(i,pmtrd_, BLR)
+                dataPMT, blrPMT = simulate_pmt_response(i,pmtrd_, BLR)
                 dataPMT.astype(int)
-
-                if BLR:
-                    blrPMT.astype(int)
 
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
 
                 if BLR:
+                    blrPMT.astype(int)
                     pmtblr.append(blrPMT.reshape(1, NPMT, PMTWL_FEE))
 
                 #simulate SiPM response and return an array with RWF

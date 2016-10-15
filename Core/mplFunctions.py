@@ -190,6 +190,31 @@ def scan_waveforms(pmtea,list_of_events=[0]):
         plot_waveforms(wfm.get_waveforms(pmtea,event_number=event))
         wait()
 
+def define_window( wf, window_size ):
+    peak = np.argmax(abs(wf-np.mean(wf)))
+    return max(0,peak-window_size),min(len(wf),peak+window_size)
+
+def overlap_waveforms(wfset,event,zoom = True, window_size = 800):
+    '''
+        Draw all waveforms together.
+    '''
+    wfs = wfset[event]
+    first, last = define_window(wfs[0],window_size) if zoom else (0, wfs.shape[1])
+    for wf in wfs:
+        plt.plot(wf[first:last])
+
+def compare_raw_blr( pmtrwf, pmtblr, evt = 0, zoom = True, window_size = 800 ):
+    '''
+        Compare PMT RWF and BLR WF. Option zoom takes a window around the peak
+        of size window_size.
+    '''
+    plt.figure( figsize = (12,12) )
+    for i,(raw,blr) in enumerate(zip(pmtrwf[evt],pmtblr[evt])):
+        first, last = define_window(raw,window_size) if zoom else (0, pmtrwf.shape[2])
+        splot = plt.subplot(3,4,i+1)
+        plt.plot(raw[first:last])
+        plt.plot(blr[first:last])
+
 def plot_pmtwf(PMTWF):
     """
     Plots pmtwf
@@ -259,6 +284,7 @@ def plot_best(sipmrwf,sipmtwf, sipmdf, evt = 0):
     '''
         Plot the noisy waveform of the SiPM with greatest charge and superimpose the true waveform.
     '''
+    plt.figure( figsize = (10,8) )
     #Find SiPM with greatest peak
     maxsipm = np.unravel_index(sipmrwf[evt].argmax(),sipmrwf[evt].shape)[0]
     print("SiPM with greatest peak is at index {} with ID {}".format(maxsipm,sipmdf.ix[maxsipm].channel))
@@ -272,20 +298,19 @@ def plot_best_group(sipmrwf,sipmtwf,sipmdf,evt = 0, nsipms = 8, ncols = 3):
     '''
         Plot the noisy (red) and true (blue) waveforms of the nsipms SiPMs with greatest charge.
     '''
+    plt.figure( figsize = (10,8) )
     #Find SiPM with greatest peak
     sipms = sorted( enumerate(sipmrwf[evt]), key = lambda x: max(x[1]), reverse = True )[:nsipms]
-    plt.figure(figsize=(45,60))
-    f, axes = plt.subplots(int(ceil(nsipms*1.0/ncols)), ncols)
+    nrows = int(ceil(nsipms*1.0/ncols))
+    
     for i,(sipm_index, sipm_wf) in enumerate(sipms):
         try:
             true_times, true_amps = tbl.read_wf(sipmtwf,evt,sipm_index)
         except:
-            continue
-        axes[i//ncols,i%ncols].plot(sipm_wf)
-        axes[i//ncols,i%ncols].plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][sipm_index])
-
-    # [ plt.setp([a.get_xticklabels() for a in axes[i, :]], visible=False) for i in range(0,nrows-1) ]
-    # [ plt.setp([a.get_yticklabels() for a in axes[:, i]], visible=False) for i in range(1,ncols) ]
+            true_times, true_amps = np.arange(len(sipm_wf)),np.zeros(len(sipm_wf))
+        plt.subplot(nrows,ncols,i+1)
+        plt.plot(sipm_wf)
+        plt.plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][sipm_index])
 
 def plot_track(geom_df,mchits_df,vox_size=10, zoom = False):
     """
