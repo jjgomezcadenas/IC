@@ -155,7 +155,7 @@ class FEE:
  		"""
  		signal_lp, signal_hp, signal_hp_lp = self.Filter(signal_current)
  		noise = self.FEENoise(len(signal_current), noise_rms)
- 		return signal_hp_lp*self.RG + noise
+ 		return signal_hp_lp*self.RG + noise, signal_lp * self.RG + noise
 
 	def BLRSignal(self,signal_current, noise_rms=0.3*mV):
  		"""
