@@ -62,6 +62,8 @@ Some variables, classes and functions renamed for clarity.
 13.10 Reutilization of functions and some duplicities removed.
       SiPMs' waveforms to be stored without ZS.
 
+14.10 JJ: Store all waveforms as Int16 (and as adc counts)
+
 """
 def FEE_param_table(fee_table):
     """
@@ -85,30 +87,6 @@ def FEE_param_table(fee_table):
 
     row.append()
 
-# def pmt_twf_signal(event_number,pmtrd, stride):
-#     """
-#     1) takes pmtrd
-#     2) Performs ZS
-#     3) Rebins resulting wf according to stride
-#     """
-#
-#     rdata = {}
-#
-#     for j in range(pmtrd.shape[1]):
-#         logger.debug("-->PMT number ={}".format(j))
-#
-#         energy_pes = pmtrd[event_number, j] #waveform for event event_number, PMT j
-#         time_mus = np.arange(pmtrd.shape[2])*ns/mus
-#
-#         twf_zs = wfm.wf_thr(wfm.wf2df(time_mus,energy_pes),0.5)
-#         time_mus, ene_pes = wfm.rebin_twf(twf_zs.time_mus.values,twf_zs.ene_pes.values,stride)
-#         if not time_mus.any(): continue
-#         twf = wfm.wf2df(time_mus, ene_pes)
-#
-#         logger.debug("-->len(twf) ={}".format(len(twf)))
-#
-#         rdata[j] = twf
-#     return rdata
 
 def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
     """
@@ -117,7 +95,7 @@ def simulate_sipm_response(event_number,sipmrd_,sipms_noise_sampler):
     return sipmrd_[event_number] + sipms_noise_sampler.Sample()
 
 
-def simulate_pmt_response(event_number,pmtrd_):
+def simulate_pmt_response(event_number,pmtrd_, BLR):
     """
     Sensor Response
     Given a signal in PE (photoelectrons in bins of 1 ns) and the response function of
@@ -125,34 +103,33 @@ def simulate_pmt_response(event_number,pmtrd_):
     this function produces the PMT raw data (adc counts bins 25 ns)
 
     pmtrd_ dataset that holds the PMT PE data for each PMT
-    pmtrd25 dataset to be created with adc counts, bins 25 ns
-    after convoluting with electronics
+
     """
 
-    rdata = []
+    FEE = []
+    BLRX = []
 
     for j in range(pmtrd_.shape[1]):
         logger.debug("-->PMT number ={}".format(j))
 
         pmt = pmtrd_[event_number, j] #waveform for event event_number, PMT j
-
-        fee = FE.FEE(C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
+        fee = FE.FEE(PMTG=FP.PMT_GAIN, C=FP.C12[j],R= FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
         spe = SP.SPE(pmt_gain=FP.PMT_GAIN,x_slope = 5*ns,x_flat = 1*ns)
-
         signal_PMT = spe.SpePulseFromVectorPE(pmt) #PMT response
 
         #Front end response to PMT pulse (in volts)
         signal_fee = fee.FEESignal(signal_PMT, noise_rms=FP.NOISE_FEE)
-
-        #Signal out of DAQ
-        #positive signal convention
-        #signal_daq = fee.daqSignal(signal_fee, noise_rms=0) - FP.offset
-        #negative signals convention!
-
         signal_daq = FP.offset -fee.daqSignal(signal_fee, noise_rms=0)
+        FEE.append(signal_daq)
 
-        rdata.append(signal_daq)
-    return np.array(rdata)
+        if BLR:
+            signal_blr = fee.BLRSignal(signal_PMT, noise_rms=FP.NOISE_FEE)
+            signal_daq_blr = FP.offset -fee.daqSignal(signal_blr, noise_rms=0)
+            BLRX.append(signal_daq_blr)
+        else:
+            BLRX.append(0.)
+
+    return np.array(FEE),np.array(BLRX)
 
 def DIOMIRA(argv):
     """
@@ -195,7 +172,7 @@ def DIOMIRA(argv):
     RUN_ALL =CFP['RUN_ALL']
     CLIB =CFP['CLIB']
     CLEVEL =CFP['CLEVEL']
-    # NOISE_CUT_FRACTION = CFP['NOISE_CUT_FRACTION']
+    BLR =CFP['BLR']
     NEVENTS = LAST_EVT - FIRST_EVT
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
@@ -295,21 +272,19 @@ def DIOMIRA(argv):
 
             # create an extensible array to store the RWF waveforms
             pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
-                                    atom=tables.Int32Atom(),     #not Float32! bad for compression
+                                    atom=tables.Int16Atom(),     #not Float32! bad for compression
+                                    shape=(0, NPMT, PMTWL_FEE),
+                                    expectedrows=NEVENTS_DST)
+            pmtblr = 0
+            if BLR:
+                pmtblr = h5out.create_earray(h5out.root.RD, "pmtblr",
+                                    atom=tables.Int16Atom(),
                                     shape=(0, NPMT, PMTWL_FEE),
                                     expectedrows=NEVENTS_DST)
 
-            # # create an extensible array to store the RWF waveforms
-            # pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
-            #                         atom=tables.Float32Atom(),
-            #                         shape=(0, NPMT, PMTWL_FEE),
-            #                         expectedrows=NEVENTS_DST)
-
-            # sipm_rwf_table = h5out.create_table( rgroup, "sipmrwf", SENSOR_WF, "Store for SiPMs RWF",
-            #                                      tables.Filters(complib=CLIB, complevel=CLEVEL) )
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
-                                    atom=tables.Int32Atom(), #not Float32! bad for compression
+                                    atom=tables.Int16Atom(),
                                     shape=(0, NSIPM, SIPMWL),
                                     expectedrows=NEVENTS_DST)
             #LOOP
@@ -336,9 +311,17 @@ def DIOMIRA(argv):
 
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
-                dataPMT = wfm.to_adc(simulate_pmt_response(i,pmtrd_),pmtdf)
+
+                dataPMT,blrPMT = simulate_pmt_response(i,pmtrd_, BLR)
                 dataPMT.astype(int)
+
+                if BLR:
+                    blrPMT.astype(int)
+
                 pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
+
+                if BLR:
+                    pmtblr.append(blrPMT.reshape(1, NPMT, PMTWL_FEE))
 
                 #simulate SiPM response and return an array with RWF
                 #convert to float, zero suppress and dump to table
@@ -348,15 +331,18 @@ def DIOMIRA(argv):
                 # tbl.store_wf( i, sipm_rwf_table, zs_wfs )
                 sipmrwf.append( dataSiPM.reshape(1,NSIPM,SIPMWL) )
 
-            t1 = time()
+
             pmtrwf.flush()
             sipmrwf.flush()
+            if BLR:
+                pmtblr.flush()
 
-            print("DIOMIRA has run over {} events in {} seconds".format(i, t1-t0))
+            t1 = time()
+
+            print("DIOMIRA has run over {} events in {} seconds".format(i+1, t1-t0))
     print("Leaving Diomira. Safe travels!")
 
 if __name__ == '__main__':
     #import cProfile
-
     #cProfile.run('DIOMIRA(sys.argv)', sort='time')
     DIOMIRA(sys.argv)

@@ -51,7 +51,7 @@ LSB = 2*volt/2**NBITS     # value of LSB
 LSB_OUT = LSB/1.25    # effective value to convert mV to ADC counts
 voltsToAdc = LSB_OUT
 
-NOISE_FEE_rms = 0.7*mV
+NOISE_FEE_rms = 0.3*mV
 NOISE_FEE_adc = NOISE_FEE_rms/voltsToAdc
 MAU_thr =  LSB/volt  #MAU operates in ADC counts
 
