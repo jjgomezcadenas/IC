@@ -124,7 +124,7 @@ def BLR(signal_daq, coef, mau_len=250, thr1 = 3*FP.NOISE_ADC, thr2 = 0,
             signal_i[k] = sblr.MAU[k-1]  #signal_i follows the MAU
 
             #update recovered signal, correcting by offset
-            sblr.signal_r[k], sblr.acum[k] = reco_signal(k, signal_daq,coef,acum,offset)
+            sblr.signal_r[k], sblr.acum[k] = reco_signal(k, signal_daq,coef,sblr.acum,offset)
 
         else:  #no signal or raw signal has dropped below threshold
 
@@ -139,7 +139,7 @@ def BLR(signal_daq, coef, mau_len=250, thr1 = 3*FP.NOISE_ADC, thr2 = 0,
 
                 sblr.MAU[k] = sblr.MAU[k-1]
                 signal_i[k] = sblr.MAU[k-1]
-                sblr.signal_r[k], sblr.acum[k] = reco_signal(k, signal_daq,coef,acum,offset)
+                sblr.signal_r[k], sblr.acum[k] = reco_signal(k, signal_daq,coef,sblr.acum,offset)
                 # sblr.acum[k] = sblr.acum[k-1] + signal_daq[k] - offset;
                 # sblr.signal_r[k] = signal_daq[k] + coef*sblr.acum[k]
 
@@ -178,7 +178,7 @@ def BLR(signal_daq, coef, mau_len=250, thr1 = 3*FP.NOISE_ADC, thr2 = 0,
                             signal_i[k] = sblr.MAU[k-1]
 
                         # keep adding recovered signal
-                        sblr.signal_r[k], sblr.acum[k] = reco_signal(k, signal_daq,coef,acum,offset)
+                        sblr.signal_r[k], sblr.acum[k] = reco_signal(k, signal_daq,coef,sblr.acum,offset)
                         # sblr.acum[k] = sblr.acum[k-1] + signal_daq[k] - sblr.MAU[k]
                         # sblr.signal_r[k] = signal_daq[k] + coef*sblr.acum[k]
 

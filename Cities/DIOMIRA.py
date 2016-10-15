@@ -184,6 +184,9 @@ def DIOMIRA(argv):
     logger.info("Compression library = {} Compression level = {} ".format(
         CLIB,CLEVEL))
 
+    logger.info("BLR simulation on(1)/off(0) = {}  ".format(
+        BLR))
+
     # logger.info("Noise cut fraction = {}".format(NOISE_CUT_FRACTION))
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r") as h5in:
