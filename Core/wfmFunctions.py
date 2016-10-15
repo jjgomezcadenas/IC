@@ -97,6 +97,12 @@ from LogConfig import *
 #     sensor_list = set(table.read_where('event == {}'.format(event_number),field='ID'))
 #     return pd.Panel({ isens : wf2df(*read_wf(table,event_number,isens)) for isens in sensor_list})
 
+def to_adc( wfs, sensdf ):
+    '''
+        Scale waveform in pes to adc.
+    '''
+    return wfs * sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
+
 
 def rebin_twf(t, e, stride = 40):
     """

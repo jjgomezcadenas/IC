@@ -9,6 +9,7 @@ ChangeLog
 from __future__ import print_function
 import pandas as pd
 import wfmFunctions as wfm
+import sensorFunctions as snf
 from LogConfig import *
 
 def get_vectors(h5f):
@@ -94,7 +95,7 @@ def read_wf(table,event_number,isens):
     '''
     try:
         return zip(*[ (row['time_mus'],row['ene_pes']) for row in table.iterrows() if row['event']== event_number and row['ID']== isens])
-    except:
+    except ValueError:
         logger.error('[read_wf]: empty sensor found: {}'.format(isens))
 
 

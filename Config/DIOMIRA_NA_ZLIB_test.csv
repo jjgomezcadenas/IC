@@ -17,4 +17,4 @@
 #        CLEVEL = compression level
 #
 PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL,BLR,END
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/test/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,Kr_ACTIVE_5bar_int_blr_on_10.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0,10,1,zlib,1,1,1
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/test/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,Kr_ACTIVE_5bar_int_blr_on_1000.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0,1000,1,zlib,1,1,1

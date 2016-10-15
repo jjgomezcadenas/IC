@@ -266,9 +266,9 @@ def plot_best(sipmrwf,sipmtwf, sipmdf, evt = 0):
     # Plot noisy waveform in red and noiseless waveform in blue
     true_times, true_amps = tbl.read_wf(sipmtwf,evt,maxsipm)
     plt.plot(sipmrwf[evt,maxsipm,:])
-    plt.plot(true_times,true_amps)
+    plt.plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][maxsipm])
 
-def plot_best_group(sipmrwf,sipmtwf,evt = 0, nsipms = 8, ncols = 3):
+def plot_best_group(sipmrwf,sipmtwf,sipmdf,evt = 0, nsipms = 8, ncols = 3):
     '''
         Plot the noisy (red) and true (blue) waveforms of the nsipms SiPMs with greatest charge.
     '''
@@ -276,13 +276,13 @@ def plot_best_group(sipmrwf,sipmtwf,evt = 0, nsipms = 8, ncols = 3):
     sipms = sorted( enumerate(sipmrwf[evt]), key = lambda x: max(x[1]), reverse = True )[:nsipms]
     plt.figure(figsize=(45,60))
     f, axes = plt.subplots(int(ceil(nsipms*1.0/ncols)), ncols)
-    for i,(sipm_index, sipm_wfm) in enumerate(sipms):
+    for i,(sipm_index, sipm_wf) in enumerate(sipms):
         try:
             true_times, true_amps = tbl.read_wf(sipmtwf,evt,sipm_index)
         except:
             continue
-        axes[i//ncols,i%ncols].plot(sipm_wfm)
-        axes[i//ncols,i%ncols].plot(true_times,true_amps)
+        axes[i//ncols,i%ncols].plot(sipm_wf)
+        axes[i//ncols,i%ncols].plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][sipm_index])
 
     # [ plt.setp([a.get_xticklabels() for a in axes[i, :]], visible=False) for i in range(0,nrows-1) ]
     # [ plt.setp([a.get_yticklabels() for a in axes[:, i]], visible=False) for i in range(1,ncols) ]

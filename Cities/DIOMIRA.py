@@ -23,6 +23,7 @@ import FEE2 as FE
 import tables
 from time import time
 import wfmFunctions as wfm
+import sensorFunctions as snf
 import tblFunctions as tbl
 import pandas as pd
 
@@ -130,7 +131,6 @@ def simulate_pmt_response(event_number,pmtrd_, BLR):
 
     return np.array(FEE),np.array(BLRX)
 
-
 def DIOMIRA(argv):
     """
     Diomira driver
@@ -214,18 +214,15 @@ def DIOMIRA(argv):
 
 
         #access the geometry and the sensors metadata info
-
-        geom_t = h5in.root.Detector.DetectorGeometry
-        pmt_t = h5in.root.Sensors.DataPMT
-        sipm_t = h5in.root.Sensors.DataSiPM
+        geom_t  = h5in.root.Detector.DetectorGeometry
+        pmt_t   = h5in.root.Sensors.DataPMT
+        sipm_t  = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
+        pmtdf   = snf.read_data_sensors(pmt_t)
+        sipmdf  = snf.read_data_sensors(sipm_t)
 
-        # Map of the SiPMs' sensorID to the index used by tables
-        index_map = { sipm_t[i][0] : i for i in range(sipm_t.shape[0]) }
-
-        # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",index_map,SIPMWL,True)
-        # sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_FRACTION)
+        # Create instance of the noise sampler
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL,True)
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
@@ -315,9 +312,7 @@ def DIOMIRA(argv):
                 #simulate PMT response and return an array with RWF
                 #convert to float, append to EVector
 
-
                 dataPMT,blrPMT = simulate_pmt_response(i,pmtrd_, BLR)
-
                 dataPMT.astype(int)
 
                 if BLR:
@@ -330,7 +325,7 @@ def DIOMIRA(argv):
 
                 #simulate SiPM response and return an array with RWF
                 #convert to float, zero suppress and dump to table
-                dataSiPM = simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_)
+                dataSiPM = wfm.to_adc(simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_),sipmdf)
                 dataSiPM.astype(int)
                 # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
                 # tbl.store_wf( i, sipm_rwf_table, zs_wfs )
