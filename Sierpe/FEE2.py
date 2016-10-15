@@ -157,15 +157,6 @@ class FEE:
  		noise = self.FEENoise(len(signal_current), noise_rms)
  		return signal_hp_lp*self.RG + noise, signal_lp * self.RG + noise
 
-	def BLRSignal(self,signal_current, noise_rms=0.3*mV):
- 		"""
- 		filters the input signal according to the filters and transforms it in volts
- 		"""
- 		signal_lp, signal_hp, signal_hp_lp = self.Filter(signal_current)
- 		noise = self.FEENoise(len(signal_current), noise_rms)
- 		return signal_lp*self.RG + noise
-
-
  	def DAQSignal(self,signal_t, signal_fee, noise_rms=0.3*mV):
  		"""
  		downscale the signal after the FEE
