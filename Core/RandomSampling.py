@@ -54,4 +54,4 @@ class NoiseSampler:
             if not hasattr(kwargs['pes_to_adc'],__iter__):
                 pes_to_adc = np.ones(self.nsensors) * kwargs['pes_to_adc']
 
-        return np.array( [ self.xbins[np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] ) * np.array(adc_to_pes)
+        return np.array( [ self.xbins[np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] ) * np.array(pes_to_adc)
