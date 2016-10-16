@@ -181,4 +181,4 @@ def ISIDORA(argv):
 
 
 if __name__ == '__main__':
-    ISIDORA(sys.argv)
+    #ISIDORA(sys.argv)
