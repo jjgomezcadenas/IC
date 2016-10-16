@@ -160,7 +160,7 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
 
 # waveforms
 
-def plot_waveforms(pmtwfdf, maxlen=0):
+def plot_waveforms(pmtwfdf, maxlen=0, zoom = False, window_size = 800):
     """
     Takes as input a df storing the PMT wf and plots the 12 PMT WF
     """
@@ -172,10 +172,11 @@ def plot_waveforms(pmtwfdf, maxlen=0):
     if maxlen > 0:
         len_pmt = maxlen
     for i in range(12):
+        first, last = define_window(pmtwfdf[i],window_size) if zoom else (0, len(pmtwfdf[i]))
         ax1 = plt.subplot(3,4,i+1)
-        ax1.set_xlim([0, len_pmt])
+        #ax1.set_xlim([0, len_pmt])
         SetPlotLabels(xlabel='samples', ylabel='adc')
-        plt.plot(pmtwfdf[i])
+        plt.plot(pmtwfdf[i][first:last])
 
 
     plt.show()
@@ -211,6 +212,20 @@ def compare_raw_blr( pmtrwf, pmtblr, evt = 0, zoom = True, window_size = 800 ):
     plt.figure( figsize = (12,12) )
     for i,(raw,blr) in enumerate(zip(pmtrwf[evt],pmtblr[evt])):
         first, last = define_window(raw,window_size) if zoom else (0, pmtrwf.shape[2])
+        splot = plt.subplot(3,4,i+1)
+        plt.plot(raw[first:last])
+        plt.plot(blr[first:last])
+
+def compare_corr_raw( pmtcwf, pmtblr, evt = 0, zoom = True, window_size = 800 ):
+    '''
+        Compare PMT CWF and RWF (or BLR). Option zoom takes a window around the peak
+        of size window_size.
+    '''
+    transform = lambda wf: 4096 - wf - (4096-2500)
+    pmtblr = map( transform, pmtblr )
+    plt.figure( figsize = (12,12) )
+    for i,(raw,blr) in enumerate(zip(pmtcwf[evt],pmtblr[evt])):
+        first, last = define_window(raw,window_size) if zoom else (0, pmtcwf.shape[2])
         splot = plt.subplot(3,4,i+1)
         plt.plot(raw[first:last])
         plt.plot(blr[first:last])
@@ -302,7 +317,7 @@ def plot_best_group(sipmrwf,sipmtwf,sipmdf,evt = 0, nsipms = 8, ncols = 3):
     #Find SiPM with greatest peak
     sipms = sorted( enumerate(sipmrwf[evt]), key = lambda x: max(x[1]), reverse = True )[:nsipms]
     nrows = int(ceil(nsipms*1.0/ncols))
-    
+
     for i,(sipm_index, sipm_wf) in enumerate(sipms):
         try:
             true_times, true_amps = tbl.read_wf(sipmtwf,evt,sipm_index)
