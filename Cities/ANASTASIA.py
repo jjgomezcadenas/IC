@@ -3,10 +3,10 @@ ANASTASIA
 GML October 2016
 
 What ANASTASIA does:
-1) Reads a hdf5 file containing the PMT's CWF and the SiPMs' RWF expressed in ADC counts.
-2) Expresses the waveforms in pes.
-3) Applies zero-suppression.
-4) Writes back in the input file the ZS waveforms.
+1) Reads a hdf5 file containing the PMT's CWF and the SiPMs' RWF in ADC counts.
+2) Applies zero-suppression.
+3) Expresses the waveforms in pes.
+4) Writes back in the input file the ZS waveforms as tables.
 """
 
 from __future__ import print_function
