@@ -1,12 +1,14 @@
 """
 A utility module for plots with matplotlib
 """
+from __future__ import print_function
 from Util import *
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 import numpy as np
 import wfmFunctions as wfm
+import tblFunctions as tbl
 
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
@@ -47,7 +49,7 @@ def HSimple1(x,nbins,title='hsimple',xlabel = '', ylabel = 'Frequency',
 
   if save:
     pathfile = filepath+filename
-    print "saving histogram %s in %s"%(filename, pathfile)
+    print("saving histogram %s in %s"%(filename, pathfile))
     plt.savefig(pathfile, bbox_inches='tight')
     plt.close()
   else:
@@ -158,7 +160,7 @@ def circles(x, y, s, c='b', vmin=None, vmax=None, **kwargs):
 
 # waveforms
 
-def plot_waveforms(pmtwfdf, maxlen=0):
+def plot_waveforms(pmtwfdf, maxlen=0, zoom = False, window_size = 800):
     """
     Takes as input a df storing the PMT wf and plots the 12 PMT WF
     """
@@ -170,10 +172,11 @@ def plot_waveforms(pmtwfdf, maxlen=0):
     if maxlen > 0:
         len_pmt = maxlen
     for i in range(12):
+        first, last = define_window(pmtwfdf[i],window_size) if zoom else (0, len(pmtwfdf[i]))
         ax1 = plt.subplot(3,4,i+1)
-        ax1.set_xlim([0, len_pmt])
+        #ax1.set_xlim([0, len_pmt])
         SetPlotLabels(xlabel='samples', ylabel='adc')
-        plt.plot(pmtwfdf[i])
+        plt.plot(pmtwfdf[i][first:last])
 
 
     plt.show()
@@ -187,6 +190,45 @@ def scan_waveforms(pmtea,list_of_events=[0]):
     for event in list_of_events:
         plot_waveforms(wfm.get_waveforms(pmtea,event_number=event))
         wait()
+
+def define_window( wf, window_size ):
+    peak = np.argmax(abs(wf-np.mean(wf)))
+    return max(0,peak-window_size),min(len(wf),peak+window_size)
+
+def overlap_waveforms(wfset,event,zoom = True, window_size = 800):
+    '''
+        Draw all waveforms together.
+    '''
+    wfs = wfset[event]
+    first, last = define_window(wfs[0],window_size) if zoom else (0, wfs.shape[1])
+    for wf in wfs:
+        plt.plot(wf[first:last])
+
+def compare_raw_blr( pmtrwf, pmtblr, evt = 0, zoom = True, window_size = 800 ):
+    '''
+        Compare PMT RWF and BLR WF. Option zoom takes a window around the peak
+        of size window_size.
+    '''
+    plt.figure( figsize = (12,12) )
+    for i,(raw,blr) in enumerate(zip(pmtrwf[evt],pmtblr[evt])):
+        first, last = define_window(raw,window_size) if zoom else (0, pmtrwf.shape[2])
+        splot = plt.subplot(3,4,i+1)
+        plt.plot(raw[first:last])
+        plt.plot(blr[first:last])
+
+def compare_corr_raw( pmtcwf, pmtblr, evt = 0, zoom = True, window_size = 800 ):
+    '''
+        Compare PMT CWF and RWF (or BLR). Option zoom takes a window around the peak
+        of size window_size.
+    '''
+    transform = lambda wf: 4096 - wf - (4096-2500)
+    pmtblr = map( transform, pmtblr )
+    plt.figure( figsize = (12,12) )
+    for i,(raw,blr) in enumerate(zip(pmtcwf[evt],pmtblr[evt])):
+        first, last = define_window(raw,window_size) if zoom else (0, pmtcwf.shape[2])
+        splot = plt.subplot(3,4,i+1)
+        plt.plot(raw[first:last])
+        plt.plot(blr[first:last])
 
 def plot_pmtwf(PMTWF):
     """
@@ -253,40 +295,37 @@ def plot_ene_pmt(geom_df,sensor_df, epmt, event_number=0, radius=10):
     ylim(geom_df['ydet_min'],geom_df['ydet_max'])
     return col
 
-def plot_best(sipmrwf,sipmtwfm, sipmdf, evt = 0):
+def plot_best(sipmrwf,sipmtwf, sipmdf, evt = 0):
     '''
         Plot the noisy waveform of the SiPM with greatest charge and superimpose the true waveform.
     '''
+    plt.figure( figsize = (10,8) )
     #Find SiPM with greatest peak
-    maxsipm = np.unravel_index(sipmrwf[evt,:,:].argmax(),sipmrwf[evt,:,:].shape)[0]
+    maxsipm = np.unravel_index(sipmrwf[evt].argmax(),sipmrwf[evt].shape)[0]
     print("SiPM with greatest peak is at index {} with ID {}".format(maxsipm,sipmdf.ix[maxsipm].channel))
-    # Plot noisy waveform in red and noiseless waveform in blue
-    true_times, true_amps = zip(*[ (row['time_mus'],row['ene_pes']) for row in sipmtwfm.iterrows() if row['event'] == evt and row['sipm'] == maxsipm ])
-    plt.plot(sipmrwf[evt,maxsipm,:])
-    plt.plot(true_times,true_amps)
 
-def plot_best_group(sipmrwf,sipmtwfm,evt = 0, nsipms = 6, nrows = 2, ncols = 3):
+    # Plot noisy waveform in red and noiseless waveform in blue
+    true_times, true_amps = tbl.read_wf(sipmtwf,evt,maxsipm)
+    plt.plot(sipmrwf[evt,maxsipm,:])
+    plt.plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][maxsipm])
+
+def plot_best_group(sipmrwf,sipmtwf,sipmdf,evt = 0, nsipms = 8, ncols = 3):
     '''
         Plot the noisy (red) and true (blue) waveforms of the nsipms SiPMs with greatest charge.
     '''
+    plt.figure( figsize = (10,8) )
     #Find SiPM with greatest peak
     sipms = sorted( enumerate(sipmrwf[evt]), key = lambda x: max(x[1]), reverse = True )[:nsipms]
-    plt.figure(figsize=(45,60))
-    f, axes = plt.subplots(nrows, ncols)
-    i,j=0,0
-    for sipm_index, sipm_wfm in sipms:
-        try:
-            true_times, true_amps = zip(*[ (row['time_mus'],row['ene_pes']) for row in sipmtwfm.iterrows() if row['event'] == evt and row['sipm'] == sipm_index ])
-        except:
-            continue
-        if j==ncols:
-            i,j = i+1,0
-        axes[i,j].plot(sipm_wfm)
-        axes[i,j].plot(true_times,true_amps)
-        j += 1
+    nrows = int(ceil(nsipms*1.0/ncols))
 
-    [ plt.setp([a.get_xticklabels() for a in axes[i, :]], visible=False) for i in range(0,nrows-1) ]
-    [ plt.setp([a.get_yticklabels() for a in axes[:, i]], visible=False) for i in range(1,ncols) ]
+    for i,(sipm_index, sipm_wf) in enumerate(sipms):
+        try:
+            true_times, true_amps = tbl.read_wf(sipmtwf,evt,sipm_index)
+        except:
+            true_times, true_amps = np.arange(len(sipm_wf)),np.zeros(len(sipm_wf))
+        plt.subplot(nrows,ncols,i+1)
+        plt.plot(sipm_wf)
+        plt.plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][sipm_index])
 
 def plot_track(geom_df,mchits_df,vox_size=10, zoom = False):
     """
