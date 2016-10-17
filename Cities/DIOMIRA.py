@@ -169,6 +169,7 @@ def DIOMIRA(argv):
     CLIB =CFP['CLIB']
     CLEVEL =CFP['CLEVEL']
     BLR =CFP['BLR']
+    NOISE_CUT =CFP['NOISE_CUT']
     NEVENTS = LAST_EVT - FIRST_EVT
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
@@ -222,6 +223,7 @@ def DIOMIRA(argv):
 
         # Create instance of the noise sampler
         sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL,True)
+        sipms_noise_thresholds_ = NOISE_CUT * np.array(sipmdf['adc_to_pes'])
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w",
@@ -323,6 +325,7 @@ def DIOMIRA(argv):
                 #simulate SiPM response and return an array with RWF
                 #convert to float, zero suppress and dump to table
                 dataSiPM = wfm.to_adc(simulate_sipm_response(i,sipmrd_,sipms_noise_sampler_),sipmdf)
+                dataSiPM = wfm.noise_suppression(dataSiPM,sipms_noise_thresholds_)
                 dataSiPM.astype(int)
                 # zs_wfs = wfm.sensor_wise_zero_suppresion(dataSiPM,sipms_noise_thresholds_)
                 # tbl.store_wf( i, sipm_rwf_table, zs_wfs )
