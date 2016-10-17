@@ -149,7 +149,6 @@ def simulate_pmt_response(event_number, pmtrd_, BLR):
 
     return np.array(RWF), np.array(BLRX)
 
-
 def DIOMIRA(argv):
     """
     Diomira driver
@@ -200,6 +199,7 @@ def DIOMIRA(argv):
                 CLEVEL))
 
     logger.info("BLR simulation on(1)/off(0) = {}  ".format(BLR))
+    logger.info("noise cut = {} pes ".format(NOISE_CUT))
 
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN, FILE_IN), "r") as h5in:
@@ -220,7 +220,6 @@ def DIOMIRA(argv):
                        nof  SiPMs = {}
                        nof events in input DST = {} """.format(NPMT, NSIPM,
                                                                NEVENTS_DST))
-
         logger.info("""lof SiPM WF = {}
                        lof PMT WF (MC) = {}
                        lof PMT WF (FEE) = {}""".format(PMTWL, SIPMWL,
@@ -313,14 +312,13 @@ def DIOMIRA(argv):
                 # supress zeros in MCRD and rebin the ZS function in 1 mus bins
                 rebin = int(units.mus/units.ns)
 
-                # dict_map applies a function to the dictionary values
+                trueSiPM = wfm.sensor_wise_zero_suppression(sipmrd_[i], 0.)
 
+                # dict_map applies a function to the dictionary values
                 truePMT = cf.\
                     dict_map(lambda df: wfm.rebin_df(df, rebin),
-                             wfm.sensor_wise_zero_suppresion(pmtrd_[i],
+                             wfm.sensor_wise_zero_suppression(pmtrd_[i],
                              0., to_mus=int(units.ns/units.ms)))
-
-                trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i], 0.)
 
                 # store in table
                 tbl.store_wf(i, pmt_twf_table, truePMT)
