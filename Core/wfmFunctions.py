@@ -222,24 +222,42 @@ def wf_thr(wf,threshold=1):
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
 
-def sensor_wise_zero_suppresion(data,thresholds, to_mus=None):
+def zs_wf(waveform,threshold,to_mus=None):
+    '''
+        get a zero-supressed wf.
+    '''
+    t = np.argwhere(waveform>threshold).flatten()
+    if not t.size: return None
+    return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
+
+def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
     # If threshold is a single value, transform it into an array
     if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
+    return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
-    def zs_df(waveform,threshold):
-        '''
-            Get the zero-supressed wfms. Return None if it is completely suppresed.
-        '''
-        t = np.argwhere(waveform>threshold).flatten()
-        if not t.any(): return None
-        return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
+def noise_suppression(data,thresholds, to_mus=None):
+    '''
+        takes an array of waveforms, applies the corresponding threshold to
+        each row and returns a dictionary with the data frames of the survivors.
+    '''
+    suppressed_data = np.copy(data)
+    if not hasattr(thresholds, '__iter__'):
+        thresholds = np.ones( data.shape[0] ) * thresholds
+    def suppress(wf,th):
+        wf[wf<=th] = 0
+    map( suppress, suppressed_data, thresholds)
+    return suppressed_data
 
-    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
-
+def in_window( data, tmin, tmax ):
+    '''
+        Filters out data outside specified window.
+    '''
+    filter_df = lambda df: df[ (df.time_mus >= tmin) & (df.time_mus <= tmax) ]
+    return dict_map( filter_df, data )
 
 def find_S12(swf, stride=40):
     """
