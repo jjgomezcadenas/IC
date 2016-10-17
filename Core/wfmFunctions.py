@@ -222,24 +222,22 @@ def wf_thr(wf,threshold=1):
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
 
-def sensor_wise_zero_suppresion(data,thresholds, to_mus=None):
+def zs_wf(waveform,threshold,to_mus=None):
+    '''
+        get a zero-supressed wf.
+    '''
+    t = np.argwhere(waveform>threshold).flatten()
+    if not t.size: return None
+    return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
+
+def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
     # If threshold is a single value, transform it into an array
     if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
-
-    def zs_df(waveform,threshold):
-        '''
-            Get the zero-supressed wfms. Return None if it is completely suppresed.
-        '''
-        t = np.argwhere(waveform>threshold).flatten()
-        if not t.any(): return None
-        return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
-
-    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
-
+    return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
 def find_S12(swf, stride=40):
     """
