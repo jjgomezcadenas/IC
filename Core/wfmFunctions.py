@@ -239,6 +239,13 @@ def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
     return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
+def in_window( data, tmin, tmax ):
+    '''
+        Filters out data outside specified window.
+    '''
+    filter_df = lambda df: df[ (df.time_mus >= tmin) & (df.time_mus <= tmax) ]
+    return dict_map( filter_df, data )
+
 def find_S12(swf, stride=40):
     """
     Find S1 or S2 signals. The input is a zero-supressed WF. The stride defines the contiguity criterium.
