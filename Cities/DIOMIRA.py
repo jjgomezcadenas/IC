@@ -301,8 +301,8 @@ def DIOMIRA(argv):
                 #truePMT  =  pmt_twf_signal(i,pmtrd_, rebin)
                 # dict_map applies a function to the dictionary values
                 truePMT  = dict_map( lambda df: wfm.rebin_df(df,rebin),
-                                     wfm.sensor_wise_zero_suppresion(pmtrd_[i],0.,to_mus=ns/ms))
-                trueSiPM = wfm.sensor_wise_zero_suppresion(sipmrd_[i],0.)
+                                     wfm.sensor_wise_zero_suppression(pmtrd_[i],0.,to_mus=ns/ms))
+                trueSiPM = wfm.sensor_wise_zero_suppression(sipmrd_[i],0.)
 
                 #store in table
                 tbl.store_wf(i, pmt_twf_table, truePMT)
