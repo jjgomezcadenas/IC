@@ -62,17 +62,18 @@ def ANASTASIA(argv):
     CLEVEL    = CFP['CLEVEL']
     NEVENTS   = LAST_EVT - FIRST_EVT
 
-    ZS_METHOD_SIPMS = CFP['ZS_METHOD_SIPMS']
-    NOISE_CUT_PMTS  = CFP['NOISE_CUT_PMTS']
-    NOISE_CUT_SIPMS = CFP['NOISE_CUT_SIPMS']
+    PMT_ZS_METHOD  = CFP['PMT_ZS_METHOD']
+    SIPM_ZS_METHOD = CFP['SIPM_ZS_METHOD']
+    PMT_NOISE_CUT  = CFP['PMT_NOISE_CUT']
+    SIPM_NOISE_CUT = CFP['SIPM_NOISE_CUT']
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
     logger.info("input file = {}/{}".format(PATH_IN,FILE_IN))
     logger.info("path to database = {}".format(PATH_DB))
     logger.info("first event = {}; last event = {} nof events requested = {} ".format(FIRST_EVT,LAST_EVT,NEVENTS))
     logger.info("Compression library = {} Compression level = {} ".format(CLIB,CLEVEL))
-    logger.info("ZS method PMTS  = {}. Cut value = {}".format("RMS CUT",NOISE_CUT_PMTS))
-    logger.info("ZS method SIPMS = {}. Cut value = {}".format(ZS_METHOD_SIPMS,NOISE_CUT_SIPMS))
+    logger.info("ZS method PMTS  = {}. Cut value = {}".format(PMT_ZS_METHOD,PMT_NOISE_CUT))
+    logger.info("ZS method SIPMS = {}. Cut value = {}".format(SIPM_ZS_METHOD,SIPM_NOISE_CUT))
 
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in:
@@ -96,8 +97,8 @@ def ANASTASIA(argv):
         pmt_adc_consts = -1.0/np.array(pmtdf['adc_to_pes']).reshape(NPMT,1)
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_    = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
-        pmts_noise_threshold_   = NOISE_ADC * np.mean(pmt_adc_consts) * NOISE_CUT_PMTS
-        sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_SIPMS,sipmdf = sipmdf) if ZS_METHOD_SIPMS == 'FRACTION' else np.ones(NSIPM) * NOISE_CUT_SIPMS
+        pmts_noise_threshold_   = -NOISE_ADC / np.mean(pmtdf['adc_to_pes']) * PMT_NOISE_CUT * sqrt(NPMT) if PMT_ZS_METHOD == 'RMS_CUT' else - 1.05 * PMT_NOISE_CUT * NPMT / np.mean(pmtdf['adc_to_pes'])
+        sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(SIPM_NOISE_CUT,sipmdf = sipmdf) if SIPM_ZS_METHOD == 'FRACTION' else np.ones(NSIPM) * SIPM_NOISE_CUT
 
         with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w") as h5out:
             # Create groups
