@@ -101,8 +101,11 @@ def ANASTASIA(argv):
         logger.info("#PMTs = {}; #SiPMs = {}; #events in DST = {}".format(NPMT,NSIPM,NEVT))
         logger.info("PMT WFL = {}; SiPM WFL = {}".format(PMTWL,SIPMWL))
 
-        pmt_adc_consts = -1.0/np.array(pmtdf['adc_to_pes']).reshape(NPMT,1)
-        pmt_ave_consts = -1.0/np.mean(pmtdf['adc_to_pes'])
+        pmt_adc_consts = 1.0/19.7030253964#-1.0/np.array(pmtdf['adc_to_pes']).reshape(NPMT,1)
+        pmt_ave_consts = 1.0/19.7030253964#-1.0/np.mean(pmtdf['adc_to_pes'])
+
+        pmt_adc_consts = 1.0/np.array([19.200523269821286,18.337220349094959,18.277890643055709,20.094008664586799,19.623449041069801,18.267600383584281,19.062919010617382, 17.392029016798073, 18.334949819343084,18.462968438179974,18.634919155741205,18.112776381185306]).reshape(NPMT,1)
+        pmt_ave_consts = 1.0/np.mean([19.200523269821286,18.337220349094959,18.277890643055709,20.094008664586799,19.623449041069801,18.267600383584281,19.062919010617382, 17.392029016798073, 18.334949819343084,18.462968438179974,18.634919155741205,18.112776381185306])
 
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_    = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
