@@ -31,7 +31,7 @@ def store_wf(event, table, WF):
     Store a wavform in a table
     """
     row = table.row
-    for isens,wf in WF.items():
+    for isens,wf in WF.iteritems():
         for t,e in zip(wf.time_mus, wf.ene_pes):
             row['event'] = event
             row['ID'] = isens

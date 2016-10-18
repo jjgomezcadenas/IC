@@ -14,88 +14,6 @@ from Util import dict_map
 from math import *
 from LogConfig import *
 
-# def store_wf(event, table, WF):
-#     """
-#     Store a wavform in a table
-#     """
-#     row = table.row
-#     for isens,wf in WF.items():
-#         for t,e in zip(wf.time_mus, wf.ene_pes):
-#             row['event'] = event
-#             row['ID'] = isens
-#             row['time_mus'] = t
-#             row['ene_pes'] = e
-#             row.append()
-#     table.flush()
-
-# def read_twf(pmttwf, event_number):
-#     """
-#     Reads back the TWF: old version kept for backward compatibility to
-#     be deleted asap
-#     """
-#     PMT={}
-#     for row in table.where("event == event_number"):
-#         pmt = row['ID']
-#         time_mus = row['time_mus']
-#         ene_pes =  row['ene_pes']
-#
-#         #print('pmt = {},time_mus = {},ene_pes = {}'.format(pmt,time_mus,ene_pes))
-#         if pmt not in PMT:
-#             WF={}
-#             TIME =[]
-#             ENE = []
-#             TIME.append(time_mus)
-#             ENE.append(ene_pes)
-#             WF['time_mus'] = TIME
-#             WF['ene_pes'] = ENE
-#             PMT[pmt] = WF
-#         else:
-#             WF = PMT[pmt]
-#             TIME = WF['time_mus']
-#             ENE  = WF['ene_pes']
-#             TIME.append(time_mus)
-#             ENE.append(ene_pes)
-#
-#     return PMT
-
-# def read_twf(twf, event_number):
-#     """
-#     Reads back the TWF of the PMTs/SiPMs for event number:
-#     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
-#     outputs: a PMT/SiPM panel
-#
-#     """
-#     sensors ={}
-#     for isensor in sensor_list:
-#         try:
-#             time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
-#             sensors[isensor] = wf2df(time_mus,ene_pes)
-#         except ValueError:
-#             logger.error('found an empty sensor')
-#             exit()
-#
-#     return pd.Panel(sensors)
-
-# def read_wf(table,event_number,isens):
-#     '''
-#         Reads table and returns the waveform (time_mus and ene_pes) corresponding
-#         to sensor isens of event event_number.
-#     '''
-#     try:
-#         return zip(*[ (row['time_mus'],row['ene_pes']) for row in table.iterrows() if row['event']== event_number and row['ID']== isens])
-#     except:
-#         logger.error('[read_wf]: empty sensor found: {}'.format(isens))
-#
-#
-# def read_wf_table( table, event_number ):
-#     """
-#     Reads back the TWF of the PMTs/SiPMs for event number:
-#     input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
-#     outputs: a PMT/SiPM panel
-#
-#     """
-#     sensor_list = set(table.read_where('event == {}'.format(event_number),field='ID'))
-#     return pd.Panel({ isens : wf2df(*read_wf(table,event_number,isens)) for isens in sensor_list})
 
 def to_adc( wfs, sensdf ):
     '''
@@ -222,24 +140,42 @@ def wf_thr(wf,threshold=1):
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
 
-def sensor_wise_zero_suppresion(data,thresholds, to_mus=None):
+def zs_wf(waveform,threshold,to_mus=None):
+    '''
+        get a zero-supressed wf.
+    '''
+    t = np.argwhere(waveform>threshold).flatten()
+    if not t.size: return None
+    return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
+
+def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
     # If threshold is a single value, transform it into an array
     if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
+    return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
-    def zs_df(waveform,threshold):
-        '''
-            Get the zero-supressed wfms. Return None if it is completely suppresed.
-        '''
-        t = np.argwhere(waveform>threshold).flatten()
-        if not t.any(): return None
-        return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
+def noise_suppression(data,thresholds, to_mus=None):
+    '''
+        takes an array of waveforms, applies the corresponding threshold to
+        each row and returns a dictionary with the data frames of the survivors.
+    '''
+    suppressed_data = np.copy(data)
+    if not hasattr(thresholds, '__iter__'):
+        thresholds = np.ones( data.shape[0] ) * thresholds
+    def suppress(wf,th):
+        wf[wf<=th] = 0
+    map( suppress, suppressed_data, thresholds)
+    return suppressed_data
 
-    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
-
+def in_window( data, tmin, tmax ):
+    '''
+        Filters out data outside specified window.
+    '''
+    filter_df = lambda df: df[ (df.time_mus >= tmin) & (df.time_mus <= tmax) ]
+    return dict_map( filter_df, data )
 
 def find_S12(swf, stride=40):
     """
