@@ -149,6 +149,7 @@ def simulate_pmt_response(event_number, pmtrd_, BLR):
 
     return np.array(RWF), np.array(BLRX)
 
+
 def DIOMIRA(argv):
     """
     Diomira driver
@@ -170,18 +171,18 @@ def DIOMIRA(argv):
         """)
         FP.print_FEE()
 
-    PATH_IN =CFP['PATH_IN']
-    PATH_OUT =CFP['PATH_OUT']
-    FILE_IN =CFP['FILE_IN']
-    FILE_OUT =CFP['FILE_OUT']
-    PATH_DB =CFP['PATH_DB']
-    FIRST_EVT =CFP['FIRST_EVT']
-    LAST_EVT =CFP['LAST_EVT']
-    RUN_ALL =CFP['RUN_ALL']
-    CLIB =CFP['CLIB']
-    CLEVEL =CFP['CLEVEL']
-    BLR =CFP['BLR']
-    NOISE_CUT =CFP['NOISE_CUT']
+    PATH_IN = CFP['PATH_IN']
+    PATH_OUT = CFP['PATH_OUT']
+    FILE_IN = CFP['FILE_IN']
+    FILE_OUT = CFP['FILE_OUT']
+    PATH_DB = CFP['PATH_DB']
+    FIRST_EVT = CFP['FIRST_EVT']
+    LAST_EVT = CFP['LAST_EVT']
+    RUN_ALL = CFP['RUN_ALL']
+    CLIB = CFP['CLIB']
+    CLEVEL = CFP['CLEVEL']
+    BLR = CFP['BLR']
+    NOISE_CUT = CFP['NOISE_CUT']
     NEVENTS = LAST_EVT - FIRST_EVT
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
@@ -233,7 +234,8 @@ def DIOMIRA(argv):
         sipmdf = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL,True)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
+                                                sipmdf, SIPMWL, True)
         sipms_noise_thresholds_ = NOISE_CUT * np.array(sipmdf['adc_to_pes'])
 
         # open the output file
@@ -328,12 +330,12 @@ def DIOMIRA(argv):
                 # convert to float, append to EVector
 
                 dataPMT, blrPMT = simulate_pmt_response(i, pmtrd_, BLR)
-                dataPMT.astype(int)
-                pmtrwf.append(dataPMT.reshape(1, NPMT, PMTWL_FEE))
+                pmtrwf.append(dataPMT.astype(int).reshape(1, NPMT, PMTWL_FEE))
 
                 if BLR:
-                    blrPMT.astype(int)
-                    pmtblr.append(blrPMT.reshape(1, NPMT, PMTWL_FEE))
+                    pmtblr.append(blrPMT.astype(int).reshape(1,
+                                                             NPMT,
+                                                             PMTWL_FEE))
 
                 # simulate SiPM response and return an array with RWF
                 # convert to float, zero suppress and dump to table
@@ -341,9 +343,11 @@ def DIOMIRA(argv):
                     to_adc(simulate_sipm_response(i, sipmrd_,
                                                   sipms_noise_sampler_),
                            sipmdf)
-                wfm.noise_suppression(dataSiPM,sipms_noise_thresholds_)
                 dataSiPM.astype(int)
-                sipmrwf.append(dataSiPM.reshape(1, NSIPM, SIPMWL))
+                dataSiPM = wfm.\
+                    noise_suppression(dataSiPM, sipms_noise_thresholds_)
+
+                sipmrwf.append(dataSiPM.astype(int).reshape(1, NSIPM, SIPMWL))
 
             pmtrwf.flush()
             sipmrwf.flush()
