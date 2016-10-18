@@ -21,7 +21,6 @@ class NoiseSampler:
 
         # Remove masked channels and normalize probabilities
         data  = data[ np.where(map(sipmdf['channel'].values.__contains__,data[:,0])) ]
-        print(len(data))
         self.probs = np.apply_along_axis( lambda ps: ps/np.sum(ps), 1, data[:,1:] )
 
         self.nsamples = sample_size
