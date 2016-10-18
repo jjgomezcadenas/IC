@@ -95,6 +95,7 @@ def read_wf(table,evt,isens):
     '''
     return table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='time_mus'),table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='ene_pes')
 
+
 def read_wf_table( table, event_number ):
     """
     Reads back the TWF of the PMTs/SiPMs for event number:
