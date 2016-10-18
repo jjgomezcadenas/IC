@@ -7,10 +7,17 @@ ChangeLog
 """
 
 from __future__ import print_function
+
+import tables as tb
 import pandas as pd
 import wfmFunctions as wfm
 import sensorFunctions as snf
-from LogConfig import *
+from LogConfig import logger
+
+
+NOCOMPR = tb.Filters(complevel=0)                  # no compression
+ZLIB    = tb.Filters(complevel=1, complib="zlib")  # zlib
+BLOSC   = tb.Filters(complevel=5, complib="blosc") # blosc
 
 def get_vectors(h5f):
     '''
