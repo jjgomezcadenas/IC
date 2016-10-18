@@ -105,7 +105,7 @@ def ANASTASIA(argv):
 
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_    = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
-        pmts_noise_threshold_   = PMT_NOISE_CUT * NOISE_ADC * pmt_ave_consts * NPMT**0.5 if PMT_ZS_METHOD == 'RMS_CUT' else 1.01 * PMT_NOISE_CUT * NPMT / pmt_ave_consts
+        pmts_noise_threshold_   = PMT_NOISE_CUT * NOISE_ADC * pmt_ave_consts * NPMT**0.5 if PMT_ZS_METHOD == 'RMS_CUT' else 1.01 * PMT_NOISE_CUT * NPMT * pmt_ave_consts
         sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(SIPM_NOISE_CUT,sipmdf = sipmdf) if SIPM_ZS_METHOD == 'FRACTION' else np.ones(NSIPM) * SIPM_NOISE_CUT
 
         with tb.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w") as h5out:
