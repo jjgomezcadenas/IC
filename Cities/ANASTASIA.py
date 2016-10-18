@@ -41,11 +41,12 @@ ChangeLog:
 
 '''
 
-def scale_to_pes( sens_wf, sensdf ):
+
+def scale_to_pes(sens_wf, sensdf):
     '''
         Transform the ene_pes field to pes for each sensor.
     '''
-    return { key : wfm.wf2df( df.time_mus, -df.ene_pes / sensdf['adc_to_pes'][key] ) for key,df in sens_wf.iteritems() }
+    return { key : wfm.wf2df(df.time_mus, -df.ene_pes / sensdf['adc_to_pes'][key]) for key, df in sens_wf.iteritems() }
 
 def ANASTASIA(argv):
     '''
@@ -145,14 +146,14 @@ def ANASTASIA(argv):
                 # sensor_wise_zero_suppresion returns a dictionary holding
                 # the surviving sensors dataframes. Time in mus, ene in pes (PMTs) or adc (SiPMs).
                 # They are converted just before storing them in the table.
-                dataPMT  = wfm.zs_wf(pmt_int_pes,pmts_noise_threshold_,25*ns/mus)
+                dataPMT = wfm.zs_wf(pmt_int_pes,pmts_noise_threshold_,25*ns/mus)
                 tbl.store_wf(i, pmt_zs_table, {12:dataPMT})
 
                 tmin, tmax = dataPMT.time_mus.min(),dataPMT.time_mus.max()
 
                 dataSiPM = wfm.sensor_wise_zero_suppression(sipmrwf[i],sipms_noise_thresholds_,1.0)
                 dataSiPM = wfm.in_window(dataSiPM,tmin,tmax)
-                tbl.store_wf( i, sipm_zs_table, scale_to_pes(dataSiPM,sipmdf) )
+                tbl.store_wf(i, sipm_zs_table, scale_to_pes(dataSiPM,sipmdf))
 
             t1 = time()
 
