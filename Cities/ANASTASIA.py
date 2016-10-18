@@ -4,24 +4,29 @@ GML October 2016
 
 What ANASTASIA does:
 1) Reads a hdf5 file containing the PMT's CWF and the SiPMs' RWF in ADC counts.
-2) Applies zero-suppression.
+2) Creates a single "big" PMT summing up PMTs' waveforms.
+3) Applies zero-suppression to both the big PMT and the individual SiPMs.
 3) Expresses the waveforms in pes.
-4) Writes back in the input file the ZS waveforms as tables.
+4) Writes a new file with the ZS waveforms as tables.
 """
 
 from __future__ import print_function
-from Util import *
-from LogConfig import *
-from Configure import *
+
+import sys
+from time import time
+
+import numpy as np
+import tables as tb
+
+from system_of_units import *
+from LogConfig import logger
+from Configure import configure, define_event_loop
 from Nh5 import SENSOR_WF
 from FEParam import NOISE_ADC
 
-import tables
-from time import time
 import sensorFunctions as snf
 import wfmFunctions as wfm
 import tblFunctions as tbl
-import pandas as pd
 
 from RandomSampling import NoiseSampler as SiPMsNoiseSampler
 #------
@@ -32,14 +37,16 @@ ANASTASIA
 ChangeLog:
 
 14.10 First version.
+18.10 Big PMT implemented and ZS methods implemented.
 
 '''
 
-def scale_to_pes( sens_wf, sensdf ):
+
+def scale_to_pes(sens_wf, sensdf):
     '''
         Transform the ene_pes field to pes for each sensor.
     '''
-    return { key : pd.DataFrame( {'time_mus' : df.time_mus, 'ene_pes' : -df.ene_pes / sensdf['adc_to_pes'][key]} ) for key,df in sens_wf.items() }
+    return { key : wfm.wf2df(df.time_mus, -df.ene_pes / sensdf['adc_to_pes'][key]) for key, df in sens_wf.iteritems() }
 
 def ANASTASIA(argv):
     '''
@@ -62,20 +69,21 @@ def ANASTASIA(argv):
     CLEVEL    = CFP['CLEVEL']
     NEVENTS   = LAST_EVT - FIRST_EVT
 
-    ZS_METHOD_SIPMS = CFP['ZS_METHOD_SIPMS']
-    NOISE_CUT_PMTS  = CFP['NOISE_CUT_PMTS']
-    NOISE_CUT_SIPMS = CFP['NOISE_CUT_SIPMS']
+    PMT_ZS_METHOD  = CFP['PMT_ZS_METHOD']
+    SIPM_ZS_METHOD = CFP['SIPM_ZS_METHOD']
+    PMT_NOISE_CUT  = CFP['PMT_NOISE_CUT']
+    SIPM_NOISE_CUT = CFP['SIPM_NOISE_CUT']
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
     logger.info("input file = {}/{}".format(PATH_IN,FILE_IN))
     logger.info("path to database = {}".format(PATH_DB))
     logger.info("first event = {}; last event = {} nof events requested = {} ".format(FIRST_EVT,LAST_EVT,NEVENTS))
     logger.info("Compression library = {} Compression level = {} ".format(CLIB,CLEVEL))
-    logger.info("ZS method PMTS  = {}. Cut value = {}".format("RMS CUT",NOISE_CUT_PMTS))
-    logger.info("ZS method SIPMS = {}. Cut value = {}".format(ZS_METHOD_SIPMS,NOISE_CUT_SIPMS))
+    logger.info("ZS method PMTS  = {}. Cut value = {}".format(PMT_ZS_METHOD,PMT_NOISE_CUT))
+    logger.info("ZS method SIPMS = {}. Cut value = {}".format(SIPM_ZS_METHOD,SIPM_NOISE_CUT))
 
     # open the input file
-    with tables.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in:
+    with tb.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in:
         # access the PMT raw data in file
 
         pmtcwf   = h5in.root.RD.pmtcwf
@@ -94,12 +102,14 @@ def ANASTASIA(argv):
         logger.info("PMT WFL = {}; SiPM WFL = {}".format(PMTWL,SIPMWL))
 
         pmt_adc_consts = -1.0/np.array(pmtdf['adc_to_pes']).reshape(NPMT,1)
+        pmt_ave_consts = -1.0/np.mean(pmtdf['adc_to_pes'])
+
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_    = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
-        pmts_noise_threshold_   = NOISE_ADC * np.mean(pmt_adc_consts) * NOISE_CUT_PMTS
-        sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(NOISE_CUT_SIPMS,sipmdf = sipmdf) if ZS_METHOD_SIPMS == 'FRACTION' else np.ones(NSIPM) * NOISE_CUT_SIPMS
+        pmts_noise_threshold_   = PMT_NOISE_CUT * NOISE_ADC * pmt_ave_consts * NPMT**0.5 if PMT_ZS_METHOD == 'RMS_CUT' else 1.01 * PMT_NOISE_CUT * NPMT * pmt_ave_consts
+        sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(SIPM_NOISE_CUT,sipmdf = sipmdf) if SIPM_ZS_METHOD == 'FRACTION' else np.ones(NSIPM) * SIPM_NOISE_CUT
 
-        with tables.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w") as h5out:
+        with tb.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w") as h5out:
             # Create groups
             h5out.create_group(h5out.root, "MC")
             h5out.create_group(h5out.root, "Detector")
@@ -114,11 +124,11 @@ def ANASTASIA(argv):
 
 
             # Create tables for PMTs and SiPMs ZSWF
-            pmt_zs_table  = h5in.create_table( h5out.root.ZS, "PMT", SENSOR_WF, "Store for PMTs ZSWF",
-                                               tables.Filters(complib=CLIB, complevel=CLEVEL) )
+            pmt_zs_table  = h5in.create_table(h5out.root.ZS, "PMT", SENSOR_WF, "Store for PMTs ZSWF",
+                                              tb.Filters(complib=CLIB, complevel=CLEVEL))
 
-            sipm_zs_table = h5in.create_table( h5out.root.ZS, "SiPM", SENSOR_WF, "Store for SiPMs ZSWF",
-                                               tables.Filters(complib=CLIB, complevel=CLEVEL) )
+            sipm_zs_table = h5in.create_table(h5out.root.ZS, "SiPM", SENSOR_WF, "Store for SiPMs ZSWF",
+                                              tb.Filters(complib=CLIB, complevel=CLEVEL))
 
             # Add index in event column
             pmt_zs_table .cols.event.create_index()
@@ -136,14 +146,14 @@ def ANASTASIA(argv):
                 # sensor_wise_zero_suppresion returns a dictionary holding
                 # the surviving sensors dataframes. Time in mus, ene in pes (PMTs) or adc (SiPMs).
                 # They are converted just before storing them in the table.
-                dataPMT  = wfm.zs_wf(pmt_int_pes,pmts_noise_threshold_,25*ns/mus)
-                tbl.store_wf( i, pmt_zs_table, { 12 : dataPMT } )
+                dataPMT = wfm.zs_wf(pmt_int_pes,pmts_noise_threshold_,25*ns/mus)
+                tbl.store_wf(i, pmt_zs_table, {12:dataPMT})
 
                 tmin, tmax = dataPMT.time_mus.min(),dataPMT.time_mus.max()
 
                 dataSiPM = wfm.sensor_wise_zero_suppression(sipmrwf[i],sipms_noise_thresholds_,1.0)
                 dataSiPM = wfm.in_window(dataSiPM,tmin,tmax)
-                tbl.store_wf( i, sipm_zs_table, scale_to_pes(dataSiPM,sipmdf) )
+                tbl.store_wf(i, sipm_zs_table, scale_to_pes(dataSiPM,sipmdf))
 
             t1 = time()
 
