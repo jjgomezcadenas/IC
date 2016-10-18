@@ -40,6 +40,26 @@ def store_wf(event, table, WF):
             row.append()
     table.flush()
 
+
+def read_wf(table,evt,isens):
+    '''
+        Reads table and returns the waveform (time_mus and ene_pes) corresponding
+        to sensor isens of event event_number.
+    '''
+    return table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='time_mus'),table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='ene_pes')
+
+
+def read_wf_table( table, event_number ):
+    """
+    Reads back the TWF of the PMTs/SiPMs for event number:
+    input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
+    outputs: a PMT/SiPM panel
+
+    """
+    sensor_list = set(table.read_where('event == {}'.format(event_number),field='ID'))
+    return pd.Panel({ isens : wfm.wf2df(*read_wf(table,event_number,isens)) for isens in sensor_list})
+
+
 # def read_twf(pmttwf, event_number):
 #     """
 #     Reads back the TWF: old version kept for backward compatibility to
@@ -87,21 +107,3 @@ def store_wf(event, table, WF):
 #             exit()
 #
 #     return pd.Panel(sensors)
-
-def read_wf(table,evt,isens):
-    '''
-        Reads table and returns the waveform (time_mus and ene_pes) corresponding
-        to sensor isens of event event_number.
-    '''
-    return table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='time_mus'),table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='ene_pes')
-
-
-def read_wf_table( table, event_number ):
-    """
-    Reads back the TWF of the PMTs/SiPMs for event number:
-    input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
-    outputs: a PMT/SiPM panel
-
-    """
-    sensor_list = set(table.read_where('event == {}'.format(event_number),field='ID'))
-    return pd.Panel({ isens : wfm.wf2df(*read_wf(table,event_number,isens)) for isens in sensor_list})
