@@ -88,16 +88,12 @@ def store_wf(event, table, WF):
 #
 #     return pd.Panel(sensors)
 
-def read_wf(table,event_number,isens):
+def read_wf(table,evt,isens):
     '''
         Reads table and returns the waveform (time_mus and ene_pes) corresponding
         to sensor isens of event event_number.
     '''
-    try:
-        return zip(*[ (row['time_mus'],row['ene_pes']) for row in table.iterrows() if row['event']== event_number and row['ID']== isens])
-    except ValueError:
-        logger.error('[read_wf]: empty sensor found: {}'.format(isens))
-
+    return table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='time_mus'),table.read_where('(event=={}) & (ID=={})'.format(evt,isens),field='ene_pes')
 
 def read_wf_table( table, event_number ):
     """
