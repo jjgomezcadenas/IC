@@ -107,11 +107,14 @@ def wfdf(time_mus,energy_pes,indx):
     """
     return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes,'indx':indx})
 
-def wf2df(time_mus,energy_pes):
+def wf2df(time_mus,energy_pes, dropnan=False):
     """
     takes two vectors (time, energy) and returns a data frame representing a waveform
     """
-    return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
+    if dropnan == False:
+        return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
+    else:
+        return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes}).dropna()
 
 def df2wf(df):
     '''

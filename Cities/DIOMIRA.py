@@ -83,6 +83,7 @@ def FEE_param_table(fee_table):
     """
     row = fee_table.row
     row['offset'] = FP.offset
+    row['ceiling'] = FP.ceiling
     row['pmt_gain'] = FP.PMT_GAIN
     row['V_gain'] = FP.V_GAIN
     row['R'] = FP.R
