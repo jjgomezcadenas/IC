@@ -107,7 +107,7 @@ def W_LPF_mc():
 
 def print_FEE():
 
-  print """
+  print("""
   NEW FEE: DEFAULT PARAMETERS
   PMT gain = %7.2g
   sampling time: (fine) = %7.2f ns (DAQ) = %7.2f ns 
@@ -122,9 +122,9 @@ def print_FEE():
     decoupling_capacitor()/nF,decoupling_resitor()/ohm,f_HPF()/hertz,
     W_HPF_fine(), W_HPF_daq(), f_LPF()/hertz,
      W_LPF_fine(), W_LPF_daq(), NOISE_FEE_rms/mV, NOISE_FEE_rms/voltsToAdc,
-     mV/voltsToAdc )
+     mV/voltsToAdc ))
 
-  print "decoupling capacitors for energy plane = %s"%(C12/nF)
+  print("decoupling capacitors for energy plane = %s"%(C12/nF))
 
 def pulse_area(pulse):
   return np.sum(pulse)
