@@ -239,7 +239,7 @@ def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
     return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
-def noise_suppression(data,thresholds, to_mus=None):
+def noise_suppression(data,thresholds):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
