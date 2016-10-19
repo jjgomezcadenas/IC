@@ -72,6 +72,8 @@ Some variables, classes and functions renamed for clarity.
 
 18.10 GML, add soft cut to eliminate noise below 0.5 pes in sipm plane
 
+19.10 TD: write calibration constants to table!
+
 """
 
 
@@ -85,6 +87,7 @@ def FEE_param_table(fee_table):
     row['V_gain'] = FP.V_GAIN
     row['R'] = FP.R
     row['C12'] = FP.C12
+    row['CR'], row['CB'] = calibration_constants_from_spe()
     row['AC'] = FP.AC
     row['time_step'] = FP.time_step
     row['time_daq'] = FP.time_DAQ
@@ -148,6 +151,35 @@ def simulate_pmt_response(event_number, pmtrd_, BLR):
         BLRX.append(signal_daq_blr)
 
     return np.array(RWF), np.array(BLRX)
+
+
+def calibration_constants_from_spe(start_pulse=100*units.ns,
+                                   end_pulse=500*units.ns):
+    """
+    Computes calibration constants from the are of a SPE
+    """
+    spe = SP.SPE()
+    cr = []
+    cb = []
+
+    for pmt, C in enumerate(FP.C12):
+        fee = FE.FEE(PMTG=FP.PMT_GAIN, C=C, R=FP.R, f=FP.freq_LPF,
+                     RG=FP.V_GAIN)
+        # PMT response to a single photon (single pe current pulse)
+        signal_t, signal_PE = spe.SpePulse(start_pulse, tmax=end_pulse)
+        # effect of FEE
+        signal_fee, signal_blr = fee.FEESignal(signal_PE,
+                                               noise_rms=FP.NOISE_FEE)
+        # effect of DAQ
+        signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
+        signal_daq_blr = fee.daqSignal(signal_blr, noise_rms=0)
+        area = np.sum(signal_daq)
+        area_blr = np.sum(signal_daq_blr)
+        print("PMT = {}: cc = {}, cc blr = {}".format(pmt, area, area_blr))
+        cr.append(area)
+        cb.append(area_blr)
+
+    return cr, cb
 
 
 def DIOMIRA(argv):
@@ -235,7 +267,7 @@ def DIOMIRA(argv):
 
         # Create instance of the noise sampler
         sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
-                                                sipmdf, SIPMWL, True)
+                                                 sipmdf, SIPMWL, True)
         sipms_noise_thresholds_ = NOISE_CUT * np.array(sipmdf['adc_to_pes'])
 
         # open the output file
