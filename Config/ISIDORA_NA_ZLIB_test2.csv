@@ -6,9 +6,9 @@
 #        FIRST_EVT,LAST_EVT,RUN_ALL,
 #
 #        RUN_ALL is used to decide whether to run all the events in the file
-#        in case that the total number of events requested (LAST_EVT-FIRST_EVT) 
-#        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True), 
-#        the script will run over all elements in the DST, 
+#        in case that the total number of events requested (LAST_EVT-FIRST_EVT)
+#        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True),
+#        the script will run over all elements in the DST,
 #        otherwise it will exit with a warning.
 #
 #		 COEF decides whether to use CA (COEF = 0) or AC (COEF =1)
@@ -19,8 +19,8 @@
 #        NSIGMA1 number of sigmas for thr1
 #        NSIGMA2 number of sigmas for thr2
 #        NSIGMA3 number of sigmas for thr3
-#        
 #
-PATH_IN,FILE_IN,FIRST_EVT,LAST_EVT,RUN_ALL,COEF,CA,AC,MAU_LEN,NSIGMA1,NSIGMA2,NSIGMA3,END 
 #
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Na_ZLIB_evt1000_RWF.h5,0,10,1,0,6.02975448 6.22547194 6.0671337 6.22159457 6.29999787 6.09892384 6.18289435 6.21775591 6.19306671 6.30518792 6.20359891 6.312311921,0.0017643 0.00170883 0.00175343 0.0017099 0.00168862 0.00174429 0.0017206 0.00171095 0.00171778 0.00168723 0.00171486 0.00168533,250,5.0,0.0,2.0,1
+PATH_IN,FILE_IN,FIRST_EVT,LAST_EVT,RUN_ALL,COEF,CA,AC,MAU_LEN,NSIGMA1,NSIGMA2,NSIGMA3,END
+#
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,Kr_5bar_1000_thr_2_2_5_RD.h5,0,1000,1,0,6.02975448 6.22547194 6.0671337 6.22159457 6.29999787 6.09892384 6.18289435 6.21775591 6.19306671 6.30518792 6.20359891 6.312311921,0.0017643 0.00170883 0.00175343 0.0017099 0.00168862 0.00174429 0.0017206 0.00171095 0.00171778 0.00168723 0.00171486 0.00168533,250,2.0,2.0,5.0,1
