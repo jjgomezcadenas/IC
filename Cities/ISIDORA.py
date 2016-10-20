@@ -23,10 +23,31 @@ from LogConfig import logger
 from Configure import configure, define_event_loop
 
 import FEParam as FP
+import FEE2 as FE
 import coreFunctions as cf
+import cBLR
 
-CYTHON = True
-from BLR import accumulator_coefficients, BLR
+
+def accumulator_coefficients(CA,NPMT,len_WF):
+    """
+    Compute the accumulator coefficients for DBLR
+    It computes the inverse function of the HPF and takes
+    the accumulator as the value of the function anywhere
+    but the first bin (the inverse is a step function with
+    constant value equal to the accumulator)
+    CA are the values of the capacitances defining the filter
+    (1/(2CR)) for each PMT
+    """
+    coef_acc = np.zeros(NPMT, dtype=np.double)
+
+    signal_t = np.arange(0.0, len_WF*1., 1., dtype=np.double)
+
+    for j in range(NPMT):
+        fee = FE.FEE(C=CA[j], R=FP.R, f=FP.freq_LPF, RG=FP.V_GAIN)
+        signal_inv_daq = fee.InverseSignalDAQ(signal_t)  # inverse function
+        coef_acc[j] = signal_inv_daq[10] # any index is valid, function is flat
+
+    return coef_acc
 
 
 def DBLR(pmtrd, event_number, coeff_acc, mau_len=250,
@@ -45,7 +66,7 @@ def DBLR(pmtrd, event_number, coeff_acc, mau_len=250,
 
     for j in range(NPMT):
         sgn_raw = FP.ceiling - pmtrd[event_number, j]
-        sgn_rec, MAU, pulse_on, wait_over = cBLR(sgn_raw,
+        sgn_rec, MAU, pulse_on, wait_over = cBLR.BLR(sgn_raw,
                                                  coeff_acc[j],
                                                  mau_len, thr1, thr2, thr3)
 
@@ -100,10 +121,11 @@ def ISIDORA(argv):
                                                          NEVENTS))
 
     logger.info("""MAU length = {}
-                   n_sigma1 = {} n_sigma2 = {} """.format(MAU_LEN,
-                                                          NSIGMA1,
-                                                          NSIGMA2))
-    logger.info("CA  = {} nF ".format(CA/nF))
+        n_sigma1 = {} n_sigma2 = {} n_sigma2 = {} """.format(MAU_LEN,
+                                                             NSIGMA1,
+                                                             NSIGMA2,
+                                                             NSIGMA3))
+    logger.info("CA  = {} nF ".format(CA/units.nF))
     logger.info("Accumulator Coefficients = {}  ".format(AC))
 
     # open the input file in mode append
@@ -195,4 +217,5 @@ def ISIDORA(argv):
     print("Leaving ISIDORA. Safe travels!")
 
 if __name__ == '__main__':
-    #ISIDORA(sys.argv)
+
+    ISIDORA(sys.argv)

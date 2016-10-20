@@ -1,7 +1,6 @@
 export PFMW=/System/Library/Frameworks/Python.framework/Versions/Current/
 export ICDIR=/Users/jjgomezcadenas/Documents/Development/NEXT/IC
-export CyICDIR=/Users/jjgomezcadenas/Documents/Development/NEXT/CyIC
-export PYTHONPATH=$ICDIR:$ICDIR/Cities:$ICDIR/Notebooks:$ICDIR/Sierpe
-export PYTHONPATH=$PYTHONPATH:$ICDIR/Core:$CyICDIR
+export CyDIR=/Users/jjgomezcadenas/Documents/Development/NEXT/CyIC
+export PYTHONPATH=$ICDIR:$ICDIR/Cities:$ICDIR/Cython:$ICDIR/Sierpe:$ICDIR/Core
 export PYTHONPATH=$PYTHONPATH:$ROOTSYS/lib:/usr/local/lib:/$PFMW
-export PS1="ic->"
+export PS1="IC->"
