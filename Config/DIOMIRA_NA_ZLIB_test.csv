@@ -6,16 +6,18 @@
 #        PATH_OUT = path to output DST file (RWF file)
 #        FILE_OUT = name of ouput DST file (RWF file)
 #        PATH_DB  = path to the database directory
-#        NOISE_CUT_FRACTION = fraction of noise rejected by algo
 #        FIRST_EVT,LAST_EVT,RUN_ALL,
-#
+#        BLR = on, then create and save BLR WF, otherwise don't
 #        RUN_ALL is used to decide whether to run all the events in the file
 #        in case that the total number of events requested (LAST_EVT-FIRST_EVT)
-#        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True),
+#        exceeds the number of events in the DST file.
+#         If RUN_ALL is set to 1 (True),
 #        the script will run over all elements in the DST,
 #        otherwise it will exit with a warning.
-#        CLIB = compression library used: values can be 'ZLIB', 'BLOSC' or 'NONE'
+#        CLIB = compression library used: values can be 'ZLIB', 'BLOSC' or
+#        'NONE'
 #        CLEVEL = compression level
+#        NOISE_CUT gives the value of the soft noise cunt in the SiPMs
 #
-PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,NOISE_CUT_FRACTION,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL, END
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/test/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,Kr_ACTIVE_5bar_evt_10.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0.999,0,10,1,zlib,1,1
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,FIRST_EVT,LAST_EVT,RUN_ALL,CLIB,CLEVEL,BLR,NOISE_CUT,END
+/Users/jjgomezcadenas/Documents/Development/NEXT/data/test/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,nexus_NEW_NEXT_v0_08_00_Kr_ACTIVE_5bar_1000kev_0.next_10000.root.h5,Kr_5bar_10evt_sipmzs.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0,10,1,zlib,1,1,0.5,1

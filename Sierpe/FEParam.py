@@ -21,18 +21,18 @@ R = 2350*ohm # resistor in Ohms
 C12 = np.array([ 6.02975448,  6.22547194,  6.0671337 ,  6.22159457,  6.29999787,
         6.09892384,  6.18289435,  6.21775591,  6.19306671,  6.30518792,
         6.20359891,  6.31231192])*nF
-AC = np.array([0.0016414818563650,
-     0.0016183592928600,
-     0.0016229879497475,
-     0.0016161407273750,
-     0.0015643825749600,
-     0.0015705862023800,
-     0.0016013117326050,
-     0.0016215610282000,
-     0.0016061886622500,
-     0.0015986567401350,
-     0.0015811781676775,
-     0.0015960341795175])
+AC = np.array([0.001652348,
+		 0.00163149,
+		 0.001631774,
+		 0.00162948,
+		 0.001582021,
+		 0.001594688,
+		 0.001624928,
+		 0.001642566,
+		 0.001626805,
+		 0.001620873,
+		 0.001600633,
+		 0.001611269])
 time_step=1*ns
 time_DAQ=25*ns
 time_bin = time_DAQ/time_step
@@ -43,7 +43,7 @@ freq_HPF=(1/(2*pi*R*C))  # HPF filter
 freq_LPF=3E6*hertz
 
 NBITS = 12
-NBITS_FRAC=11                
+NBITS_FRAC=11
 NBITS_acum=32
 NBITS_FRAC_acum=20
 
@@ -51,14 +51,14 @@ LSB = 2*volt/2**NBITS     # value of LSB
 LSB_OUT = LSB/1.25    # effective value to convert mV to ADC counts
 voltsToAdc = LSB_OUT
 
-NOISE_FEE_rms = 0.7*mV
+NOISE_FEE_rms = 0.3*mV
 NOISE_FEE_adc = NOISE_FEE_rms/voltsToAdc
 MAU_thr =  LSB/volt  #MAU operates in ADC counts
 
 NOISE_FEE = NOISE_FEE_rms
 NOISE_ADC = NOISE_FEE_adc
 
- 
+
 def pmt_gain():
   return PMT_GAIN
 
@@ -110,14 +110,14 @@ def print_FEE():
   print """
   NEW FEE: DEFAULT PARAMETERS
   PMT gain = %7.2g
-  sampling time: (fine) = %7.2f ns (DAQ) = %7.2f ns 
+  sampling time: (fine) = %7.2f ns (DAQ) = %7.2f ns
   decoupling capacitor = %7.2f nF
   decoupling resistor = %7.2f ohm
-  HPF frequency = %7.2f Hz  W_HPF_fine = %7.2g W_HPF_daq = %7.2g 
-  LPF frequency = %7.2f Hz  W_LPF_fine = %7.2g W_LPF_daq = %7.2g 
+  HPF frequency = %7.2f Hz  W_HPF_fine = %7.2g W_HPF_daq = %7.2g
+  LPF frequency = %7.2f Hz  W_LPF_fine = %7.2g W_LPF_daq = %7.2g
   noise = %7.2f mV
   noise (adc) = %7.2f
-  vots to adc factor = %7.2f 
+  vots to adc factor = %7.2f
   """%(pmt_gain(),sampling_time()/ns,sampling_DAQ()/ns,
     decoupling_capacitor()/nF,decoupling_resitor()/ohm,f_HPF()/hertz,
     W_HPF_fine(), W_HPF_daq(), f_LPF()/hertz,
@@ -137,5 +137,3 @@ def pulse_area_threshold(pulse, thr):
 
 def pulse_len_positive(pulse):
   return len(pulse[np.where(pulse>0)])
-
-

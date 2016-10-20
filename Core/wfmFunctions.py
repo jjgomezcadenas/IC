@@ -10,68 +10,23 @@ import pandas as pd
 import numpy as np
 import FEParam as FP
 from system_of_units import *
+from Util import dict_map
+from math import *
+from LogConfig import *
 
-def store_wf(event, table, WF):
-    """
-    Store a wavform in a table
-    """
-    row = table.row
-    for isens,wf in WF.items():
-        for t,e in zip(wf.time_mus, wf.ene_pes):
-            row['event'] = event
-            row['ID'] = isens
-            row['time_mus'] = t
-            row['ene_pes'] = e
-            row.append()
-    table.flush()
 
-# def read_twf(pmttwf, event_number):
-#     """
-#     Reads back the TWF: old version kept for backward compatibility to
-#     be deleted asap
-#     """
-#     PMT={}
-#     for row in table.where("event == event_number"):
-#         pmt = row['ID']
-#         time_mus = row['time_mus']
-#         ene_pes =  row['ene_pes']
-#
-#         #print('pmt = {},time_mus = {},ene_pes = {}'.format(pmt,time_mus,ene_pes))
-#         if pmt not in PMT:
-#             WF={}
-#             TIME =[]
-#             ENE = []
-#             TIME.append(time_mus)
-#             ENE.append(ene_pes)
-#             WF['time_mus'] = TIME
-#             WF['ene_pes'] = ENE
-#             PMT[pmt] = WF
-#         else:
-#             WF = PMT[pmt]
-#             TIME = WF['time_mus']
-#             ENE  = WF['ene_pes']
-#             TIME.append(time_mus)
-#             ENE.append(ene_pes)
-#
-#     return PMT
+def to_adc( wfs, sensdf ):
+    '''
+        Scale waveform in pes to adc.
+    '''
+    return wfs * sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
 
-def read_twf(twf, sensor_list, event_number):
-    """
-    Reads back the TWF of the PMTs/SiPMs for event number:
-    input: the twf table of the PMTs,(SiPMs) a list with the PMT (SiPMs) indexes and the event number
-    outputs: a PMT/SiPM panel
+def to_pes( wfs, sensdf ):
+    '''
+        Scale waveform in adc to pes.
+    '''
+    return wfs / sensdf['adc_to_pes'].reshape(wfs.shape[0],1)
 
-    """
-    sensors ={}
-    for isensor in sensor_list:
-        try:
-            time_mus, ene_pes = zip(*[ (row['time_mus'],row['ene_pes']) for row in twf.iterrows() if row['event']== event_number and row['ID']== isensor])
-            sensors[isensor] = wf2df(time_mus,ene_pes)
-        except ValueError:
-            logger.error('found an empty sensor')
-            exit()
-
-    return pd.Panel(sensors)
 
 def rebin_twf(t, e, stride = 40):
     """
@@ -80,16 +35,10 @@ def rebin_twf(t, e, stride = 40):
     contents expresses energy (e.g, in pes)
     The function returns the ned times and energies
     """
+    n = int(ceil(len(t)/float(stride)))
 
-    n = len(t)/int(stride)
-    r = len(t)%int(stride)
-
-    lenb = n
-    if r > 0:
-        lenb = n+1
-
-    T = np.zeros(lenb,dtype=np.float32)
-    E = np.zeros(lenb,dtype=np.float32)
+    T = np.zeros(n,dtype=np.float32)
+    E = np.zeros(n,dtype=np.float32)
 
     j=0
     for i in range(n):
@@ -97,12 +46,13 @@ def rebin_twf(t, e, stride = 40):
         T[i] = np.mean(t[j:j+stride])
         j+= stride
 
-    if r > 0:
-        E[n] = np.sum(e[j:])
-        T[n] = np.mean(t[j:])
-
     return T,E
 
+def rebin_df(df,stride=40):
+    '''
+        applies the rebin_wf function to a dataframe.
+    '''
+    return wf2df(*rebin_twf(*df2wf(df), stride = stride))
 
 def get_waveforms(pmtea,event_number=0):
     """
@@ -157,11 +107,20 @@ def wfdf(time_mus,energy_pes,indx):
     """
     return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes,'indx':indx})
 
-def wf2df(time_mus,energy_pes):
+def wf2df(time_mus,energy_pes, dropnan=False):
     """
     takes two vectors (time, energy) and returns a data frame representing a waveform
     """
-    return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
+    if dropnan == False:
+        return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes})
+    else:
+        return pd.DataFrame({'time_mus':time_mus,'ene_pes':energy_pes}).dropna()
+
+def df2wf(df):
+    '''
+        takes a data frame and returns the array of times and the array of energies.
+    '''
+    return df['time_mus'], df['ene_pes']
 
 def add_cwf(cwfdf,pmtDF):
     """
@@ -184,21 +143,42 @@ def wf_thr(wf,threshold=1):
     """
     return wf.loc[lambda df: df.ene_pes.values >threshold, :]
 
-def sensor_wise_zero_suppresion(data,thresholds, to_mus=1.0):
+def zs_wf(waveform,threshold,to_mus=None):
+    '''
+        get a zero-supressed wf.
+    '''
+    t = np.argwhere(waveform>threshold).flatten()
+    if not t.size: return None
+    return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
+
+def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
     '''
-    def zs_df(waveform,threshold):
-        '''
-            Get the zero-supressed wfms. Return None if it is completely suppresed.
-        '''
-        t = np.argwhere(waveform>threshold).flatten()
-        if not t.any(): return None
-        return wf2df(t*to_mus,waveform[t])
+    # If threshold is a single value, transform it into an array
+    if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
+    return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
-    return { i : df for i,df in enumerate(map(zs_df,data,thresholds)) if not df is None }
+def noise_suppression(data,thresholds, to_mus=None):
+    '''
+        takes an array of waveforms, applies the corresponding threshold to
+        each row and returns a dictionary with the data frames of the survivors.
+    '''
+    suppressed_data = np.copy(data)
+    if not hasattr(thresholds, '__iter__'):
+        thresholds = np.ones( data.shape[0] ) * thresholds
+    def suppress(wf,th):
+        wf[wf<=th] = 0
+    map( suppress, suppressed_data, thresholds)
+    return suppressed_data
 
+def in_window( data, tmin, tmax ):
+    '''
+        Filters out data outside specified window.
+    '''
+    filter_df = lambda df: df[ (df.time_mus >= tmin) & (df.time_mus <= tmax) ]
+    return dict_map( filter_df, data )
 
 def find_S12(swf, stride=40):
     """
