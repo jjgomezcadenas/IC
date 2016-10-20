@@ -101,6 +101,12 @@ def FEE_param_table(fee_table):
 
     row.append()
 
+def save_pmt_cal_consts(pmt_table,consts):
+    '''
+        Overwrite PMT cal constats in table.
+    '''
+    for row,const in zip(pmt_table,consts):
+        row['adc_to_pes'] = const
 
 def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
     """
@@ -261,6 +267,7 @@ def DIOMIRA(argv):
         # access the geometry and the sensors metadata info
         geom_t = h5in.root.Detector.DetectorGeometry
         pmt_t = h5in.root.Sensors.DataPMT
+        blr_t = h5in.root.Sensors.DataBLR
         sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
         # pmtdf = snf.read_data_sensors(pmt_t)
@@ -291,6 +298,7 @@ def DIOMIRA(argv):
             sgroup = h5out.create_group(h5out.root, "Sensors")
             # copy the pmt table
             pmt_t.copy(newparent=sgroup)
+            blr_t.copy(newparent=sgroup)
             # copy the sipm table
             sipm_t.copy(newparent=sgroup)
 
@@ -316,6 +324,8 @@ def DIOMIRA(argv):
 
             # fill FEE table
             FEE_param_table(fee_table)
+            save_pmt_cal_consts(h5out.root.Sensors.DataPMT, fee_table.cols.CR[0])
+            save_pmt_cal_consts(h5out.root.Sensors.DataBLR, fee_table.cols.CB[0])
 
             # create a group to store RawData
             h5out.create_group(h5out.root, "RD")
