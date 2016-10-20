@@ -107,6 +107,19 @@ def get_vectors(h5f):
     dFEE = read_FEE_table(fee_t)
     return pmttwf, sipmtwf, pmtrwf, pmtblr, sipmrwf, pmtdf, sipmdf, gdf, dFEE
 
+
+def get_cwf_vectors(h5f):
+    '''
+        Return the most relevant fields stored in a raw data file.
+    '''
+    pmtcwf = h5f.root.RD.pmtcwf
+    mau = h5f.root.BLR.mau
+    pulse_on = h5f.root.BLR.pulse_on
+    wait_over = h5f.root.BLR.wait_over
+
+    return pmtcwf, mau, pulse_on, wait_over
+
+
 def store_wf(event, table, WF):
     """
     Store a wavform in a table

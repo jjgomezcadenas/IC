@@ -1,16 +1,11 @@
 
 import numpy as np
 cimport numpy as np
-import pandas as pd
-import FEParam as FP
-import SPE as SP
-import FEE2 as FE
 from scipy import signal as SGN
 
 
-cpdef cBLR(np.ndarray[np.int16_t, ndim=1] signal_daq, float coef,
-           int nm=250, float thr1 = 3*FP.NOISE_ADC, float thr2 = 0,
-           float thr3 = FP.NOISE_ADC):
+cpdef BLR(np.ndarray[np.int16_t, ndim=1] signal_daq, float coef,
+           int nm, float thr1, float thr2, float thr3):
     """
     Deconvolution offline of the DAQ signal
     """
