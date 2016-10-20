@@ -13,5 +13,33 @@ find_coeff_II is used by FEE_CALIBRATION. It is still based on old DBLR_cal sinc
 it only applies the basic algorithm BLRc
 
 
+## 10 / 19 / 2016 ##
+
+  +++ CRITICAL CHANGES +++
+
+
+PMT base interaction with Coupling Capacitor has been detected. The evaluation of this 
+effect shows a potential severe effect on energy estimation for long pulses (over 100u)
+which might introduce 1% error.
+The whole FEE model has been refined in order to include this effect and a solution
+has been proposed which allows to measure energy with a maximum error of 0.072% (WC)
+The fix is based on a software implemented filter which processes the FEE output before BLR deconvolution
+operation. This filter cleans the "ghost" image of the input pulse which is injected at the FEE output by the
+PMT base interaction. 
+
+FEE_PMT.ipynb --> 	NEW PMT+FEE detailed MODEL for python simulation
+			Evaluation of error introduced using only BLR
+			Cleaning Filter design process
+			Implementation and Results
+IDEAL_FEE.ipynb  -->    Very simple FEE model (for debugging use only)
+FEE_simple.ipynb -->    Simple FEE model (previously used simple model of the FEE)
+			(for debugging use only)
+DSP_sandbox.ipynb -->   Examples of filter design and filtering operations. Includes an evaluation of 
+			Capacitor DF effect on energy computation
+
+
+			      
+
+
 
 

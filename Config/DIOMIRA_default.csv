@@ -1,3 +1,3 @@
 #Configuration file for DIOMIRA
-PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,END 
-/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/,/Users/jjgomezcadenas/Documents/Development/NEXT/data/Waveforms/25ns/,WF_Tl_0.h5,WF_Tl_0_RWF.h5,0,99,1,1
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,FIRST_EVT,LAST_EVT,BLR,NOISE_CUT,RUN_ALL,CLIB,CLEVEL
+/Users/Gonzalo/github/IC/data/,/Users/Gonzalo/github/IC/data/,in0.h5,DIOMIRA0.h5,/Users/Gonzalo/github/IC/Database/,0,100,1,0.9,1,zlib,1
