@@ -59,8 +59,6 @@ def ANASTASIA(argv):
 
     PATH_IN   = CFP['PATH_IN']
     FILE_IN   = CFP['FILE_IN']
-    PATH_OUT  = CFP['PATH_OUT']
-    FILE_OUT  = CFP['FILE_OUT']
     PATH_DB   = CFP['PATH_DB']
     FIRST_EVT = CFP['FIRST_EVT']
     LAST_EVT  = CFP['LAST_EVT']
@@ -86,6 +84,7 @@ def ANASTASIA(argv):
     with tb.open_file("{}/{}".format(PATH_IN,FILE_IN), "r+") as h5in:
         # access the PMT raw data in file
 
+        pmtblr   = h5in.root.RD.pmtblr
         pmtcwf   = h5in.root.RD.pmtcwf
         sipmrwf  = h5in.root.RD.sipmrwf
         mcdata   = h5in.root.MC.MCTracks
@@ -101,9 +100,6 @@ def ANASTASIA(argv):
         logger.info("#PMTs = {}; #SiPMs = {}; #events in DST = {}".format(NPMT,NSIPM,NEVT))
         logger.info("PMT WFL = {}; SiPM WFL = {}".format(PMTWL,SIPMWL))
 
-        pmt_adc_consts = 1.0/19.7030253964#-1.0/np.array(pmtdf['adc_to_pes']).reshape(NPMT,1)
-        pmt_ave_consts = 1.0/19.7030253964#-1.0/np.mean(pmtdf['adc_to_pes'])
-
         pmt_adc_consts = 1.0/np.array([19.200523269821286,18.337220349094959,18.277890643055709,20.094008664586799,19.623449041069801,18.267600383584281,19.062919010617382, 17.392029016798073, 18.334949819343084,18.462968438179974,18.634919155741205,18.112776381185306]).reshape(NPMT,1)
         pmt_ave_consts = 1.0/np.mean([19.200523269821286,18.337220349094959,18.277890643055709,20.094008664586799,19.623449041069801,18.267600383584281,19.062919010617382, 17.392029016798073, 18.334949819343084,18.462968438179974,18.634919155741205,18.112776381185306])
 
@@ -112,53 +108,50 @@ def ANASTASIA(argv):
         pmts_noise_threshold_   = PMT_NOISE_CUT * NOISE_ADC * pmt_ave_consts * NPMT**0.5 if PMT_ZS_METHOD == 'RMS_CUT' else 1.01 * PMT_NOISE_CUT * NPMT * pmt_ave_consts
         sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(SIPM_NOISE_CUT,sipmdf = sipmdf) if SIPM_ZS_METHOD == 'FRACTION' else np.ones(NSIPM) * SIPM_NOISE_CUT
 
-        with tb.open_file("{}/{}".format(PATH_OUT,FILE_OUT), "w") as h5out:
-            # Create groups
-            h5out.create_group(h5out.root, "MC")
-            h5out.create_group(h5out.root, "Detector")
-            h5out.create_group(h5out.root, "Sensors")
-            h5out.create_group(h5out.root, "ZS")
+        if not '/ZS' in h5in:
+            rgroup = h5in.create_group(h5in.root, "ZS")
+        if '/ZS/PMT' in h5in:
+            h5in.remove_node("/ZS","PMT")
+        if '/ZS/PMTBLR' in h5in:
+            h5in.remove_node("/ZS","PMTBLR")
+        if '/ZS/SiPM' in h5in:
+            h5in.remove_node("/ZS","SiPM")
 
-            # Copy data from input
-            mcdata  .copy(newparent=h5out.root.MC)
-            geodata .copy(newparent=h5out.root.Detector)
-            pmtdata .copy(newparent=h5out.root.Sensors)
-            sipmdata.copy(newparent=h5out.root.Sensors)
+        pmt_zs_  = h5in.create_earray(h5in.root.ZS, "PMT",
+                                      atom=tb.Int16Atom(),     #not Float32! bad for compression
+                                      shape=(0, 1, PMTWL),
+                                      expectedrows=NEVT)
 
+        pmt_zs_blr_  = h5in.create_earray(h5in.root.ZS, "PMTBLR",
+                                          atom=tb.Int16Atom(),     #not Float32! bad for compression
+                                          shape=(0, 1, PMTWL),
+                                          expectedrows=NEVT)
 
-            # Create tables for PMTs and SiPMs ZSWF
-            pmt_zs_table  = h5in.create_table(h5out.root.ZS, "PMT", SENSOR_WF, "Store for PMTs ZSWF",
-                                              tb.Filters(complib=CLIB, complevel=CLEVEL))
+        sipm_zs_  = h5in.create_earray(h5in.root.ZS, "SiPM",
+                                       atom=tb.Int16Atom(),     #not Float32! bad for compression
+                                       shape=(0, NSIPM, SIPMWL),
+                                       expectedrows=NEVT)
 
-            sipm_zs_table = h5in.create_table(h5out.root.ZS, "SiPM", SENSOR_WF, "Store for SiPMs ZSWF",
-                                              tb.Filters(complib=CLIB, complevel=CLEVEL))
+        first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVT,RUN_ALL)
 
-            # Add index in event column
-            pmt_zs_table .cols.event.create_index()
-            sipm_zs_table.cols.event.create_index()
+        t0 = time()
+        for i in range(first_evt,last_evt):
+            logger.info("-->event number ={}".format(i))
 
-            first_evt, last_evt = define_event_loop(FIRST_EVT,LAST_EVT,NEVENTS,NEVT,RUN_ALL)
+            # Integrate PMT plane in pes (not in time!)
+            pmtcwf_int_pes = (pmtcwf[i] * pmt_adc_consts).sum(axis=0)
+            pmtblr_int_pes = ((2500-pmtblr[i]) * pmt_adc_consts).sum(axis=0)
 
-            t0 = time()
-            for i in range(first_evt,last_evt):
-                logger.info("-->event number ={}".format(i))
+            # suppress_wf puts zeros where the wf is below the threshold
+            wfm.suppress_wf(pmtcwf_int_pes,pmts_noise_threshold_)
+            wfm.suppress_wf(pmtblr_int_pes,pmts_noise_threshold_)
 
-                # Integrate PMT plane in pes (not in time!)
-                pmt_int_pes = (pmtcwf[i] * pmt_adc_consts).sum(axis=0)
+            pmt_zs_.append( pmtcwf_int_pes.reshape(1,1,PMTWL) )
+            pmt_zs_blr_.append( pmtblr_int_pes.reshape(1,1,PMTWL) )
 
-                # sensor_wise_zero_suppresion returns a dictionary holding
-                # the surviving sensors dataframes. Time in mus, ene in pes (PMTs) or adc (SiPMs).
-                # They are converted just before storing them in the table.
-                dataPMT = wfm.zs_wf(pmt_int_pes,pmts_noise_threshold_,25*ns/mus)
-                tbl.store_wf(i, pmt_zs_table, {12:dataPMT})
-
-                tmin, tmax = dataPMT.time_mus.min(),dataPMT.time_mus.max()
-
-                dataSiPM = wfm.sensor_wise_zero_suppression(sipmrwf[i],sipms_noise_thresholds_,1.0)
-                dataSiPM = wfm.in_window(dataSiPM,tmin,tmax)
-                tbl.store_wf(i, sipm_zs_table, scale_to_pes(dataSiPM,sipmdf))
-
-            t1 = time()
+            SiPMdata = wfm.to_pes( wfm.noise_suppression( sipmrwf[i], sipms_noise_thresholds_ ), sipmdf )
+            sipm_zs_.append( SiPMdata.reshape(1,NSIPM,SIPMWL) )
+        t1 = time()
 
         print("ANASTASIA has run over {} events in {} seconds".format(i, t1-t0))
     print("Leaving ANASTASIA. Safe travels!")
