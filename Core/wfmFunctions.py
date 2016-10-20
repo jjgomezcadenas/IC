@@ -239,6 +239,12 @@ def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
     if not hasattr(thresholds, '__iter__'): thresholds = np.ones( data.shape[0] ) * thresholds
     return { i : df for i,df in enumerate(map(zs_wf,data,thresholds)) if df is not None }
 
+def suppress_wf(wf,th):
+    '''
+        Put zeros where wf is below th.
+    '''
+    wf[wf<=th] = 0
+
 def noise_suppression(data,thresholds):
     '''
         takes an array of waveforms, applies the corresponding threshold to
@@ -247,9 +253,7 @@ def noise_suppression(data,thresholds):
     suppressed_data = np.copy(data)
     if not hasattr(thresholds, '__iter__'):
         thresholds = np.ones( data.shape[0] ) * thresholds
-    def suppress(wf,th):
-        wf[wf<=th] = 0
-    map( suppress, suppressed_data, thresholds)
+    map( suppress_wf, suppressed_data, thresholds)
     return suppressed_data
 
 def in_window( data, tmin, tmax ):
