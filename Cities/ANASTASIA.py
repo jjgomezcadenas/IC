@@ -22,7 +22,6 @@ from system_of_units import *
 from LogConfig import logger
 from Configure import configure, define_event_loop
 from Nh5 import SENSOR_WF
-from FEParam import NOISE_ADC
 
 import sensorFunctions as snf
 import wfmFunctions as wfm
@@ -67,17 +66,17 @@ def ANASTASIA(argv):
     CLEVEL    = CFP['CLEVEL']
     NEVENTS   = LAST_EVT - FIRST_EVT
 
-    PMT_ZS_METHOD  = CFP['PMT_ZS_METHOD']
-    SIPM_ZS_METHOD = CFP['SIPM_ZS_METHOD']
-    PMT_NOISE_CUT  = CFP['PMT_NOISE_CUT']
-    SIPM_NOISE_CUT = CFP['SIPM_NOISE_CUT']
+    PMT_NOISE_CUT_RAW  = CFP['PMT_NOISE_CUT_RAW']
+    PMT_NOISE_CUT_BLR  = CFP['PMT_NOISE_CUT_BLR']
+    SIPM_NOISE_CUT     = CFP['SIPM_NOISE_CUT']
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
     logger.info("input file = {}/{}".format(PATH_IN,FILE_IN))
     logger.info("path to database = {}".format(PATH_DB))
     logger.info("first event = {}; last event = {} nof events requested = {} ".format(FIRST_EVT,LAST_EVT,NEVENTS))
     logger.info("Compression library = {} Compression level = {} ".format(CLIB,CLEVEL))
-    logger.info("ZS method PMTS  = {}. Cut value = {}".format(PMT_ZS_METHOD,PMT_NOISE_CUT))
+    logger.info("ZS method PMTS  = {}. Cut value = {}".format('RMS_CUT',PMT_NOISE_CUT_RAW))
+    logger.info("ZS method PMTS  = {}. Cut value = {}".format('RMS_CUT',PMT_NOISE_CUT_RAW))
     logger.info("ZS method SIPMS = {}. Cut value = {}".format(SIPM_ZS_METHOD,SIPM_NOISE_CUT))
 
     # open the input file
@@ -90,8 +89,10 @@ def ANASTASIA(argv):
         mcdata   = h5in.root.MC.MCTracks
         geodata  = h5in.root.Detector.DetectorGeometry
         pmtdata  = h5in.root.Sensors.DataPMT
+        blrdata  = h5in.root.Sensors.DataBLR
         sipmdata = h5in.root.Sensors.DataSiPM
-        pmtdf    = snf.read_data_sensors(pmtdata)
+        pmtdfraw = snf.read_data_sensors(pmtdata)
+        pmtdfblr = snf.read_data_sensors(blrdata)
         sipmdf   = snf.read_data_sensors(sipmdata)
 
         NEVT, NPMT , PMTWL  = pmtcwf.shape
@@ -100,20 +101,23 @@ def ANASTASIA(argv):
         logger.info("#PMTs = {}; #SiPMs = {}; #events in DST = {}".format(NPMT,NSIPM,NEVT))
         logger.info("PMT WFL = {}; SiPM WFL = {}".format(PMTWL,SIPMWL))
 
-        pmt_adc_consts = 1.0/np.array([19.200523269821286,18.337220349094959,18.277890643055709,20.094008664586799,19.623449041069801,18.267600383584281,19.062919010617382, 17.392029016798073, 18.334949819343084,18.462968438179974,18.634919155741205,18.112776381185306]).reshape(NPMT,1)
-        pmt_ave_consts = 1.0/np.mean([19.200523269821286,18.337220349094959,18.277890643055709,20.094008664586799,19.623449041069801,18.267600383584281,19.062919010617382, 17.392029016798073, 18.334949819343084,18.462968438179974,18.634919155741205,18.112776381185306])
+        pmt_cal_consts_raw = pmtdfraw['adc_to_pes'].reshape(NPMT,1)
+        pmt_cal_consts_blr = pmtdfblr['adc_to_pes'].reshape(NPMT,1)
+        pmt_ave_consts_raw = np.mean(pmt_cal_consts_raw)
+        pmt_ave_consts_blr = np.mean(pmt_cal_consts_blr)
 
         # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_    = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
-        pmts_noise_threshold_   = PMT_NOISE_CUT * NOISE_ADC * pmt_ave_consts * NPMT**0.5 if PMT_ZS_METHOD == 'RMS_CUT' else 1.01 * PMT_NOISE_CUT * NPMT * pmt_ave_consts
-        sipms_noise_thresholds_ = sipms_noise_sampler_.ComputeThresholds(SIPM_NOISE_CUT,sipmdf = sipmdf) if SIPM_ZS_METHOD == 'FRACTION' else np.ones(NSIPM) * SIPM_NOISE_CUT
+        sipms_noise_sampler_      = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
+        pmts_noise_threshold_raw_ = PMT_NOISE_CUT_RAW * NPMT / pmt_ave_consts_raw * 1.01 # 1% more to be safe
+        pmts_noise_threshold_blr_ = PMT_NOISE_CUT_BLR * noise_adc / pmt_ave_consts_blr * NPMT**0.5 * 1.01 # 1% more to be safe
+        sipms_noise_thresholds_   = sipms_noise_sampler_.ComputeThresholds(SIPM_NOISE_CUT,sipmdf = sipmdf) if SIPM_ZS_METHOD == 'FRACTION' else np.ones(NSIPM) * SIPM_NOISE_CUT
 
         if not '/ZS' in h5in:
             rgroup = h5in.create_group(h5in.root, "ZS")
         if '/ZS/PMT' in h5in:
             h5in.remove_node("/ZS","PMT")
         if '/ZS/PMTBLR' in h5in:
-            h5in.remove_node("/ZS","PMTBLR")
+            h5in.remove_node("/ZS","BLR")
         if '/ZS/SiPM' in h5in:
             h5in.remove_node("/ZS","SiPM")
 
@@ -122,7 +126,7 @@ def ANASTASIA(argv):
                                       shape=(0, 1, PMTWL),
                                       expectedrows=NEVT)
 
-        pmt_zs_blr_  = h5in.create_earray(h5in.root.ZS, "PMTBLR",
+        pmt_zs_blr_  = h5in.create_earray(h5in.root.ZS, "BLR",
                                           atom=tb.Int16Atom(),     #not Float32! bad for compression
                                           shape=(0, 1, PMTWL),
                                           expectedrows=NEVT)
@@ -139,8 +143,8 @@ def ANASTASIA(argv):
             logger.info("-->event number ={}".format(i))
 
             # Integrate PMT plane in pes (not in time!)
-            pmtcwf_int_pes = (pmtcwf[i] * pmt_adc_consts).sum(axis=0)
-            pmtblr_int_pes = ((2500-pmtblr[i]) * pmt_adc_consts).sum(axis=0)
+            pmtcwf_int_pes = (pmtcwf[i] / pmt_cal_consts_raw).sum(axis=0)
+            pmtblr_int_pes = (pmtblr[i] / pmt_cal_consts_blr).sum(axis=0)
 
             # suppress_wf puts zeros where the wf is below the threshold
             wfm.suppress_wf(pmtcwf_int_pes,pmts_noise_threshold_)
