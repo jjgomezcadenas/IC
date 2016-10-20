@@ -51,7 +51,8 @@ class NoiseSampler:
         if 'sipmdf' in kwargs:
             pes_to_adc = kwargs['sipmdf']['adc_to_pes']
         elif 'pes_to_adc' in kwargs:
-            if not hasattr(kwargs['pes_to_adc'],__iter__):
-                pes_to_adc = np.ones(self.nsensors) * kwargs['pes_to_adc']
+            pes_to_adc = kwargs['pes_to_adc']
+            if not hasattr(pes_to_adc,__iter__):
+                pes_to_adc *= np.ones(self.nsensors)
 
-        return np.array( [ self.xbins[np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] ) * np.array(adc_to_pes)
+        return np.array( [ self.xbins[np.argwhere( probs > noise_cut )[0][0]] for i,probs in enumerate(np.apply_along_axis( np.cumsum, 1, self.probs )) ] ) * np.array(pes_to_adc)
