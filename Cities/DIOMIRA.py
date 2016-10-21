@@ -77,6 +77,9 @@ Some variables, classes and functions renamed for clarity.
 
 20.10: JJ, store BLR with positive signal and baseline subtracted
 
+20.10: GML, overwrite calibration constants in DataPMT with values
+from FEE table. PRE-RELEASE
+
 """
 
 

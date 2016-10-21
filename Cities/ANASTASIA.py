@@ -36,7 +36,10 @@ ANASTASIA
 ChangeLog:
 
 14.10 First version.
-18.10 Big PMT implemented and ZS methods implemented.
+
+18.10 Big PMT and ZS methods implemented.
+
+21.10 several fixes. PRE-RELEASE.
 
 '''
 
