@@ -51,7 +51,7 @@ def ANASTASIA(argv):
     '''
         ANASTASIA driver
     '''
-    DEBUG_LEVEL, INFO, CYTHON, CFP = configure(argv[0],argv[1:])
+    DEBUG_LEVEL, INFO, CFP = configure(argv[0],argv[1:])
 
     if INFO:
         print(__doc__)
@@ -68,6 +68,7 @@ def ANASTASIA(argv):
 
     PMT_NOISE_CUT_RAW  = CFP['PMT_NOISE_CUT_RAW']
     PMT_NOISE_CUT_BLR  = CFP['PMT_NOISE_CUT_BLR']
+    SIPM_ZS_METHOD     = CFP['SIPM_ZS_METHOD']
     SIPM_NOISE_CUT     = CFP['SIPM_NOISE_CUT']
 
     logger.info('Debug level = {}'.format(DEBUG_LEVEL))
@@ -75,8 +76,8 @@ def ANASTASIA(argv):
     logger.info("path to database = {}".format(PATH_DB))
     logger.info("first event = {}; last event = {} nof events requested = {} ".format(FIRST_EVT,LAST_EVT,NEVENTS))
     logger.info("Compression library = {} Compression level = {} ".format(CLIB,CLEVEL))
-    logger.info("ZS method PMTS  = {}. Cut value = {}".format('RMS_CUT',PMT_NOISE_CUT_RAW))
-    logger.info("ZS method PMTS  = {}. Cut value = {}".format('RMS_CUT',PMT_NOISE_CUT_RAW))
+    logger.info("ZS method PMTS RAW = {}. Cut value = {}".format('RMS_CUT',PMT_NOISE_CUT_RAW))
+    logger.info("ZS method PMTS BLR = {}. Cut value = {}".format('ABSOLUTE',PMT_NOISE_CUT_BLR))
     logger.info("ZS method SIPMS = {}. Cut value = {}".format(SIPM_ZS_METHOD,SIPM_NOISE_CUT))
 
     # open the input file
@@ -105,6 +106,7 @@ def ANASTASIA(argv):
         pmt_cal_consts_blr = pmtdfblr['adc_to_pes'].reshape(NPMT,1)
         pmt_ave_consts_raw = np.mean(pmt_cal_consts_raw)
         pmt_ave_consts_blr = np.mean(pmt_cal_consts_blr)
+        noise_adc          = h5in.root.MC.FEE.col('noise_adc')[0]
 
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_      = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",sipmdf,SIPMWL)
@@ -116,7 +118,7 @@ def ANASTASIA(argv):
             rgroup = h5in.create_group(h5in.root, "ZS")
         if '/ZS/PMT' in h5in:
             h5in.remove_node("/ZS","PMT")
-        if '/ZS/PMTBLR' in h5in:
+        if '/ZS/BLR' in h5in:
             h5in.remove_node("/ZS","BLR")
         if '/ZS/SiPM' in h5in:
             h5in.remove_node("/ZS","SiPM")
@@ -147,8 +149,8 @@ def ANASTASIA(argv):
             pmtblr_int_pes = (pmtblr[i] / pmt_cal_consts_blr).sum(axis=0)
 
             # suppress_wf puts zeros where the wf is below the threshold
-            wfm.suppress_wf(pmtcwf_int_pes,pmts_noise_threshold_)
-            wfm.suppress_wf(pmtblr_int_pes,pmts_noise_threshold_)
+            wfm.suppress_wf(pmtcwf_int_pes,pmts_noise_threshold_raw_)
+            wfm.suppress_wf(pmtblr_int_pes,pmts_noise_threshold_blr_)
 
             pmt_zs_.append( pmtcwf_int_pes.reshape(1,1,PMTWL) )
             pmt_zs_blr_.append( pmtblr_int_pes.reshape(1,1,PMTWL) )
