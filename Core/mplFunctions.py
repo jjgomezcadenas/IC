@@ -308,6 +308,7 @@ def plot_best(sipmrwf,sipmtwf, sipmdf, evt = 0):
     true_times, true_amps = tbl.read_wf(sipmtwf,evt,maxsipm)
     plt.plot(sipmrwf[evt,maxsipm,:])
     plt.plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][maxsipm])
+    plt.xlabel('time ($\mu$s)');plt.ylabel('Energy (adc)');
 
 def plot_best_group(sipmrwf,sipmtwf,sipmdf,evt = 0, nsipms = 8, ncols = 3):
     '''
@@ -326,6 +327,8 @@ def plot_best_group(sipmrwf,sipmtwf,sipmdf,evt = 0, nsipms = 8, ncols = 3):
         plt.subplot(nrows,ncols,i+1)
         plt.plot(sipm_wf)
         plt.plot(true_times,np.array(true_amps)*sipmdf['adc_to_pes'][sipm_index])
+        plt.xlabel('time ($\mu$s)');plt.ylabel('Energy (adc)');
+    plt.tight_layout()
 
 def plot_track(geom_df,mchits_df,vox_size=10, zoom = False):
     """
