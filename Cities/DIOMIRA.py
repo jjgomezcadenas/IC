@@ -27,6 +27,7 @@ from Nh5 import FEE, SENSOR_WF
 import FEParam as FP
 import SPE as SP
 import FEE2 as FE
+from scipy import signal as SGN
 
 import wfmFunctions as wfm
 import coreFunctions as cf
@@ -72,7 +73,9 @@ Some variables, classes and functions renamed for clarity.
 
 18.10 GML, add soft cut to eliminate noise below 0.5 pes in sipm plane
 
-19.10 TD: write calibration constants to table!
+19.10 JJ: write calibration constants to FEE table!
+
+20.10: JJ, store BLR with positive signal and baseline subtracted
 
 """
 
@@ -117,7 +120,7 @@ def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
     return sipmrd_[event_number] + sipms_noise_sampler.Sample()
 
 
-def simulate_pmt_response(event_number, pmtrd_, BLR):
+def simulate_pmt_response(event_number, pmtrd_, BLR, blr_mau=500):
     """
     input:
      1) extensible array pmtrd_ (events, sensors, waveform)
@@ -153,11 +156,19 @@ def simulate_pmt_response(event_number, pmtrd_, BLR):
         # daq response (decimation)
         signal_daq = FP.offset - fee.daqSignal(signal_fee, noise_rms=0)
         signal_daq_blr = 0
+        BASELINE = 0
         if BLR:
-            signal_daq_blr = FP.offset - fee.daqSignal(signal_blr, noise_rms=0)
+            signal_daq_blr = FP.ceiling - FP.offset + fee.\
+                daqSignal(signal_blr, noise_rms=0)
+            nm = blr_mau
+            MAU = np.zeros(nm, dtype=np.double)
+            B_MAU = (1./nm)*np.ones(nm, dtype=np.double)
+
+            MAU[0:nm] = SGN.lfilter(B_MAU, 1, signal_daq_blr[0:nm])
+            BASELINE = MAU[nm-1]
 
         RWF.append(signal_daq)
-        BLRX.append(signal_daq_blr)
+        BLRX.append(signal_daq_blr - BASELINE)
 
     return np.array(RWF), np.array(BLRX)
 
