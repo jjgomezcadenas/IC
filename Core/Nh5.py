@@ -12,27 +12,16 @@ class DetectorGeometry(tables.IsDescription):
     r_det = tables.Float32Col(pos=4) # radius
 
 
-class DataPMT(tables.IsDescription):
-    """
-    Stores metadata information for the PMTs
-    (position, gain, calibration-constant, mask)
-    """
-    channel = tables.Int16Col(pos=1) #electronic channel
-    active = tables.Int16Col(pos=2) # 1 if active. 0 if dead
-    position = tables.Float32Col(shape=3, pos=3)
-    gain =tables.Float32Col(pos=4)   #for PMT gain is the accumulator coeff
-    adc_to_pes =tables.Float32Col(pos=5)
-
-class DataSiPM(tables.IsDescription):
+class DataSensor(tables.IsDescription):
     """
     Stores metadata information for the SiPMs
     (position, gain, calibration-constant, mask)
     """
-    channel = tables.Int16Col(pos=1) #electronic channel
-    active = tables.Int16Col(pos=2) # 1 if active. 0 if dead
-    position = tables.Float32Col(shape=3, pos=3)
-    gain =tables.Float32Col(pos=4)
-    adc_to_pes =tables.Float32Col(pos=5)
+    channel    = tables.Int32Col(pos=0) #electronic channel
+    position   = tables.Float32Col(shape=3, pos=1)
+    coeff      = tables.Float64Col(pos=2)
+    adc_to_pes = tables.Float32Col(pos=3)
+    noise_rms  = tables.Float32Col(pos=4)
 
 class MCTrack(tables.IsDescription):
     """
