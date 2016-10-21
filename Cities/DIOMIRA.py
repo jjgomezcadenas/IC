@@ -234,8 +234,7 @@ def DIOMIRA(argv):
     FIRST_EVT = CFP['FIRST_EVT']
     LAST_EVT = CFP['LAST_EVT']
     RUN_ALL = CFP['RUN_ALL']
-    CLIB = CFP['CLIB']
-    CLEVEL = CFP['CLEVEL']
+    COMPRESSION = CFP['COMPRESSION']
     BLR = CFP['BLR']
     NOISE_CUT = CFP['NOISE_CUT']
     NEVENTS = LAST_EVT - FIRST_EVT
@@ -251,8 +250,7 @@ def DIOMIRA(argv):
                    nof events requested = {} """.format(FIRST_EVT, LAST_EVT,
                                                         NEVENTS))
 
-    logger.info("Compression library = {} Compression level = {} ".format(CLIB,
-                CLEVEL))
+    logger.info("Compression library/level= {}".format(COMPRESSION))
 
     logger.info("BLR simulation on(1)/off(0) = {}  ".format(BLR))
     logger.info("noise cut = {} pes ".format(NOISE_CUT))
@@ -297,8 +295,7 @@ def DIOMIRA(argv):
         # open the output file
         with tables.\
                 open_file("{}/{}".format(PATH_OUT, FILE_OUT), "w",
-                          filters=tables.Filters(complib=CLIB,
-                          complevel=CLEVEL)) as h5out:
+                          filters=tbl.filters[COMPRESSION]) as h5out:
 
             # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
@@ -321,18 +318,18 @@ def DIOMIRA(argv):
             # create a table to store Energy plane FEE, hang it from MC group
             fee_table = h5out.create_table(mcgroup, "FEE", FEE,
                                            "EP-FEE parameters",
-                                           tables.Filters(0))
+                                           tbl.filters["NOCOMPR"])
 
             # create a group to store True waveform data
             twfgroup = h5out.create_group(h5out.root, "TWF")
             # create a table to store true waveform (zs, rebinned)
             pmt_twf_table = h5out.\
                 create_table(twfgroup, "PMT", SENSOR_WF, "Store for PMTs TWF",
-                             tables.Filters(complib=CLIB, complevel=CLEVEL))
+                             tbl.filters[COMPRESSION])
 
             sipm_twf_table = h5out.\
                 create_table(twfgroup, "SiPM", SENSOR_WF, "Store for SiPM TWF",
-                             tables.Filters(complib=CLIB, complevel=CLEVEL))
+                             tbl.filters[COMPRESSION])
 
             # and index in event column
             pmt_twf_table.cols.event.create_index()

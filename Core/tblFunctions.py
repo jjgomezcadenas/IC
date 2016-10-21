@@ -18,11 +18,15 @@ import wfmFunctions as wfm
 import sensorFunctions as snf
 from LogConfig import logger
 
-NOCOMPR = tb.Filters(complevel=0)                        # no compression
-ZLIB1   = tb.Filters(complevel=1, complib="zlib")        # zlib
-ZLIB9   = tb.Filters(complevel=9, complib="zlib")        # zlib
-BLZ4HC5 = tb.Filters(complevel=5, complib="blosc:lz4hc") # blosc with lz4hc codec
-BLOSC5  = tb.Filters(complevel=5, complib="blosc")       # blosc
+filters = {
+'NOCOMPR' : tb.Filters(complevel=0),                        # no compression
+'ZLIB1'   : tb.Filters(complevel=1, complib="zlib"),        # zlib
+'ZLIB5'   : tb.Filters(complevel=5, complib="zlib"),        # zlib
+'ZLIB9'   : tb.Filters(complevel=9, complib="zlib"),        # zlib
+'BLZ4HC5' : tb.Filters(complevel=5, complib="blosc:lz4hc"), # blosc with lz4hc codec
+'BLOSC5'  : tb.Filters(complevel=5, complib="blosc")       # blosc
+}
+
 
 def read_geom_table(geom_t):
     """
@@ -153,4 +157,3 @@ def read_wf_table( table, event_number ):
     """
     sensor_list = set(table.read_where('event == {}'.format(event_number),field='ID'))
     return pd.Panel({ isens : wfm.wf2df(*read_wf(table,event_number,isens)) for isens in sensor_list})
-    
