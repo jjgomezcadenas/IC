@@ -65,8 +65,6 @@ def ANASTASIA(argv):
     FIRST_EVT = CFP['FIRST_EVT']
     LAST_EVT  = CFP['LAST_EVT']
     RUN_ALL   = CFP['RUN_ALL']
-    CLIB      = CFP['CLIB']
-    CLEVEL    = CFP['CLEVEL']
     NEVENTS   = LAST_EVT - FIRST_EVT
 
     PMT_NOISE_CUT_RAW  = CFP['PMT_NOISE_CUT_RAW']
@@ -78,7 +76,6 @@ def ANASTASIA(argv):
     logger.info("input file = {}/{}".format(PATH_IN,FILE_IN))
     logger.info("path to database = {}".format(PATH_DB))
     logger.info("first event = {}; last event = {} nof events requested = {} ".format(FIRST_EVT,LAST_EVT,NEVENTS))
-    logger.info("Compression library = {} Compression level = {} ".format(CLIB,CLEVEL))
     logger.info("ZS method PMTS RAW = {}. Cut value = {}".format('RMS_CUT',PMT_NOISE_CUT_RAW))
     logger.info("ZS method PMTS BLR = {}. Cut value = {}".format('ABSOLUTE',PMT_NOISE_CUT_BLR))
     logger.info("ZS method SIPMS = {}. Cut value = {}".format(SIPM_ZS_METHOD,SIPM_NOISE_CUT))
