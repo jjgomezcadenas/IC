@@ -100,13 +100,15 @@ def FEE_param_table(fee_table):
     row['noise_adc'] = FP.NOISE_ADC
 
     row.append()
+    fee_table.flush()
 
 def save_pmt_cal_consts(pmt_table,consts):
     '''
         Overwrite PMT cal constats in table.
     '''
-    for row,const in zip(pmt_table,consts):
-        row['adc_to_pes'] = const
+    adc_to_pes = pmt_table.cols.adc_to_pes
+    for i,const in enumerate(consts):
+        adc_to_pes[i] = const
 
 def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
     """
@@ -270,7 +272,7 @@ def DIOMIRA(argv):
         blr_t = h5in.root.Sensors.DataBLR
         sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
-        # pmtdf = snf.read_data_sensors(pmt_t)
+        pmtdf  = snf.read_data_sensors(pmt_t)
         sipmdf = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
