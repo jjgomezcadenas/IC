@@ -5,4 +5,4 @@ setup.sh
 .ipynb*
 *.o
 *.so
-
+*.c
