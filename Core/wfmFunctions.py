@@ -151,7 +151,7 @@ def zs_wf(waveform,threshold,to_mus=None):
     if not t.size: return None
     return wf2df( t if to_mus is None else t*to_mus,waveform[t] )
 
-def sensor_wise_zero_suppression(data,thresholds, to_mus=None):
+def zero_suppression(data,thresholds, to_mus=None):
     '''
         takes an array of waveforms, applies the corresponding threshold to
         each row and returns a dictionary with the data frames of the survivors.
