@@ -18,14 +18,15 @@ import wfmFunctions as wfm
 import sensorFunctions as snf
 from LogConfig import logger
 
-filters = {
-'NOCOMPR' : tb.Filters(complevel=0),                        # no compression
-'ZLIB1'   : tb.Filters(complevel=1, complib="zlib"),        # zlib
-'ZLIB5'   : tb.Filters(complevel=5, complib="zlib"),        # zlib
-'ZLIB9'   : tb.Filters(complevel=9, complib="zlib"),        # zlib
-'BLZ4HC5' : tb.Filters(complevel=5, complib="blosc:lz4hc"), # blosc with lz4hc codec
-'BLOSC5'  : tb.Filters(complevel=5, complib="blosc")       # blosc
-}
+def filters(name):
+    if name == 'NOCOMPR': return tb.Filters(complevel=0) # no compression
+    if name == 'ZLIB1': return tb.Filters(complevel=1, complib="zlib")
+    if name == 'ZLIB4': return tb.Filters(complevel=4, complib="zlib")
+    if name == 'ZLIB5': return tb.Filters(complevel=5, complib="zlib")
+    if name == 'ZLIB9': return tb.Filters(complevel=9, complib="zlib")
+    if name == 'BLOSC5': return tb.Filters(complevel=5, complib="blosc")
+    if name == 'BLZ4HC5': return tb.Filters(complevel=5, complib="blosc:lz4hc")
+    raise ValueError("Compression option {} not found.".format(name))
 
 
 def read_geom_table(geom_t):

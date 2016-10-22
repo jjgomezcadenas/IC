@@ -1,4 +1,3 @@
-
 # $Id: system_of_units.h,v 1.1 2004/04/16 17:09:03 gomez Exp $
 # ----------------------------------------------------------------------
 # HEP coherent system of Unitscoulomb
@@ -34,38 +33,38 @@
 # 28.03.96   Added miscellaneous constants.
 # 05.12.97   E.Tcherniaev: Redefined pascal (to avoid warnings on WinNT)
 # 20.05.98   names: meter, second, gram, radian, degree
-#            (from Brian.Lasiuk@yale.edu (STAR)). Added luminous units.    
+#            (from Brian.Lasiuk@yale.edu (STAR)). Added luminous units.
 # 05.08.98   angstrom, picobarn, microsecond, picosecond, petaelectronvolt
 
 
-# 
+#
 # Length [L]
 #
 
-euro = 1. 
-millimeter  = 1.                        
+euro = 1.
+millimeter  = 1.
 millimeter2 = millimeter*millimeter
 millimeter3 = millimeter*millimeter*millimeter
 
-centimeter  = 10.*millimeter   
+centimeter  = 10.*millimeter
 centimeter2 = centimeter*centimeter
 centimeter3 = centimeter*centimeter*centimeter
 
-decimeter  = 100.*millimeter   
+decimeter  = 100.*millimeter
 decimeter2 = decimeter*decimeter
 decimeter3 = decimeter*decimeter2
 liter = decimeter3
 l = liter
 
-meter  = 1000.*millimeter                  
+meter  = 1000.*millimeter
 meter2 = meter*meter
 meter3 = meter*meter*meter
 
-kilometer = 1000.*meter                   
+kilometer = 1000.*meter
 kilometer2 = kilometer*kilometer
 kilometer3 = kilometer*kilometer*kilometer
 
-micrometer = 1.e-6 *meter             
+micrometer = 1.e-6 *meter
 nanometer = 1.e-9 *meter
 angstrom  = 1.e-10*meter
 fermi     = 1.e-15*meter
@@ -81,19 +80,19 @@ nanobarn = 1.e-9 *barn
 picobarn = 1.e-12*barn
 
 # symbols
-mm  = millimeter                        
+mm  = millimeter
 mm2 = millimeter2
 mm3 = millimeter3
 
-cm  = centimeter   
+cm  = centimeter
 cm2 = centimeter2
 cm3 = centimeter3
 
-m  = meter                  
+m  = meter
 m2 = meter2
 m3 = meter3
 
-km  = kilometer                   
+km  = kilometer
 km2 = kilometer2
 km3 = kilometer3
 
@@ -102,14 +101,14 @@ ft= 30.48*cm
 #
 # Angle
 #
-radian      = 1.                  
+radian      = 1.
 milliradian = 1.e-3*radian
 degree = (3.14159265358979323846/180.0)*radian
 
 steradian = 1.
 
 # symbols
-rad  = radian	
+rad  = radian
 mrad = milliradian
 sr   = steradian
 deg  = degree
@@ -143,7 +142,7 @@ kHz = kHZ
 GHZ= gigahertz
 
 # symbols
-ns = nanosecond			
+ns = nanosecond
 s = second
 ms = millisecond
 
@@ -153,12 +152,12 @@ ms = millisecond
 eplus = 1. 		# positron charge
 e_SI  = 1.60217733e-19	# positron charge in coulomb
 coulomb = eplus/e_SI	# coulomb = 6.24150 e+18 * eplus
-    
+
 
 #
 # Energy [E]
 #
-megaelectronvolt = 1. 
+megaelectronvolt = 1.
 electronvolt = 1.e-6*megaelectronvolt
 milielectronvolt = 1.e-3*electronvolt
 kiloelectronvolt = 1.e-3*megaelectronvolt
@@ -170,12 +169,12 @@ MeV=megaelectronvolt
 ev=electronvolt
 KeV=kiloelectronvolt
 GeV=gigaelectronvolt
-TeV=teraelectronvolt 
+TeV=teraelectronvolt
 PeV=petaelectronvolt
 meV=milielectronvolt
 
 joule = electronvolt/e_SI	# joule = 6.24150 e+12 * MeV
-     
+
 # symbols
 MeV = megaelectronvolt
 eV = electronvolt
@@ -185,11 +184,11 @@ TeV = teraelectronvolt
 PeV = petaelectronvolt
 
 eV2 = eV*eV
-     
+
 #
 # Mass [E][T^2][L^-2]
 #
-kilogram = joule*second*second/(meter*meter)   
+kilogram = joule*second*second/(meter*meter)
 gram = 1.e-3*kilogram
 milligram = 1.e-3*gram
 ton = 1.e+3*kilogram
@@ -204,7 +203,7 @@ mg = milligram
 # Power [E][T^-1]
 #
 watt = joule/second	# watt = 6.24150 e+3 * MeV/ns
-    
+
 #
 # Force [E][L^-1]
 #
@@ -267,17 +266,17 @@ picofarad = 1.e-12*farad
 nF=nanofarad
 pF=picofarad
 
-      
+
 #
 # Magnetic Flux [T][E][Q^-1]
 #
 weber = volt*second	# weber = 1000*megavolt*ns
-     
+
 #
 # Magnetic Field [T][E][Q^-1][L^-2]
 #
 tesla     = volt*second/meter2	# tesla =0.001*megavolt*ns/mm2
-    
+
 gauss     = 1.e-4*tesla
 kilogauss = 1.e-1*tesla
 
@@ -315,7 +314,7 @@ Th232ppb=Bq/246
 #
 # Absorbed dose [L^2][T^-2]
 #
-gray = joule/kilogram 
+gray = joule/kilogram
 
 #
 # Luminous intensity [I]
@@ -335,11 +334,11 @@ lux = lumen/meter2
 #
 # Miscellaneous
 #
-perCent     = 0.01 
+perCent     = 0.01
 perThousand = 0.001
 perMillion  = 0.000001
 
-nm = nanometer 
+nm = nanometer
 mol = mole
 micron = micrometer
 pes = 1
@@ -348,6 +347,3 @@ adc = 1
 
 def celsius(tKelvin):
 	return tKelvin-273.15
-
-
-

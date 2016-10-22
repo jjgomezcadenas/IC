@@ -120,7 +120,7 @@ def ANASTASIA(argv):
 
         if SIPM_ZS_METHOD == "FRACTION":
             sipms_thresholds_ = sipms_noise_sampler_.ComputeThresholds(
-                                SIPM_NOISE_CUT, sipmdf=sipmdf)
+                                SIPM_NOISE_CUT)
         else:
             sipms_thresholds_ = np.ones(NSIPM) * SIPM_NOISE_CUT
 

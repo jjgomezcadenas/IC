@@ -289,7 +289,7 @@ def DIOMIRA(argv):
 
         # open the output file
         with tables.open_file("{}/{}".format(PATH_OUT, FILE_OUT), "w",
-                              filters=tbl.filters[COMPRESSION]) as h5out:
+                              filters=tbl.filters(COMPRESSION)) as h5out:
 
             # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
@@ -312,18 +312,18 @@ def DIOMIRA(argv):
             # create a table to store Energy plane FEE, hang it from MC group
             fee_table = h5out.create_table(mcgroup, "FEE", FEE,
                                            "EP-FEE parameters",
-                                           tbl.filters["NOCOMPR"])
+                                           tbl.filters("NOCOMPR"))
 
             # create a group to store True waveform data
             twfgroup = h5out.create_group(h5out.root, "TWF")
             # create a table to store true waveform (zs, rebinned)
             pmt_twf_table = h5out.create_table(twfgroup, "PMT", SENSOR_WF,
                                                "Store for PMTs TWF",
-                                               tbl.filters[COMPRESSION])
+                                               tbl.filters(COMPRESSION))
 
             sipm_twf_table = h5out.create_table(twfgroup, "SiPM", SENSOR_WF,
                                                 "Store for SiPM TWF",
-                                                tbl.filters[COMPRESSION])
+                                                tbl.filters(COMPRESSION))
 
             # and index in event column
             pmt_twf_table.cols.event.create_index()
