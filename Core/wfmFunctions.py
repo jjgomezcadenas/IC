@@ -187,7 +187,9 @@ def suppress_wf(wf, th):
     """
     Put zeros where *wf* is below *th*.
     """
+    wf = np.copy(wf)
     wf[wf <= th] = 0
+    return wf
 
 
 def noise_suppression(data, thresholds):
@@ -195,10 +197,9 @@ def noise_suppression(data, thresholds):
     Takes an array of waveforms, applies the corresponding threshold to
     each row and returns a dictionary with the data frames of the survivors.
     """
-    suppressed_data = np.copy(data)
     if not hasattr(thresholds, "__iter__"):
         thresholds = np.ones(data.shape[0]) * thresholds
-    map(suppress_wf, suppressed_data, thresholds)
+    suppressed_data = map(suppress_wf, data, thresholds)
     return suppressed_data
 
 

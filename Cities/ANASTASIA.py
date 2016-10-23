@@ -161,8 +161,10 @@ def ANASTASIA(argv):
             pmtblr_int_pes = (pmtblr[i] / pmt_cal_consts_blr).sum(axis=0)
 
             # suppress_wf puts zeros where the wf is below the threshold
-            wfm.suppress_wf(pmtcwf_int_pes, pmts_noise_threshold_raw_)
-            wfm.suppress_wf(pmtblr_int_pes, pmts_noise_threshold_blr_)
+            pmtcwf_int_pes = wfm.suppress_wf(pmtcwf_int_pes,
+                                             pmts_noise_threshold_raw_)
+            pmtblr_int_pes = wfm.suppress_wf(pmtblr_int_pes,
+                                             pmts_noise_threshold_blr_)
 
             pmt_zs_.append(pmtcwf_int_pes.reshape(1, 1, PMTWL))
             pmt_zs_blr_.append(pmtblr_int_pes.reshape(1, 1, PMTWL))
