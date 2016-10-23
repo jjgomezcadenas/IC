@@ -146,10 +146,14 @@ def circles(x, y, s, c="b", vmin=None, vmax=None, **kwargs):
     if np.isscalar(c):
         kwargs.setdefault("color", c)
         c = None
-    if "fc" in kwargs: kwargs.setdefault("facecolor", kwargs.pop("fc"))
-    if "ec" in kwargs: kwargs.setdefault("edgecolor", kwargs.pop("ec"))
-    if "ls" in kwargs: kwargs.setdefault("linestyle", kwargs.pop("ls"))
-    if "lw" in kwargs: kwargs.setdefault("linewidth", kwargs.pop("lw"))
+    if "fc" in kwargs:
+        kwargs.setdefault("facecolor", kwargs.pop("fc"))
+    if "ec" in kwargs:
+        kwargs.setdefault("edgecolor", kwargs.pop("ec"))
+    if "ls" in kwargs:
+        kwargs.setdefault("linestyle", kwargs.pop("ls"))
+    if "lw" in kwargs:
+        kwargs.setdefault("linewidth", kwargs.pop("lw"))
 
     patches = [Circle((x_, y_), s_) for x_, y_, s_ in np.broadcast(x, y, s)]
     collection = PatchCollection(patches, **kwargs)
