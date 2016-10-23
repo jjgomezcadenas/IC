@@ -6,6 +6,7 @@ import logging
 import sys
 
 logger = logging.getLogger()
+
 # create console handler
 ch = logging.StreamHandler()
 logger.addHandler(ch)
