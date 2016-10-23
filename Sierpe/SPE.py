@@ -106,10 +106,10 @@ class SPE:
 if __name__ == '__main__':
     import PlotUtil as putil
     import matplotlib.pyplot as plt
-    
-    signal_start = 2000*units.ns
-    signal_length = 200*units.microsecond
-    daq_window = 1*units.millisecond
+
+    signal_start = 2000 * units.ns
+    signal_length = 200 * units.mus
+    daq_window = 1 * units.ms
 
     spe = SPE()
     print spe
@@ -121,7 +121,7 @@ if __name__ == '__main__':
 
     putil.plot_signal(signal_t/units.ns, signal_PE/units.muA,
                       title='Input Signal: PE Train',
-                      signal_start=0*units.ns,
+                      signal_start=0 * units.ns,
                       signal_end=len(signal_t)/units.ns,
                       units='muA')
 
