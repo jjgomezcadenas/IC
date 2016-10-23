@@ -8,6 +8,7 @@ import getopt
 import sys
 import os
 
+
 def cdf_to_dict(cdf):
     """
     transforms the configuration data frame into a dictionary
@@ -15,7 +16,7 @@ def cdf_to_dict(cdf):
     dc = {}
     for k in cdf.keys():
         value = cdf[k][0]
-        if isinstance(value,str) and "$" in value:
+        if isinstance(value, str) and "$" in value:
             value = os.path.expandvars(value)
         dc[k] = value
     dc["PATH_DB"] = os.environ["ICDBDIR"]
