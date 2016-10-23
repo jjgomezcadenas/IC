@@ -125,13 +125,11 @@ def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
     return sipmrd_[event_number] + sipms_noise_sampler.Sample()
 
 
-def simulate_pmt_response(event_number, pmtrd_, BLR, blr_mau=500):
+def simulate_pmt_response(event_number, pmtrd_, blr_mau=500):
     """
     Input:
      1) extensible array pmtrd_ (events, sensors, waveform)
      2) event_number
-     3) flag BLR indicating if "ideal baseline restored" (BLR) waveforms should
-     be computed.
 
     returns:
     array of raw waveforms (RWF), obtained by convoluting pmtrd_ with the PMT
@@ -161,17 +159,14 @@ def simulate_pmt_response(event_number, pmtrd_, BLR, blr_mau=500):
         # daq response (decimation)
         signal_daq = FP.offset - fee.daqSignal(signal_fee, noise_rms=0)
 
-        signal_daq_blr = 0
-        BASELINE = 0
-        if BLR:
-            signal_daq_blr = (FP.ceiling - FP.offset +
-                              fee.daqSignal(signal_blr, noise_rms=0))
-            nm = blr_mau
-            MAU = np.zeros(nm, dtype=np.double)
-            B_MAU = (1./nm)*np.ones(nm, dtype=np.double)
+        signal_daq_blr = (FP.ceiling - FP.offset +
+                          fee.daqSignal(signal_blr, noise_rms=0))
+        nm = blr_mau
+        MAU = np.zeros(nm, dtype=np.double)
+        B_MAU = (1./nm)*np.ones(nm, dtype=np.double)
 
-            MAU[0:nm] = SGN.lfilter(B_MAU, 1, signal_daq_blr[0:nm])
-            BASELINE = MAU[nm-1]
+        MAU[0:nm] = SGN.lfilter(B_MAU, 1, signal_daq_blr[0:nm])
+        BASELINE = MAU[nm-1]
 
         RWF.append(signal_daq)
         BLRX.append(signal_daq_blr - BASELINE)
@@ -237,7 +232,6 @@ def DIOMIRA(argv):
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
     COMPRESSION = CFP["COMPRESSION"]
-    BLR = CFP["BLR"]
     NOISE_CUT = CFP["NOISE_CUT"]
     NEVENTS = LAST_EVT - FIRST_EVT
 
@@ -248,7 +242,6 @@ def DIOMIRA(argv):
     logger.info("First event = {} last event = {} "
                 "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
     logger.info("Compression library/level = {}".format(COMPRESSION))
-    logger.info("BLR simulation on(1)/off(0) = {}  ".format(BLR))
     logger.info("Noise cut = {} pes ".format(NOISE_CUT))
 
     # open the input file
@@ -342,12 +335,11 @@ def DIOMIRA(argv):
                                          atom=tables.Int16Atom(),
                                          shape=(0, NPMT, PMTWL_FEE),
                                          expectedrows=NEVENTS_DST)
-            pmtblr = 0
-            if BLR:
-                pmtblr = h5out.create_earray(h5out.root.RD, "pmtblr",
-                                             atom=tables.Int16Atom(),
-                                             shape=(0, NPMT, PMTWL_FEE),
-                                             expectedrows=NEVENTS_DST)
+
+            pmtblr = h5out.create_earray(h5out.root.RD, "pmtblr",
+                                         atom=tables.Int16Atom(),
+                                         shape=(0, NPMT, PMTWL_FEE),
+                                         expectedrows=NEVENTS_DST)
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
                                           atom=tables.Int16Atom(),
@@ -378,13 +370,12 @@ def DIOMIRA(argv):
                 # simulate PMT response and return an array with RWF;BLR
                 # convert to float, append to EVector
 
-                dataPMT, blrPMT = simulate_pmt_response(i, pmtrd_, BLR)
+                dataPMT, blrPMT = simulate_pmt_response(i, pmtrd_)
                 pmtrwf.append(dataPMT.astype(int).reshape(1, NPMT, PMTWL_FEE))
 
-                if BLR:
-                    pmtblr.append(blrPMT.astype(int).reshape(1,
-                                                             NPMT,
-                                                             PMTWL_FEE))
+                pmtblr.append(blrPMT.astype(int).reshape(1,
+                                                         NPMT,
+                                                         PMTWL_FEE))
 
                 # simulate SiPM response and return an array with RWF
                 # convert to float, zero suppress and dump to table
@@ -396,8 +387,7 @@ def DIOMIRA(argv):
 
             pmtrwf.flush()
             sipmrwf.flush()
-            if BLR:
-                pmtblr.flush()
+            pmtblr.flush()
 
             t1 = time()
             dt = t1 - t0
