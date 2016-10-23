@@ -3,6 +3,6 @@
 *.h5
 setup.sh
 .ipynb*
-.o
-.so
-
+*.o
+*.so
+*.c

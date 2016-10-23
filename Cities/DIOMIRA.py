@@ -15,9 +15,10 @@ as metadata
 
 from __future__ import print_function
 import sys
-from time import time
 import numpy as np
 import tables
+from scipy import signal as SGN
+from time import time
 
 import system_of_units as units
 from LogConfig import logger
@@ -27,7 +28,6 @@ from Nh5 import FEE, SENSOR_WF
 import FEParam as FP
 import SPE as SP
 import FEE2 as FE
-from scipy import signal as SGN
 
 import wfmFunctions as wfm
 import coreFunctions as cf
@@ -77,6 +77,9 @@ Some variables, classes and functions renamed for clarity.
 
 20.10: JJ, store BLR with positive signal and baseline subtracted
 
+20.10: GML, overwrite calibration constants in DataPMT with values
+from FEE table. PRE-RELEASE
+
 """
 
 
@@ -85,36 +88,46 @@ def FEE_param_table(fee_table):
     Stores the parameters of the EP FEE simulation
     """
     row = fee_table.row
-    row['offset'] = FP.offset
-    row['ceiling'] = FP.ceiling
-    row['pmt_gain'] = FP.PMT_GAIN
-    row['V_gain'] = FP.V_GAIN
-    row['R'] = FP.R
-    row['C12'] = FP.C12
-    row['CR'], row['CB'] = calibration_constants_from_spe()
-    row['AC'] = FP.AC
-    row['time_step'] = FP.time_step
-    row['time_daq'] = FP.time_DAQ
-    row['freq_LPF'] = FP.freq_LPF
-    row['freq_HPF'] = 1./(2*np.pi*FP.R*FP.C)
-    row['LSB'] = FP.LSB
-    row['volts_to_adc'] = FP.voltsToAdc/units.volt
-    row['noise_fee_rms'] = FP.NOISE_FEE
-    row['noise_adc'] = FP.NOISE_ADC
+    row["offset"] = FP.offset
+    row["ceiling"] = FP.ceiling
+    row["pmt_gain"] = FP.PMT_GAIN
+    row["V_gain"] = FP.V_GAIN
+    row["R"] = FP.R
+    row["C12"] = FP.C12
+    row["CR"], row["CB"] = calibration_constants_from_spe()
+    row["AC"] = FP.AC
+    row["time_step"] = FP.time_step
+    row["time_daq"] = FP.time_DAQ
+    row["freq_LPF"] = FP.freq_LPF
+    row["freq_HPF"] = 1./(2*np.pi*FP.R*FP.C)
+    row["LSB"] = FP.LSB
+    row["volts_to_adc"] = FP.voltsToAdc/units.volt
+    row["noise_fee_rms"] = FP.NOISE_FEE
+    row["noise_adc"] = FP.NOISE_ADC
 
     row.append()
+    fee_table.flush()
+
+
+def save_pmt_cal_consts(pmt_table, consts):
+    """
+    Overwrite PMT cal constats in table.
+    """
+    adc_to_pes = pmt_table.cols.adc_to_pes
+    for i, const in enumerate(consts):
+        adc_to_pes[i] = const
 
 
 def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
     """
-    Add noise with the SiPMNoiseSampler class and return the noisy waveform.
+    Add noise with the NoiseSampler class and return the noisy waveform.
     """
     return sipmrd_[event_number] + sipms_noise_sampler.Sample()
 
 
 def simulate_pmt_response(event_number, pmtrd_, BLR, blr_mau=500):
     """
-    input:
+    Input:
      1) extensible array pmtrd_ (events, sensors, waveform)
      2) event_number
      3) flag BLR indicating if "ideal baseline restored" (BLR) waveforms should
@@ -124,7 +137,6 @@ def simulate_pmt_response(event_number, pmtrd_, BLR, blr_mau=500):
     array of raw waveforms (RWF), obtained by convoluting pmtrd_ with the PMT
     front end electronics (LPF, HPF)
     array of BLR waveforms (only convolution with LPF)
-
     """
 
     RWF = []
@@ -142,16 +154,18 @@ def simulate_pmt_response(event_number, pmtrd_, BLR, blr_mau=500):
 
         # waveform "pmt" is passed to spe, output is a signal current
         signal_PMT = spe.SpePulseFromVectorPE(pmt)  # PMT response
+
         # Front end response to PMT pulse (in volts)
-        signal_fee, signal_blr = fee.FEESignal(signal_PMT,
-                                               noise_rms=FP.NOISE_FEE)
+        signal_fee, signal_blr = fee.FEESignal(signal_PMT, FP.NOISE_FEE)
+
         # daq response (decimation)
         signal_daq = FP.offset - fee.daqSignal(signal_fee, noise_rms=0)
+
         signal_daq_blr = 0
         BASELINE = 0
         if BLR:
-            signal_daq_blr = FP.ceiling - FP.offset + fee.\
-                daqSignal(signal_blr, noise_rms=0)
+            signal_daq_blr = (FP.ceiling - FP.offset +
+                              fee.daqSignal(signal_blr, noise_rms=0))
             nm = blr_mau
             MAU = np.zeros(nm, dtype=np.double)
             B_MAU = (1./nm)*np.ones(nm, dtype=np.double)
@@ -180,14 +194,13 @@ def calibration_constants_from_spe(start_pulse=100*units.ns,
         # PMT response to a single photon (single pe current pulse)
         signal_t, signal_PE = spe.SpePulse(start_pulse, tmax=end_pulse)
         # effect of FEE
-        signal_fee, signal_blr = fee.FEESignal(signal_PE,
-                                               noise_rms=FP.NOISE_FEE)
+        signal_fee, signal_blr = fee.FEESignal(signal_PE, FP.NOISE_FEE)
         # effect of DAQ
         signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
         signal_daq_blr = fee.daqSignal(signal_blr, noise_rms=0)
         area = np.sum(signal_daq)
         area_blr = np.sum(signal_daq_blr)
-        print("PMT = {}: cc = {}, cc blr = {}".format(pmt, area, area_blr))
+        logger.debug("PMT {}: cc {}, cc blr {}".format(pmt, area, area_blr))
         cr.append(area)
         cb.append(area_blr)
 
@@ -215,36 +228,28 @@ def DIOMIRA(argv):
         """)
         FP.print_FEE()
 
-    PATH_IN = CFP['PATH_IN']
-    PATH_OUT = CFP['PATH_OUT']
-    FILE_IN = CFP['FILE_IN']
-    FILE_OUT = CFP['FILE_OUT']
-    PATH_DB = CFP['PATH_DB']
-    FIRST_EVT = CFP['FIRST_EVT']
-    LAST_EVT = CFP['LAST_EVT']
-    RUN_ALL = CFP['RUN_ALL']
-    CLIB = CFP['CLIB']
-    CLEVEL = CFP['CLEVEL']
-    BLR = CFP['BLR']
-    NOISE_CUT = CFP['NOISE_CUT']
+    PATH_IN = CFP["PATH_IN"]
+    PATH_OUT = CFP["PATH_OUT"]
+    FILE_IN = CFP["FILE_IN"]
+    FILE_OUT = CFP["FILE_OUT"]
+    PATH_DB = CFP["PATH_DB"]
+    FIRST_EVT = CFP["FIRST_EVT"]
+    LAST_EVT = CFP["LAST_EVT"]
+    RUN_ALL = CFP["RUN_ALL"]
+    COMPRESSION = CFP["COMPRESSION"]
+    BLR = CFP["BLR"]
+    NOISE_CUT = CFP["NOISE_CUT"]
     NEVENTS = LAST_EVT - FIRST_EVT
 
-    logger.info('Debug level = {}'.format(DEBUG_LEVEL))
-    logger.info("""input path ={}; output path = {};
-                   file_in ={} file_out ={}""".format(PATH_IN, PATH_OUT,
-                                                      FILE_IN, FILE_OUT))
-
-    logger.info("path to database = {}".format(PATH_DB))
-
-    logger.info("""first event = {} last event = {}
-                   nof events requested = {} """.format(FIRST_EVT, LAST_EVT,
-                                                        NEVENTS))
-
-    logger.info("Compression library = {} Compression level = {} ".format(CLIB,
-                CLEVEL))
-
+    logger.info("Debug level = {}".format(DEBUG_LEVEL))
+    logger.info("Input path = {}; output path = {}".format(PATH_IN, PATH_OUT))
+    logger.info("File_in = {} file_out = {}".format(FILE_IN, FILE_OUT))
+    logger.info("Path to database = {}".format(PATH_DB))
+    logger.info("First event = {} last event = {} "
+                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
+    logger.info("Compression library/level = {}".format(COMPRESSION))
     logger.info("BLR simulation on(1)/off(0) = {}  ".format(BLR))
-    logger.info("noise cut = {} pes ".format(NOISE_CUT))
+    logger.info("Noise cut = {} pes ".format(NOISE_CUT))
 
     # open the input file
     with tables.open_file("{}/{}".format(PATH_IN, FILE_IN), "r") as h5in:
@@ -261,32 +266,28 @@ def DIOMIRA(argv):
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
-        logger.info("""nof PMTs = {}
-                       nof  SiPMs = {}
-                       nof events in input DST = {} """.format(NPMT, NSIPM,
-                                                               NEVENTS_DST))
-        logger.info("""lof SiPM WF = {}
-                       lof PMT WF (MC) = {}
-                       lof PMT WF (FEE) = {}""".format(PMTWL, SIPMWL,
-                                                       PMTWL_FEE))
+        logger.info("nof PMTs = {} nof  SiPMs = {} "
+                    "nof events in input DST = {} ".format(NPMT, NSIPM,
+                                                           NEVENTS_DST))
+        logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} "
+                    "lof PMT WF (FEE) = {}".format(PMTWL, SIPMWL, PMTWL_FEE))
+
         # access the geometry and the sensors metadata info
         geom_t = h5in.root.Detector.DetectorGeometry
         pmt_t = h5in.root.Sensors.DataPMT
+        blr_t = h5in.root.Sensors.DataBLR
         sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
-        # pmtdf = snf.read_data_sensors(pmt_t)
         sipmdf = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
-                                                 sipmdf, SIPMWL, True)
-        sipms_noise_thresholds_ = NOISE_CUT * np.array(sipmdf['adc_to_pes'])
+        noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
+                                           sipmdf, SIPMWL, True)
+        sipms_thresholds_ = NOISE_CUT * np.array(sipmdf["adc_to_pes"])
 
         # open the output file
-        with tables.\
-                open_file("{}/{}".format(PATH_OUT, FILE_OUT), "w",
-                          filters=tables.Filters(complib=CLIB,
-                          complevel=CLEVEL)) as h5out:
+        with tables.open_file("{}/{}".format(PATH_OUT, FILE_OUT), "w",
+                              filters=tbl.filters(COMPRESSION)) as h5out:
 
             # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
@@ -302,24 +303,25 @@ def DIOMIRA(argv):
             sgroup = h5out.create_group(h5out.root, "Sensors")
             # copy the pmt table
             pmt_t.copy(newparent=sgroup)
+            blr_t.copy(newparent=sgroup)
             # copy the sipm table
             sipm_t.copy(newparent=sgroup)
 
             # create a table to store Energy plane FEE, hang it from MC group
             fee_table = h5out.create_table(mcgroup, "FEE", FEE,
                                            "EP-FEE parameters",
-                                           tables.Filters(0))
+                                           tbl.filters("NOCOMPR"))
 
             # create a group to store True waveform data
             twfgroup = h5out.create_group(h5out.root, "TWF")
             # create a table to store true waveform (zs, rebinned)
-            pmt_twf_table = h5out.\
-                create_table(twfgroup, "PMT", SENSOR_WF, "Store for PMTs TWF",
-                             tables.Filters(complib=CLIB, complevel=CLEVEL))
+            pmt_twf_table = h5out.create_table(twfgroup, "PMT", SENSOR_WF,
+                                               "Store for PMTs TWF",
+                                               tbl.filters(COMPRESSION))
 
-            sipm_twf_table = h5out.\
-                create_table(twfgroup, "SiPM", SENSOR_WF, "Store for SiPM TWF",
-                             tables.Filters(complib=CLIB, complevel=CLEVEL))
+            sipm_twf_table = h5out.create_table(twfgroup, "SiPM", SENSOR_WF,
+                                                "Store for SiPM TWF",
+                                                tbl.filters(COMPRESSION))
 
             # and index in event column
             pmt_twf_table.cols.event.create_index()
@@ -327,6 +329,10 @@ def DIOMIRA(argv):
 
             # fill FEE table
             FEE_param_table(fee_table)
+            pmt_t_copy = h5out.root.Sensors.DataPMT
+            blr_t_copy = h5out.root.Sensors.DataBLR
+            save_pmt_cal_consts(pmt_t_copy, fee_table.cols.CR[0])
+            save_pmt_cal_consts(blr_t_copy, fee_table.cols.CB[0])
 
             # create a group to store RawData
             h5out.create_group(h5out.root, "RD")
@@ -358,13 +364,12 @@ def DIOMIRA(argv):
                 # supress zeros in MCRD and rebin the ZS function in 1 mus bins
                 rebin = int(units.mus/units.ns)
 
-                trueSiPM = wfm.sensor_wise_zero_suppression(sipmrd_[i], 0.)
+                trueSiPM = wfm.zero_suppression(sipmrd_[i], 0.)
 
                 # dict_map applies a function to the dictionary values
-                truePMT = cf.\
-                    dict_map(lambda df: wfm.rebin_df(df, rebin),
-                             wfm.sensor_wise_zero_suppression(pmtrd_[i],
-                             0., to_mus=int(units.ns/units.ms)))
+                truePMT = cf.dict_map(lambda df: wfm.rebin_df(df, rebin),
+                                      wfm.zero_suppression(pmtrd_[i],
+                                      0., to_mus=int(units.ns/units.ms)))
 
                 # store in table
                 tbl.store_wf(i, pmt_twf_table, truePMT)
@@ -383,13 +388,9 @@ def DIOMIRA(argv):
 
                 # simulate SiPM response and return an array with RWF
                 # convert to float, zero suppress and dump to table
-                dataSiPM = wfm.\
-                    to_adc(simulate_sipm_response(i, sipmrd_,
-                                                  sipms_noise_sampler_),
-                           sipmdf)
-                dataSiPM.astype(int)
-                dataSiPM = wfm.\
-                    noise_suppression(dataSiPM, sipms_noise_thresholds_)
+                dataSiPM = simulate_sipm_response(i, sipmrd_, noise_sampler_)
+                dataSiPM = wfm.to_adc(dataSiPM, sipmdf)
+                dataSiPM = wfm.noise_suppression(dataSiPM, sipms_thresholds_)
 
                 sipmrwf.append(dataSiPM.astype(int).reshape(1, NSIPM, SIPMWL))
 
@@ -399,11 +400,12 @@ def DIOMIRA(argv):
                 pmtblr.flush()
 
             t1 = time()
-            print("""DIOMIRA has run over {} events
-                     in {} seconds""".format(i+1, t1-t0))
+            dt = t1 - t0
+            print("DIOMIRA has run over {} events in {} seconds".format(i+1,
+                                                                        dt))
     print("Leaving Diomira. Safe travels!")
 
-if __name__ == '__main__':
-    # import cProfile
-    # cProfile.run('DIOMIRA(sys.argv)', sort='time')
+if __name__ == "__main__":
+    from cities import diomira
+    print(diomira)
     DIOMIRA(sys.argv)
