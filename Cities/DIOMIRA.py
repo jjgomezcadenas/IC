@@ -242,8 +242,8 @@ def DIOMIRA(argv):
     NEVENTS = LAST_EVT - FIRST_EVT
 
     logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("Input path ={}; output path = {}".format(PATH_IN, PATH_OUT))
-    logger.info("File_in ={} file_out ={}".format(FILE_IN, FILE_OUT))
+    logger.info("Input path = {}; output path = {}".format(PATH_IN, PATH_OUT))
+    logger.info("File_in = {} file_out = {}".format(FILE_IN, FILE_OUT))
     logger.info("Path to database = {}".format(PATH_DB))
     logger.info("First event = {} last event = {} "
                 "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
@@ -266,14 +266,12 @@ def DIOMIRA(argv):
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
-        logger.info("""nof PMTs = {}
-                       nof  SiPMs = {}
-                       nof events in input DST = {} """.format(NPMT, NSIPM,
-                                                               NEVENTS_DST))
-        logger.info("""lof SiPM WF = {}
-                       lof PMT WF (MC) = {}
-                       lof PMT WF (FEE) = {}""".format(PMTWL, SIPMWL,
-                                                       PMTWL_FEE))
+        logger.info("nof PMTs = {} nof  SiPMs = {} "
+                    "nof events in input DST = {} ".format(NPMT, NSIPM,
+                                                           NEVENTS_DST))
+        logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} "
+                    "lof PMT WF (FEE) = {}".format(PMTWL, SIPMWL, PMTWL_FEE))
+
         # access the geometry and the sensors metadata info
         geom_t = h5in.root.Detector.DetectorGeometry
         pmt_t = h5in.root.Sensors.DataPMT
