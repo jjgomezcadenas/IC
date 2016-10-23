@@ -178,4 +178,6 @@ def ANASTASIA(argv):
     print("Leaving ANASTASIA. Safe travels!")
 
 if __name__ == "__main__":
+    from cities import anastasia
+    print(anastasia)
     ANASTASIA(sys.argv)

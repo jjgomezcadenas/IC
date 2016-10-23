@@ -407,6 +407,6 @@ def DIOMIRA(argv):
     print("Leaving Diomira. Safe travels!")
 
 if __name__ == "__main__":
-    # import cProfile
-    # cProfile.run("DIOMIRA(sys.argv)", sort="time")
+    from cities import diomira
+    print(diomira)
     DIOMIRA(sys.argv)

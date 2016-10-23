@@ -202,4 +202,6 @@ def ISIDORA(argv):
     print("Leaving ISIDORA. Safe travels!")
 
 if __name__ == "__main__":
+    from cities import isidora
+    print(isidora)
     ISIDORA(sys.argv)

@@ -8,7 +8,8 @@ arrives there on a September evening, when the days are growing shorter and the
 multicolored lamps are lighted all at once at the doors of the food stalls and
 from a terrace a woman's voice cries ooh!, is that he feels envy toward those
 who now believe they have once before lived an evening identical to this and
-who think they were happy, that time."""
+who think they were happy, that time.
+"""
 
 isidora = """
 When a man rides a long time through wild regions he feels the desire for a
@@ -20,7 +21,8 @@ bettors. He was thinking of all these things when he desired a city. Isidora,
 therefore, is the city of his dreams: with one difference. The dreamed-of city
 contained him as a young man; he arrives at Isidora in his old age. In the
 square there is the wall where the old men sit and watch the young go by; he is
-seated in a row with them. Desires are already memories."""
+seated in a row with them. Desires are already memories.
+"""
 
 anastasia = """
 At the end of three days, moving southward, you come upon Anastasia, a city
@@ -40,7 +42,8 @@ this desire and be content. Such is the power, sometimes called malignant,
 sometimes benign, that Anastasia, the treacherous city, possesses; if for eight
 hours a day you work as a cutter of agate, onyx, chrysoprase, your labor which
 gives form to desire takes from desire its form, and you believe you are
-enjoying Anastasia wholly when you are only its slave."""
+enjoying Anastasia wholly when you are only its slave.
+"""
 
 dorotea = """
 There are two ways of describing the city of Dorothea: you can say that four
@@ -51,4 +54,5 @@ seven hundred chimneys [...] or else you can say like the camel driver who took
 me there: " I arrived in my first youth, ne morming, many people were hurrying
 along the streets towards the market, the women had fine teeth and looked you
 straight in the the eye, three soldiers on a platform played the trumpet, and
-all around wheels turned and colored banners fluttered in the wind."""
+all around wheels turned and colored banners fluttered in the wind.
+"""
