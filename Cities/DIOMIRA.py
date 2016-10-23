@@ -15,9 +15,10 @@ as metadata
 
 from __future__ import print_function
 import sys
-from time import time
 import numpy as np
 import tables
+from scipy import signal as SGN
+from time import time
 
 import system_of_units as units
 from LogConfig import logger
@@ -27,7 +28,6 @@ from Nh5 import FEE, SENSOR_WF
 import FEParam as FP
 import SPE as SP
 import FEE2 as FE
-from scipy import signal as SGN
 
 import wfmFunctions as wfm
 import coreFunctions as cf
@@ -402,8 +402,9 @@ def DIOMIRA(argv):
                 pmtblr.flush()
 
             t1 = time()
-            print("""DIOMIRA has run over {} events
-                     in {} seconds""".format(i+1, t1-t0))
+            dt = t1 - t0
+            print("DIOMIRA has run over {} events in {} seconds".format(i+1,
+                                                                        dt))
     print("Leaving Diomira. Safe travels!")
 
 if __name__ == "__main__":
