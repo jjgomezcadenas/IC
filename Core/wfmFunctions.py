@@ -200,7 +200,7 @@ def noise_suppression(data, thresholds):
     if not hasattr(thresholds, "__iter__"):
         thresholds = np.ones(data.shape[0]) * thresholds
     suppressed_data = map(suppress_wf, data, thresholds)
-    return suppressed_data
+    return np.array(suppressed_data)
 
 
 def in_window(data, tmin, tmax):
