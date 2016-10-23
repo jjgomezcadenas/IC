@@ -315,6 +315,29 @@ def polo_pars(indexes,pars,pos,bins=100,label=''):
 	plt.show()
 	return fig
 
+def polo_cal_fit(cal,indexes,pss,fun,xrange=None,norma=True):
+	""" plots the fit results for the SiPMs with indexes
+	"""
+	n = len(indexes)
+	nx,ny,figsize = plt_subplots(n)
+	fig,axes = plt.subplots(nx,ny,figsize=figsize)
+	xs = cal.xbins
+	if (not xrange): xrange=(np.min(xs),np.max(xs))
+	for i,index in enumerate(indexes):
+		ax = plt.subplot(nx,ny,i+1)
+		xs,ys = cal.values_in_range(index,xrange)
+		plt.plot(xs,ys)
+		ax.set_title(str(index))
+		#print(pss[i])
+		ps = pss[i]
+		fys = fun(ps,xs)
+		scale = np.sum(ys)/np.sum(fys)
+		#print(' scale {}'.format(scale))
+		plt.plot(xs,scale*fys)
+	fig.tight_layout()
+	plt.show()
+	return fig
+
 #----- Fits
 
 def fun_ngauss_free(ps,xs):
@@ -432,7 +455,7 @@ def cal_fit_poissongauss(cal,indexes=None):
     	#print(' guess values {}'.format(ps0))
     	#print(' fit results {}'.format(pshat))
 
-def cal_fit_ngauss(cal,indexes=None,ngauss=5):
+def cal_fit_ngauss(cal,indexes=None,ngauss=5,norma=True):
 	xrange=(-20.,120.)
 	fun = ffun_ngauss
 	success,pss = [],[]
@@ -440,7 +463,7 @@ def cal_fit_ngauss(cal,indexes=None,ngauss=5):
 		xs,ys = cal.values_in_range(index,xrange)
 		if (index%100==0): print('fitting data...')
 		ps0 = np.array([0.,15.,2.,2.]+[10000.]*ngauss)
-		bounds = ([-6.,12.,1.,1.]+[0.]*ngauss,[6.,40.,5.,5.]+[20000.]*ngauss)
+		bounds = ([-6.,12.,1.,1.]+[0.]*ngauss,[6.,40.,5.,5.]+[35000.]*ngauss)
 		#print(' bounds {}'.format(bounds))
 		result = cal_fit_(ps0,xs,ys,fun,bounds=bounds)
 		if (not result.success):
