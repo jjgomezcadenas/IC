@@ -1,5 +1,8 @@
-*.csv
 *.pyc
 *.h5
 setup.sh
 .ipynb*
+*.o
+*.so
+*.c
+
