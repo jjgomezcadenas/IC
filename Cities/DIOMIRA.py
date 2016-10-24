@@ -262,7 +262,7 @@ def DIOMIRA(argv):
         logger.info("nof PMTs = {} nof  SiPMs = {} "
                     "nof events in input DST = {} ".format(NPMT, NSIPM,
                                                            NEVENTS_DST))
-        logger.info("lof SiPM WF = {} lof PMT WF (MC) = {} "
+        logger.info("lof PMT WF = {} lof SiPM WF (MC) = {} "
                     "lof PMT WF (FEE) = {}".format(PMTWL, SIPMWL, PMTWL_FEE))
 
         # access the geometry and the sensors metadata info
