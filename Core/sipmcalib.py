@@ -222,6 +222,14 @@ def cal_led_pes(caldark,called,indexes=None):
 	mus = map(lambda i,index: mu_(sigs[i],called.values[index]),range(len(sigs)),indexes)
 	return np.array(mus)
 
+def cal_pars_percentile(pars,percentile=0.01):
+	lpars = list(pars)
+	lpars.sort()
+	nn = 1.*len(lpars)
+	ni = int(percentile*nn)
+	nf = int((1.-percentile)*nn)
+	return lpars[ni],lpars[nf]
+
 def cal_save(fname,indexes,noise,darkcurrent,gains,leds):
 	""" write into the file fname, a list of (sensorIDs, adc/pes, and visible pes).
 	Notices that it takes as input
@@ -243,7 +251,7 @@ def cal_save(fname,indexes,noise,darkcurrent,gains,leds):
 def plt_subplots(n,figsize=None):
 	""" nice division of plt into subplots, returns nx, ny for n
 	"""
-	if (n>12): print('WARNING: large number of SiPMs to plot!')
+	if (n>20): print('WARNING: large number of SiPMs to plot!')
 	nx = int(sqrt(n))
 	ny = nx
 	while (nx*ny<n):nx+=1
@@ -315,12 +323,13 @@ def polo_pars(indexes,pars,pos,bins=100,label=''):
 	plt.show()
 	return fig
 
-def polo_cal_fit(cal,indexes,pss,fun,xrange=None,norma=True):
+def polo_cal_fit(cal,indexes,pss,fun,xrange=None,norma=True,title=''):
 	""" plots the fit results for the SiPMs with indexes
 	"""
 	n = len(indexes)
 	nx,ny,figsize = plt_subplots(n)
 	fig,axes = plt.subplots(nx,ny,figsize=figsize)
+	plt.suptitle(title)
 	xs = cal.xbins
 	if (not xrange): xrange=(np.min(xs),np.max(xs))
 	for i,index in enumerate(indexes):
@@ -429,10 +438,32 @@ def fun_poissongauss(ps,xs,npeaks=7):
 	ys = nn*exp(-mu)*np.array(map(fun_,xs))
 	return ys
 
+def possitive_(xs,ys):
+	# filter the list with the positive items of the second (ys)
+	zys = zip(ys,xs)
+	zys = filter(lambda z: z[1]>0,zys)
+	ixs = np.array(map(lambda z: z[0], zys))
+	iys = np.array(map(lambda z: z[1], zys))
+	return ixs,iys
+
 def cal_fit_(ps0,xs,ys,fun,bounds=None):
+	#ixs, iys = possitive_(xs, ys)
 	func = lambda ps: (ys-fun(ps,xs))/(1.+np.sqrt(ys))
 	result = least_squares(func,ps0,bounds=bounds)
+	chi2 = -1.
+	if (result.success):
+		res = func(result.x)
+		chi2 = np.sum(res*res)/(1.*(len(ys)-len(ps0)))
+	result.chi2 = chi2
 	return result
+
+def chi2(ps,xs,ys,fun):
+	fys = fun(ps,xs)
+	ifys,iys = possitive_(fys,ys)
+	res = (iys-ifys)/np.sqrt(iys)
+	chi2 = np.sum(res*res)
+	chi2ndf = chi2/(len(res)-len(ps))
+	return chi2ndf
 
 def cal_fit_poissongauss(cal,indexes=None):
 	xrange=(-20.,120.)
@@ -458,19 +489,20 @@ def cal_fit_poissongauss(cal,indexes=None):
 def cal_fit_ngauss(cal,indexes=None,ngauss=5,norma=True):
 	xrange=(-20.,120.)
 	fun = ffun_ngauss
-	success,pss = [],[]
+	chi2, pss = [], []
 	for i,index in enumerate(indexes):
 		xs,ys = cal.values_in_range(index,xrange)
-		if (index%100==0): print('fitting data...')
+		if (index%400==0): print('fitting data...')
 		ps0 = np.array([0.,15.,2.,2.]+[10000.]*ngauss)
 		bounds = ([-6.,12.,1.,1.]+[0.]*ngauss,[6.,40.,5.,5.]+[35000.]*ngauss)
 		#print(' bounds {}'.format(bounds))
 		result = cal_fit_(ps0,xs,ys,fun,bounds=bounds)
 		if (not result.success):
 			print(' fit {} success {}'.format(index,result.success))
-		success.append(result.success)
+		#success.append(result.success)
+		chi2.append(result.chi2)
 		pss.append(result.x)
 		#print(' fit success {}'.format(result.success))
 		#print(' guess values {}'.format(ps0))
 		#print(' fit results {}'.format(pshat))
-	return success,pss
+	return chi2, pss
