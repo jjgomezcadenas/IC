@@ -39,14 +39,6 @@ ChangeLog:
 """
 
 
-def scale_to_pes(sens_wf, sensdf):
-    """
-    Transform the ene_pes field to pes for each sensor.
-    """
-    return {key: wfm.wf2df(df.time_mus, -df.ene_pes/sensdf["adc_to_pes"][key])
-            for key, df in sens_wf.iteritems()}
-
-
 def ANASTASIA(argv):
     """
     ANASTASIA driver
