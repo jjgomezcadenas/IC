@@ -52,12 +52,11 @@ def read_data_sensors(sensor_table):
     pmta = sensor_table.read()
     PMT = {}
     PMT["channel"] = get_column_(pmta, 0)
-    PMT["x"] = get_column_(pmta, 1).T[0]
-    PMT["y"] = get_column_(pmta, 1).T[1]
-    PMT["coeff"] = get_column_(pmta, 2)
-    PMT["adc_to_pes"] = get_column_(pmta, 3)
-    PMT["noise_rms"] = get_column_(pmta, 4)
-
+    PMT["sensorID"] = get_column_(pmta, 1)
+    PMT["x"], PMT["y"] = get_column_(pmta, 2).T
+    PMT["coeff"] = get_column_(pmta, 3)
+    PMT["adc_to_pes"] = get_column_(pmta, 4)
+    PMT["noise_rms"] = get_column_(pmta, 5)
     return pd.DataFrame(PMT)
 
 
