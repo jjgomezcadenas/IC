@@ -53,7 +53,7 @@ def read_data_sensors(sensor_table):
     PMT = {}
     PMT["channel"] = get_column_(pmta, 0)
     PMT["sensorID"] = get_column_(pmta, 1)
-    PMT["x"], PMT["y"] = get_column_(pmta, 2).T
+    PMT["x"], PMT["y"], dummy = get_column_(pmta, 2).T
     PMT["coeff"] = get_column_(pmta, 3)
     PMT["adc_to_pes"] = get_column_(pmta, 4)
     PMT["noise_rms"] = get_column_(pmta, 5)
