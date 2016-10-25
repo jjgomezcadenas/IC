@@ -206,3 +206,78 @@ def noise_adc(sfee, sdaq):
     outputs: adc noise
     """
     return sfee.noise_rms/units.volt/sdaq.voltsToAdc
+
+
+def filter_fee(sfe):
+    """
+    input: an instance of class SimpleFee
+    output: buttersworth parameters of the equivalent FEE filter
+    """
+    # high pass butterswoth filter ~1/RC
+    b0, a0 = signal.butter(1, sfe.freq_HPFd, 'high', analog=False)
+    # LPF order 1
+    b1, a1 = signal.butter(1, sfe.freq_LPF1d, 'low', analog=False)
+    # LPF order 4
+    b2, a2 = signal.butter(4, sfe.freq_LPF2d, 'low', analog=False)
+    # convolve HPF, LPF1
+    a_aux = np.convolve(a0, a1, mode='full')
+    b_aux = np.convolve(b0, b1, mode='full')
+    # convolve HPF+LPF1, LPF2
+    a = np.convolve(a_aux, a2, mode='full')
+    b_aux2 = np.convolve(b_aux, b2, mode='full')
+    b = sfe.GAIN*b_aux2
+    return b, a
+
+
+def filter_fee_lpf(sfe):
+    """
+    input: an instance of class SimpleFee
+    output: buttersworth parameters of the equivalent LPT FEE filter
+    """
+    # LPF order 1
+    b1, a1 = signal.butter(1, sfe.freq_LPF1d, 'low', analog=False)
+    # LPF order 4
+    b2, a2 = signal.butter(4, sfe.freq_LPF2d, 'low', analog=False)
+    # convolve LPF1, LPF2
+    a = np.convolve(a1, a2, mode='full')
+    b_aux = np.convolve(b1, b2, mode='full')
+    b = sfe.GAIN*b_aux
+    return b, a
+
+
+def filter_fee_hpf(sfe):
+    """
+    input: an instance of class SimpleFee
+    output: buttersworth parameters of the HPF FEE filter
+    """
+    # high pass butterswoth filter ~1/RC
+    b0, a = signal.butter(1, sfe.freq_HPFd, 'high', analog=False)
+    b = sfe.GAIN*b0
+    return b, a
+
+
+def signal_fee(sfe, signal_in):
+    """
+    input: instance of class sfe and a signal
+    outputs: signal convolved with effect FEE
+    """
+    b, a = filter_fee(sfe)
+    return signal.lfilter(b/sfe.GAIN, a, signal_in)
+
+
+def signal_fee_lpf(sfe, signal_in):
+    """
+    input: instance of class sfe and a signal
+    outputs: signal convolved with LPF
+    """
+    b, a = filter_fee_lpf(sfe)
+    return signal.lfilter(b/sfe.GAIN, a, signal_in)
+
+
+def signal_fee_hpf(sfe, signal_in):
+    """
+    input: instance of class sfe and a signal
+    outputs: signal convolved with HPF
+    """
+    b, a = filter_fee_hpf(sfe)
+    return signal.lfilter(b/sfe.GAIN, a, signal_in)
