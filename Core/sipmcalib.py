@@ -5,6 +5,7 @@
 
 import math
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize_scalar, least_squares
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -436,13 +437,32 @@ def fun_poissongauss(ps, xs, npeaks=7):
     return ys
 
 
-def possitive_(xs, ys):
-    # filter the list with the positive items of the second (ys)
-    zys = zip(ys, xs)
-    zys = filter(lambda z: z[1] > 0, zys)
-    ixs = np.array(map(lambda z: z[0], zys))
-    iys = np.array(map(lambda z: z[1], zys))
-    return ixs, iys
+def ffun_poissongauss(ps, xs, ngauss=7):
+    """ function to fo a poisson distribution with gaussian peaks
+    ps[0] - scale
+    ps[1] - origin (usually 0.)
+    ps[2] - period
+    ps[3] - poisson mean (dark current)
+    ps[4] - noise (peak 0)
+    ps[5] - sigma of the first gaussian
+    m is the number of peak to fit
+    """
+    ifacto = np.array(map(math.factorial, range(ngauss)))
+    efacto = 1./math.sqrt(2.*math.pi)
+    nn, x0, pe, mu, s0, s1 = ps
+
+    def ifun_(i):
+        s2 = s0*s0 + i*s1*s1
+        xref = x0+i*pe
+        fact = (efacto/math.sqrt(s2))
+        yg = fact*np.exp(-(xs-xref)*(xs-xref)/(2.*s2))
+        yp = (math.exp(i*math.log(mu))/ifacto[i])
+        return yg*yp
+
+    iys = map(ifun_, range(ngauss))
+    ys = reduce(lambda x, y: x+y, iys)
+    ys = nn*math.exp(-mu)*ys
+    return ys
 
 
 def cal_fit_(ps0, xs, ys, fun, bounds=None):
@@ -460,37 +480,35 @@ def cal_fit_(ps0, xs, ys, fun, bounds=None):
     return result
 
 
-def chi2(ps, xs, ys, fun):
-    fys = fun(ps, xs)
-    ifys, iys = possitive_(fys, ys)
-    res = (iys-ifys)/np.sqrt(iys)
-    chi2 = np.sum(res*res)
-    chi2ndf = chi2/(len(res)-len(ps))
-    return chi2ndf
-
-
-def cal_fit_poissongauss(cal, indexes=None):
+def cal_fit_poissongauss(cal, indexes=None, ngauss=5):
+    """ for the indexes of the cal (CalData) to n-gaussian,
+    returns the lists of chi2 and the fitted-parameters
+    """
     xrange = (-20., 120.)
-    fun = fun_poissongauss
-    success, pss = [], []
+    if (not indexes):
+        indexes = cal.indexes
+    fun = ffun_poissongauss
+    chi2, pss = [], []
     for index in indexes:
         xs, ys = cal.values_in_range(index, xrange)
-        if (index % 64 == 0):
+        if (index % 200 == 0):
             print('fitting data...')
         ps0 = np.array([10000., 0., 16., 1., 2., 2.])
         bounds = ((0., -10., 12., 0.0, 0.5, 0.5),
-                  (20000., 10., 40., 4., 10., 10.))
+                  (35000., 10., 30., 6., 10., 10.))
         # print(' bounds {}'.format(bounds))
         result = cal_fit_(ps0, xs, ys, fun, bounds=bounds)
         if (not result.success):
             print(' fit {} success {}'.format(index, result.success))
-        pshat = result.x
-        success.append(result.success)
-        pss.append(pshat)
-    return success, pss
+        chi2.append(result.chi2)
+        pss.append(result.x)
+    return chi2, pss
 
 
-def cal_fit_ngauss(cal, indexes=None, ngauss=5, norma=True):
+def cal_fit_ngauss(cal, indexes=None, ngauss=5):
+    """ fot the indexes of the cal (CalData) to n-gaussian,
+    returns the lists of chi2 and the fitted-parameters
+    """
     xrange = (-20., 120.)
     fun = ffun_ngauss
     chi2, pss = [], []
@@ -512,3 +530,42 @@ def cal_fit_ngauss(cal, indexes=None, ngauss=5, norma=True):
         # print(' guess values {}'.format(ps0))
         # print(' fit results {}'.format(pshat))
     return chi2, pss
+
+
+def cal_fit_ngauss_panda(indexes, chi2, pss):
+    """ create a panda table with the resuls of the n-gauss fit
+    """
+    # store the data into pandas
+    nss = []
+    for i in range(4, len(pss[0])):
+        ni = np.array(map(lambda ps: ps[i], pss))
+        nss.append(ni)
+    ntot = np.array(reduce(lambda x, y: x+y, nss))
+    n0 = nss[0]
+    p0 = n0/ntot
+    pes = -1*np.log(p0)
+    dpan = {'indexes': indexes,
+            'chi2': chi2,
+            'ntot': ntot,
+            'pedestal': map(lambda ps: ps[0], pss),
+            'gain': map(lambda ps: ps[1], pss),
+            'pes': pes,
+            'noise': map(lambda ps: ps[2], pss),
+            'noise-pe': map(lambda ps: ps[3], pss)}
+    pan = pd.DataFrame(dpan)
+    return pan
+
+
+def cal_fit_poissongauss_panda(indexes, chi2, pss):
+    """ create a panda table with the result of the poisson + n-gaussian fit
+    """
+    dpan = {'indexes': indexes,
+            'chi2': chi2,
+            'ntot': map(lambda ps: ps[0], pss),
+            'pedestal': map(lambda ps: ps[1], pss),
+            'gain': map(lambda ps: ps[2], pss),
+            'pes': map(lambda ps: ps[3], pss),
+            'noise': map(lambda ps: ps[4], pss),
+            'noise-pe': map(lambda ps: ps[5], pss)}
+    pan = pd.DataFrame(dpan)
+    return pan
