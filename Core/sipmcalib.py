@@ -3,12 +3,11 @@
 # to do the calibration of the SiPMs in IC
 #
 
+import math
 import numpy as np
 from scipy.optimize import minimize_scalar, least_squares
-from scipy import math
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from math import *
 
 NBOARDS = 28
 NSENSOR_PER_BOARD = 64
@@ -63,7 +62,7 @@ def plt_subplots(n, figsize=None):
     """
     if (n > 20):
         print('WARNING: large number of SiPMs to plot!')
-    nx = int(sqrt(n))
+    nx = int(math.sqrt(n))
     ny = nx
     while (nx*ny < n):
         nx += 1
@@ -112,15 +111,15 @@ def cal_load_txtfile(cal, fname):
         """
         data = np.loadtxt(fname)
         cal.xbins = data[0, 1:]
-        cal.nbins = len(self.xbins)
+        cal.nbins = len(cal.xbins)
         senids = map(int, data[1:, 0])
         cal.indexes = []
-        cal.values = np.array([[0]*self.nbins, ]*self.nsensors)
+        cal.values = np.array([[0]*cal.nbins, ]*cal.nsensors)
         for i, senid in enumerate(senids):
             index = index_of_sensorid(senid)
-            self.indexes.append(index)
+            cal.indexes.append(index)
             # print('sensor ID {} index {} i {}'.format(senid,index,i))
-            self.values[index] = data[i+1, 1:]
+            cal.values[index] = data[i+1, 1:]
         print('loaded calibration data from file {}'.format(fname))
         print('number of SiPMs with data {}'.format(len(cal.indexes)))
         return
@@ -152,8 +151,8 @@ def cal_est_noise(cal, indexes=None):
 
     def noise_(index):
         i0 = np.where(xs > 0.)[0][0]
-        xxs, yys = caldark.xbins[:i0], caldark.values[index, :i0]
-        return sqrt(np.sum(xxs*xxs*yys)/np.sum(yys))
+        xxs, yys = cal.xbins[:i0], cal.values[index, :i0]
+        return math.sqrt(np.sum(xxs*xxs*yys)/np.sum(yys))
     nois = np.array(map(noise_, indexes))
     return nois
 
@@ -163,7 +162,7 @@ def cal_est_pes(cal, indexes=None):
     indexes.
     It compute the p(0) compute the size of the 0-peak from the negative part.
     """
-    xs = caldark.xbins
+    xs = cal.xbins
     if (not indexes):
         indexes = cal.indexes
 
@@ -182,7 +181,7 @@ def cal_est_pes(cal, indexes=None):
         # print(' i0 {} n {} ntot {} p0 {} '.format(ibin0,sum(ys),n,p0))
         if (p0 > 1.):
             return -0.1
-        return -1*log(p0)
+        return -1*math.log(p0)
 
     mus = np.array(map(mu_, indexes))
     return mus
@@ -208,7 +207,6 @@ def cal_est_gain(cal, indexes=None, bounds=(12., 30.)):
     """ Estimate the gain looking for a period in the histogram.
     """
     xs = cal.xbins
-    nbins = cal.nbins
     if (not indexes):
         indexes = cal.indexes
 
@@ -224,7 +222,7 @@ def cal_est_gain(cal, indexes=None, bounds=(12., 30.)):
             # remove the zero and negative periods, keep only the positive ones
             x0s, x1s, y1s = x0s[bin0:], xs[bin0:], ys[bin0:]
             # compute the chi2
-            chi2 = sqrt(np.sum((x0s-x1s)*(x0s-x1s)*y1s)/np.sum(y1s))
+            chi2 = math.sqrt(np.sum((x0s-x1s)*(x0s-x1s)*y1s)/np.sum(y1s))
             return chi2
         return fun
 
@@ -257,7 +255,7 @@ def cal_est_led_signal(caldark, called, indexes=None):
         # print(' ydark ',len(ydark))
         ydark2 = frat*ydark
         # print(' ydark2 ',len(ydark2))
-        xsig = (yled-ydark2)/period
+        xsig = (yled-ydark2)
         # print(' sig ',len(xsig))
         return xsig
 
@@ -273,11 +271,11 @@ def cal_est_led_pes(caldark, called, indexes=None):
         fvis = (1.*sum(sig))/(1.*sum(yled))
         if (fvis >= 1.):
             return -1.
-        muhat = -1.*(log(1.-fvis))
+        muhat = -1.*(math.log(1.-fvis))
         return muhat
     if (not indexes):
         indexes = called.indexes
-    sigs = cal_led_signal(caldark, called, indexes=indexes)
+    sigs = cal_est_led_signal(caldark, called, indexes=indexes)
     mus = map(lambda i, index: mu_(sigs[i], called.values[index]),
               range(len(sigs)), indexes)
     return np.array(mus)
@@ -395,11 +393,12 @@ def ffun_ngauss(ps, xs):
     ngauss = int(len(ps)-4)
     x0, pe, s0, s1, ns = ps[0], ps[1], ps[2], ps[3], ps[4:]
     # print(ngauss,x0,pe,ns,ss)
-    efacto = 1./sqrt(2.*pi)
+    efacto = 1./math.sqrt(2.*math.pi)
 
     def funi_(i):
         s2 = s0*s0 + i*s1*s1
-        y = (efacto/sqrt(s2))*ns[i]*np.exp(-(xs-x0-pe*i)*(xs-x0-pe*i)/(2*s2))
+        yfact = efacto/math.sqrt(s2)
+        y = yfact*ns[i]*np.exp(-(xs-x0-pe*i)*(xs-x0-pe*i)/(2*s2))
         return y
 
     ys = map(funi_, range(ngauss))
@@ -418,7 +417,7 @@ def fun_poissongauss(ps, xs, npeaks=7):
     m is the number of peak to fit
     """
     ifacto = np.array(map(math.factorial, range(npeaks)))
-    efacto = 1./sqrt(2.*pi)
+    efacto = 1./math.sqrt(2.*math.pi)
     nn, x0, pe, mu, s0, s1 = ps
 
     def fun_(x):
@@ -426,13 +425,14 @@ def fun_poissongauss(ps, xs, npeaks=7):
             # s2 = s0*s0
             # if (i>0): s2 = i*s1*s1
             s2 = s0*s0 + i*s1*s1
-            yg = (efacto/sqrt(s2))*exp(-(x-x0-pe*i)*(x-x0-pe*i)/(2.*s2))
-            yp = (exp(i*log(mu))/ifacto[i])
+            fact = (efacto/math.sqrt(s2))
+            yg = fact*math.exp(-(x-x0-pe*i)*(x-x0-pe*i)/(2.*s2))
+            yp = (math.exp(i*math.log(mu))/ifacto[i])
             return yg*yp
         ys = map(ifun_, range(npeaks))
         return sum(ys)
 
-    ys = nn*exp(-mu)*np.array(map(fun_, xs))
+    ys = nn*math.exp(-mu)*np.array(map(fun_, xs))
     return ys
 
 
