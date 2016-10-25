@@ -229,13 +229,26 @@ def FindSignalAboveThr(signal_t, signal, threshold = 0.):
     return time_f, signal_f
 
 
-def BLRc(signal_daq, coef, thr1 = 0):
+def BLRc(signal_daq, coef, thr = 0, C1=3100E-9, filter=False):
 
     """
     Only for calibration
 
     """
 
+   
+    if (filter==True):
+        #C1=3100E-9; #C1=2714E-9;
+        R1=1567;
+        f_sample = (1/25E-9)
+        freq_zero = 1/(R1*C1);
+        freq_zerod = freq_zero / (f_sample*np.pi)
+        b_cf, a_cf = SGN.butter(2, freq_zerod, 'high', analog=False);
+
+        signal_daq = SGN.lfilter(b_cf,a_cf,signal_daq)
+    
+
+    
     len_signal_daq = len(signal_daq)
     MAU = np.zeros(len_signal_daq, dtype=np.double)
     acum = np.zeros(len_signal_daq, dtype=np.double)
@@ -243,17 +256,12 @@ def BLRc(signal_daq, coef, thr1 = 0):
     pulse_f = np.zeros(len(signal_daq), dtype=np.double)
     
     
-    thr = thr1
+    nm = 128
+    B_MAU = (1./nm)*np.ones(nm)
+    MAU[nm-1] = np.mean(signal_daq[0:nm])
 
-    #MAU_WindowSize = 40 # provisional
-    nm = MAU_WindowSize
-    B_MAU       =   (1./nm)*np.ones(nm)
-
-#   MAU averages the signal in the initial tranch 
-#    allows to compute the baseline of the signal  
-    
-    MAU[0:nm] = SGN.lfilter(B_MAU,1, signal_daq[0:nm])
-    acum[nm] =  MAU[nm]
+    #SGN.lfilter(B_MAU,1, signal_daq[0:nm])
+    #acum[nm] =  MAU[nm-1]
     BASELINE = MAU[nm-1]
 
 #----------
@@ -268,17 +276,20 @@ def BLRc(signal_daq, coef, thr1 = 0):
 
     for k in range(nm,len_signal_daq): 
 
+            
         trigger_line = MAU[k] + thr
 
-       
         # condition: raw signal raises above trigger line and 
         if (signal_daq[k] > trigger_line) or cond == 1:
+
             cond = 1
-            #offset computed as the value of MAU before pulse starts
-            #offset = MAU[k-1]  
             
             #update recovered signal, correcting by offset           
             signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) + coef*acum[k-1] 
-            acum[k] = acum[k-1] + signal_daq[k] - BASELINE;
+            acum[k] = acum[k-1] + signal_daq[k] - BASELINE;            
+        else:
+            MAU[k] = np.mean(signal_daq[k-nm+1:k+1])
+            BASELINE = MAU[k]
+            signal_r[k] = signal_daq[k]
                        
     return  signal_r
