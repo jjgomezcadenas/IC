@@ -407,36 +407,6 @@ def ffun_ngauss(ps, xs):
     return y
 
 
-def fun_poissongauss(ps, xs, npeaks=7):
-    """ function to fo a poisson distribution with gaussian peaks
-    ps[0] - scale
-    ps[1] - origin (usually 0.)
-    ps[2] - period
-    ps[3] - poisson mean (dark current)
-    ps[4] - noise (peak 0)
-    ps[5] - sigma of the first gaussian
-    m is the number of peak to fit
-    """
-    ifacto = np.array(map(math.factorial, range(npeaks)))
-    efacto = 1./math.sqrt(2.*math.pi)
-    nn, x0, pe, mu, s0, s1 = ps
-
-    def fun_(x):
-        def ifun_(i):
-            # s2 = s0*s0
-            # if (i>0): s2 = i*s1*s1
-            s2 = s0*s0 + i*s1*s1
-            fact = (efacto/math.sqrt(s2))
-            yg = fact*math.exp(-(x-x0-pe*i)*(x-x0-pe*i)/(2.*s2))
-            yp = (math.exp(i*math.log(mu))/ifacto[i])
-            return yg*yp
-        ys = map(ifun_, range(npeaks))
-        return sum(ys)
-
-    ys = nn*math.exp(-mu)*np.array(map(fun_, xs))
-    return ys
-
-
 def ffun_poissongauss(ps, xs, ngauss=7):
     """ function to fo a poisson distribution with gaussian peaks
     ps[0] - scale
@@ -466,7 +436,8 @@ def ffun_poissongauss(ps, xs, ngauss=7):
 
 
 def cal_fit_(ps0, xs, ys, fun, bounds=None):
-    """ wrapper to least_squares.
+    """ Wrapper to least_squares.
+    Returns result with the addition of the chi2.
     ps0: the initial guess parameters,
     xs, ys: np arrays with the x, y data,
     fun: is a function of the ps.
