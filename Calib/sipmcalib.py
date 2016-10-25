@@ -466,8 +466,11 @@ def ffun_poissongauss(ps, xs, ngauss=7):
 
 
 def cal_fit_(ps0, xs, ys, fun, bounds=None):
-    # ixs, iys = possitive_(xs, ys)
-
+    """ wrapper to least_squares.
+    ps0: the initial guess parameters,
+    xs, ys: np arrays with the x, y data,
+    fun: is a function of the ps.
+    """
     def func(ps):
         return (ys-fun(ps, xs))/(1.+np.sqrt(ys))
 
@@ -535,7 +538,6 @@ def cal_fit_ngauss(cal, indexes=None, ngauss=5):
 def cal_fit_ngauss_panda(indexes, chi2, pss):
     """ create a panda table with the resuls of the n-gauss fit
     """
-    # store the data into pandas
     nss = []
     for i in range(4, len(pss[0])):
         ni = np.array(map(lambda ps: ps[i], pss))
