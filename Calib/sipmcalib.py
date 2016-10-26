@@ -21,6 +21,7 @@ NSENSORS = NBOARDS*NSENSOR_PER_BOARD
 def index_of_sensorid(sensorID):
     """ Converts SiPM sensorID into index ID in a list rage(28*64))
     """
+    if (sensorID < SENSORID_UNIT): return sensorID # temp fix
     iboard = sensorID / SENSORID_UNIT
     isensor = sensorID % SENSORID_UNIT
     index = (iboard-1) * NSENSOR_PER_BOARD + isensor
@@ -467,9 +468,13 @@ def cal_fit_poissongauss(cal, indexes=None, ngauss=5):
         xs, ys = cal.values_in_range(index, xrange)
         if (index % 200 == 0):
             print('fitting data...')
-        ps0 = np.array([10000., 0., 16., 1., 2., 2.])
-        bounds = ((0., -10., 12., 0.0, 0.5, 0.5),
-                  (35000., 10., 30., 6., 10., 10.))
+        # for SiPMs
+        # ps0 = np.array([10000., 0., 16., 1., 2., 2.])
+        # bounds = ((0., -10., 12., 0.0, 0.5, 0.5),
+        #          (35000., 10., 30., 6., 10., 10.))
+        ps0 = np.array([35000., 0., 22., 1., 7., 7.])
+        bounds = ((0., -10., 10., 0.0, 2., 2.),
+                 (200000., 10., 40., 2., 15., 15.))
         # print(' bounds {}'.format(bounds))
         result = cal_fit_(ps0, xs, ys, fun, bounds=bounds)
         if (not result.success):
