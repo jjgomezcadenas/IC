@@ -13,7 +13,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda install numpy cython pandas nose unittest
+  - conda install numpy cython pandas nose unittest2
 
 script:
   - nosetests tests/test_*.py
