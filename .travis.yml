@@ -13,8 +13,8 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n icenv python=2.7 numpy pandas cython nose 
-  - conda install pytables
+  - conda create -n icenv python=2.7 numpy pandas cython nose pytables
+  - source activate icenv
 
 script:
   - nosetests tests/test_*.py
