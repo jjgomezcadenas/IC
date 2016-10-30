@@ -6,8 +6,8 @@ What ANASTASIA does:
 1) Reads a hdf5 file containing the PMT's CWF and the SiPMs' RWF in ADC counts.
 2) Creates a single "big" PMT summing up PMTs' waveforms.
 3) Applies zero-suppression to both the big PMT and the individual SiPMs.
-3) Expresses the waveforms in pes.
-4) Writes a new file with the ZS waveforms as tables.
+3) Converts the waveforms from adc to pes.
+4) Writes the ZS waveforms in the same file as earrays.
 """
 
 from __future__ import print_function
@@ -37,14 +37,6 @@ ChangeLog:
 21.10 several fixes. PRE-RELEASE.
 
 """
-
-
-def scale_to_pes(sens_wf, sensdf):
-    """
-    Transform the ene_pes field to pes for each sensor.
-    """
-    return {key: wfm.wf2df(df.time_mus, -df.ene_pes/sensdf["adc_to_pes"][key])
-            for key, df in sens_wf.iteritems()}
 
 
 def ANASTASIA(argv):

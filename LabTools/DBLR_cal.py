@@ -13,7 +13,7 @@ time_DAQ = FP.time_bin
 
 
 
-def BLR(signal_daq, coef, n_sigma = 3, NOISE_ADC=0.7, 
+def BLR(signal_daq, coef, n_sigma = 3, NOISE_ADC=0.7,
         thr1 = 0, thr2 = 0, thr3 = 0, plot = False):
     """
     Deconvolution offline of the DAQ signal using a MAU
@@ -35,7 +35,7 @@ def BLR(signal_daq, coef, n_sigma = 3, NOISE_ADC=0.7,
     acum = np.zeros(len_signal_daq, dtype=np.double)
     signal_r = np.zeros(len_signal_daq, dtype=np.double)
     pulse_f = np.zeros(len(signal_daq), dtype=np.double)
-    
+
     signal_i = np.copy(signal_daq) #uses to update MAU while procesing signal
 
 
@@ -47,24 +47,24 @@ def BLR(signal_daq, coef, n_sigma = 3, NOISE_ADC=0.7,
 
     if thr3 != 0:
         thr_tr = thr3
-    
+
 
     #MAU_WindowSize = 40 # provisional
     nm = MAU_WindowSize
     B_MAU       =   (1./nm)*np.ones(nm)
 
-#   MAU averages the signal in the initial tranch 
-#    allows to compute the baseline of the signal  
-    
+#   MAU averages the signal in the initial tranch
+#    allows to compute the baseline of the signal
+
     MAU[0:nm] = SGN.lfilter(B_MAU,1, signal_daq[0:nm])
     acum[nm] =  MAU[nm]
     BASELINE = MAU[nm-1]
 
 #----------
 
-# While MAU inits BLR is switched off, thus signal_r = signal_daq 
+# While MAU inits BLR is switched off, thus signal_r = signal_daq
 
-    signal_r[0:nm] = signal_daq[0:nm] 
+    signal_r[0:nm] = signal_daq[0:nm]
     pulse_on=0
     wait_over=0
     offset = 0
@@ -72,86 +72,86 @@ def BLR(signal_daq, coef, n_sigma = 3, NOISE_ADC=0.7,
     # MAU has computed the offset using nm samples
     # now loop until the end of DAQ window
 
-    for k in range(nm,len_signal_daq): 
+    for k in range(nm,len_signal_daq):
 
         trigger_line = MAU[k-1] + thr
-        pulse_f[k] = pulse_on 
+        pulse_f[k] = pulse_on
 
-        # condition: raw signal raises above trigger line and 
+        # condition: raw signal raises above trigger line and
         # we are not in the tail
         # (wait_over == 0)
         if signal_daq[k] > trigger_line and wait_over == 0:
 
             # if the pulse just started pulse_on = 0.
-            # In this case compute the offset as value 
+            # In this case compute the offset as value
             #of the MAU before pulse starts (at k-1)
 
             if pulse_on == 0: # pulse just started
                 #offset computed as the value of MAU before pulse starts
-                offset = MAU[k-1]  
-                pulse_on = 1 
+                offset = MAU[k-1]
+                pulse_on = 1
 
             #Freeze the MAU
-            MAU[k] = MAU[k-1]  
+            MAU[k] = MAU[k-1]
             signal_i[k] =MAU[k-1]  #signal_i follows the MAU
-            
+
             #update recovered signal, correcting by offset
             acum[k] = acum[k-1] + signal_daq[k] - offset;
-            signal_r[k] = signal_daq[k] + coef*acum[k] 
-            
+            signal_r[k] = signal_daq[k] + coef*acum[k]
+
         else:  #raw signal just dropped below threshold
         # but raw signal can be negative for a while and still contribute to the
         # reconstructed signal.
 
             if pulse_on == 1: #reconstructed signal still on
-            # switch the pulse off only when recovered signal 
+            # switch the pulse off only when recovered signal
             #drops below threshold
-                
-                #slide the MAU, still frozen. 
+
+                #slide the MAU, still frozen.
                 # keep recovering signal
-                MAU[k] = MAU[k-1]  
+                MAU[k] = MAU[k-1]
                 signal_i[k] =MAU[k-1]
                 acum[k] = acum[k-1] + signal_daq[k] - offset;
-                signal_r[k] = signal_daq[k] + coef*acum[k] 
-            
-                #if the recovered signal drops before trigger line 
+                signal_r[k] = signal_daq[k] + coef*acum[k]
+
+                #if the recovered signal drops before trigger line
                 #rec pulse is over!
                 if signal_r[k] < trigger_line + thr2:
                     wait_over = 1  #start tail compensation
                     pulse_on = 0   #recovered pulse is over
 
             else:  #recovered signal has droped below trigger line
-            #need to compensate the tail to avoid drifting due to erros in 
+            #need to compensate the tail to avoid drifting due to erros in
             #baseline calculatoin
 
                 if wait_over == 1: #compensating pulse
-                    # recovered signal and raw signal 
+                    # recovered signal and raw signal
                     #must be equal within a threshold
                     # otherwise keep compensating pluse
 
 
                     if signal_daq[k-1] < signal_r[k-1] - thr_tr:
-                        # raw signal still below recovered signal 
+                        # raw signal still below recovered signal
 
                         # is the recovered signal near offset?
                         upper = offset + (thr_tr + thr2)
                         lower = offset - (thr_tr + thr2)
 
                         if signal_r[k-1] > lower and signal_r[k-1] < upper:
-                            # we are near offset, activate MAU. 
+                            # we are near offset, activate MAU.
                             #signal_i follows rec signal
-                            
+
                             signal_i[k] = signal_r[k-1]
                             MAU[k] = np.sum(signal_i[k-nm:k])/nm
 
-                        else: 
-                            # rec signal not near offset MAU frozen 
-                                
+                        else:
+                            # rec signal not near offset MAU frozen
+
                             MAU[k] = MAU[k-1]
                             signal_i[k] = MAU[k-1]
 
-                        # keep adding recovered signal until 
-                        # it raises above the raw signal 
+                        # keep adding recovered signal until
+                        # it raises above the raw signal
 
                         acum[k] = acum[k-1] + signal_daq[k] - MAU[k]
                         signal_r[k] = signal_daq[k] + coef*acum[k]
@@ -186,23 +186,23 @@ def BLR(signal_daq, coef, n_sigma = 3, NOISE_ADC=0.7,
         plt.plot(signal_r-BASELINE)
         ax3.set_xlim([0, 48000])
         plt.show()
-                       
+
     return  signal_r, energy
 
 def FindSignalAboveThr(signal_t, signal, threshold = 0.):
     """
-    Finds positive signals above threshold. 
-    """    
-   
+    Finds positive signals above threshold.
+    """
+
     pulse_on = 0
     len_signal = len(signal)
-    
+
 
     pulse_f = np.zeros(len_signal, dtype=np.double)
     t_f = np.zeros(len_signal, dtype=np.double)
 
     i=0
-    for k in range(len_signal): 
+    for k in range(len_signal):
 
         if signal[k] > threshold and pulse_on == 0:
             pulse_f[i] = signal[k]
@@ -218,67 +218,78 @@ def FindSignalAboveThr(signal_t, signal, threshold = 0.):
             pulse_f[i] = signal[k]
             t_f[i] = signal_t[k]
             i+=1
-        
-    
+
+
     signal_f = np.zeros(i, dtype=np.double)
     time_f = np.zeros(i, dtype=np.double)
 
     signal_f[:] = pulse_f[0:i]
     time_f[:] = t_f[0:i]
-    
+
     return time_f, signal_f
 
 
-def BLRc(signal_daq, coef, thr1 = 0):
+def BLRc(signal_daq, coef, thr = 0, C1=3100E-9, filter=False):
 
     """
     Only for calibration
 
     """
 
+
+    if (filter==True):
+        #C1=3100E-9; #C1=2714E-9;
+        R1=1567;
+        f_sample = (1/25E-9)
+        freq_zero = 1/(R1*C1);
+        freq_zerod = freq_zero / (f_sample*np.pi)
+        b_cf, a_cf = SGN.butter(2, freq_zerod, 'high', analog=False);
+
+        signal_daq = SGN.lfilter(b_cf,a_cf,signal_daq)
+
+
+
     len_signal_daq = len(signal_daq)
     MAU = np.zeros(len_signal_daq, dtype=np.double)
     acum = np.zeros(len_signal_daq, dtype=np.double)
     signal_r = np.zeros(len_signal_daq, dtype=np.double)
     pulse_f = np.zeros(len(signal_daq), dtype=np.double)
-    
-    
-    thr = thr1
 
-    #MAU_WindowSize = 40 # provisional
-    nm = MAU_WindowSize
-    B_MAU       =   (1./nm)*np.ones(nm)
 
-#   MAU averages the signal in the initial tranch 
-#    allows to compute the baseline of the signal  
-    
-    MAU[0:nm] = SGN.lfilter(B_MAU,1, signal_daq[0:nm])
-    acum[nm] =  MAU[nm]
+    nm = 128
+    B_MAU = (1./nm)*np.ones(nm)
+    MAU[nm-1] = np.mean(signal_daq[0:nm])
+
+    #SGN.lfilter(B_MAU,1, signal_daq[0:nm])
+    #acum[nm] =  MAU[nm-1]
     BASELINE = MAU[nm-1]
 
 #----------
 
-# While MAU inits BLR is switched off, thus signal_r = signal_daq 
+# While MAU inits BLR is switched off, thus signal_r = signal_daq
 
-    signal_r[0:nm] = signal_daq[0:nm] 
+    signal_r[0:nm] = signal_daq[0:nm]
 
     # MAU has computed the offset using nm samples
     # now loop until the end of DAQ window
     cond = 0
 
-    for k in range(nm,len_signal_daq): 
+    for k in range(nm,len_signal_daq):
+
 
         trigger_line = MAU[k] + thr
 
-       
-        # condition: raw signal raises above trigger line and 
+        # condition: raw signal raises above trigger line and
         if (signal_daq[k] > trigger_line) or cond == 1:
+
             cond = 1
-            #offset computed as the value of MAU before pulse starts
-            #offset = MAU[k-1]  
-            
-            #update recovered signal, correcting by offset           
-            signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) + coef*acum[k-1] 
+
+            #update recovered signal, correcting by offset
+            signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) + coef*acum[k-1]
             acum[k] = acum[k-1] + signal_daq[k] - BASELINE;
-                       
+        else:
+            MAU[k] = np.mean(signal_daq[k-nm+1:k+1])
+            BASELINE = MAU[k]
+            signal_r[k] = signal_daq[k]
+
     return  signal_r
