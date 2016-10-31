@@ -125,8 +125,8 @@ class FEE:
         self.C2 = C2
         self.C1 = C1
         self.GAIN = gain
-        self.A1 = R1*Zin/(R1+Zin)
-        self.A2 = gain/self.A1
+        self.A1 = R1*Zin/(R1+Zin) # ohms
+        self.A2 = gain/self.A1 # ohms/ohms = []
         self.R = self.R1+self.Zin
         self.Cr = 1+self.C1/self.C2
         self.C = self.C1/self.Cr
@@ -201,7 +201,7 @@ def i_to_adc(fee):
     input: instances of classes SimpleFEE, SimpleDAQ
     outputs: current to adc counts
     """
-    return fee.GAIN/fee.voltsToAdc
+    return fee.GAIN/fee.LSB
 
 
 def i_to_v(fee):
@@ -210,6 +210,13 @@ def i_to_v(fee):
     output: current to voltage
     """
     return fee.GAIN
+
+def v_to_adc(fee):
+    """
+    input: instance of class FEE
+    output: voltage to adc
+    """
+    return 1./fee.LSB
 
 
 def noise_adc(fee, signal_in):
@@ -240,7 +247,7 @@ def filter_fee(feep):
                            feep.freq_LHPFd,
                            'low', analog=False)
 
-    b0 = b2*feep.ZC + b1*feep.A1  # in ohm
+    b0 = b2*feep.ZC + b1*feep.A1  # in ohms
     a0 = a1
 
     # LPF order 1
@@ -257,7 +264,7 @@ def filter_fee(feep):
     # convolve HPF+LPF1, LPF2
     a = np.convolve(a_aux, a2l, mode='full')
     b_aux2 = np.convolve(b_aux, b2l, mode='full')
-    b = feep.A2*b_aux2  # b has no units
+    b = feep.A2*b_aux2  # in ohms
 
     return b, a
 
@@ -273,10 +280,11 @@ def filter_cleaner(feep):
     return b, a
 
 
-def signal_fee(feep, signal_in):
+def signal_v_fee(feep, signal_i):
     """
-    input: instance of class feep and a signal
-    outputs: signal convolved with effect FEE
+    input: signal_i = signal current (i = A)
+           instance of class FEE
+    output: signal_v (in volts) with effect FEE
 
     ++++++++++++++++++++++++++++++++++++++++++++++++
     +++++++++++ PMT+FEE NOISE ADDED HERE +++++++++++
@@ -284,14 +292,30 @@ def signal_fee(feep, signal_in):
 
     """
     if (feep.noise_FEEPMB_rms == 0.0):
-        noise_FEEin = np.zeros(len(signal_in))
+        noise_FEEin = np.zeros(len(signal_i))
     else:
         noise_FEEin = np.random.normal(0,
                                        feep.noise_FEEPMB_rms,
-                                       len(signal_in))
+                                       len(signal_i))
 
     # Equivalent Noise of the FEE + PMT BASE added at the input
     # of the system to get the noise filtering effect
 
-    b, a = filter_fee(feep)
-    return signal.lfilter(b, a, signal_in+noise_FEEin)
+    b, a = filter_fee(feep) # b in ohms
+    # filtered signal in I*R = V
+    return signal.lfilter(b, a, signal_i + noise_FEEin)
+
+
+def signal_v_clean(feep, signal_v_fee):
+    """
+    input: signal_v_fee = volts, convoluted
+           instance of class FEE
+    output: signal_v_c cleaning filter passed
+
+    ++++++++++++++++++++++++++++++++++++++++++++++++
+    +++++++++++ PMT+FEE NOISE ADDED HERE +++++++++++
+    ++++++++++++++++++++++++++++++++++++++++++++++++
+
+    """
+    b, a = filter_cleaner(feep)
+    return signal.lfilter(b, a, signal_v_fee)
