@@ -101,8 +101,8 @@ def ANASTASIA(argv):
         noise_adc = h5in.root.MC.FEE.col("noise_adc")[0]
 
         # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
-                                                 sipmdf, SIPMWL)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
+                                                 SIPMWL)
 
         # Increate thresholds by 1% for safety
         pmts_noise_threshold_raw_ = (PMT_NOISE_CUT_RAW * NPMT /
@@ -112,7 +112,7 @@ def ANASTASIA(argv):
 
         if SIPM_ZS_METHOD == "FRACTION":
             sipms_thresholds_ = sipms_noise_sampler_.ComputeThresholds(
-                                SIPM_NOISE_CUT)
+                                SIPM_NOISE_CUT, sipmdf['adc_to_pes'])
         else:
             sipms_thresholds_ = np.ones(NSIPM) * SIPM_NOISE_CUT
 
