@@ -16,7 +16,7 @@ class SimpleFee:
     def __init__(self, gain=582.2*units.ohm, C2=8*units.nF,
                  R1=1567*units.ohm, Zin=62*units.ohm,
                  f_sample=1./(25*units.ns), f_LPF1=3E6*units.hertz,
-                 f_LPF2=10E6*units.hertz, 
+                 f_LPF2=10E6*units.hertz,
                  noise_FEEPMB_rms=0.20*units.mV):
 
         self.R1 = R1
@@ -76,7 +76,7 @@ class FeePmt:
     def __init__(self, gain=582.2*units.ohm, C2=8*units.nF, C1=2714*units.nF,
                  R1=1567*units.ohm, Zin=62*units.ohm,
                  f_sample=1./(25*units.ns), f_LPF1=3E6*units.hertz,
-                 f_LPF2=10E6*units.hertz, 
+                 f_LPF2=10E6*units.hertz,
                  noise_FEEPMB_rms=0.20*units.mA):
 
         self.R1 = R1
@@ -89,12 +89,12 @@ class FeePmt:
         self.R = self.R1+self.Zin
 
         self.f_sample = f_sample
-        
+
         self.freq_LHPF = 1./(self.R*(self.C1/(1+(self.C1/self.C2))))
 
         self.freq_LPF1 = f_LPF1*2*np.pi
         self.freq_LPF2 = f_LPF2*2*np.pi
-        
+
 
         self.freq_LHPFd = self.freq_LHPF/(self.f_sample*np.pi)
         self.freq_LPF1d = self.freq_LPF1/(self.f_sample*np.pi)
@@ -110,13 +110,13 @@ class FeePmt:
         output the class to string
         """
         s = """
-        (C1 = {0:7.1f} nf, 
-         C2 = {1:7.1f} nf, 
-         R1 = {2:7.1f} ohm, 
+        (C1 = {0:7.1f} nf,
+         C2 = {1:7.1f} nf,
+         R1 = {2:7.1f} ohm,
          Zin = {3:7.1f} ohm,
-         gain = {4:7.1f} ohm, 
+         gain = {4:7.1f} ohm,
          f_sample = {5:7.1f} MHZ,
-         self.freq_LHPF = {6:7.2f} kHz, 
+         self.freq_LHPF = {6:7.2f} kHz,
          self.freq_LPF1 = {7:7.2f} MHZ,
          self.freq_LPF2 = {8:7.2f} MHZ,
          self.freq_LHPFd = {9:8.5f},
@@ -125,16 +125,16 @@ class FeePmt:
          self.noise_FEEPMB_rms = {12:7.2f} mA,
          self.LSB = {13:7.2f} mV)
         """.format(self.C1/units.nF,
-                   self.C2/units.nF, 
+                   self.C2/units.nF,
                    self.R1/units.ohm,
-                   self.Zin/units.ohm, 
+                   self.Zin/units.ohm,
                    self.GAIN/units.ohm,
                    self.f_sample/units.MHZ,
                    self.freq_LHPF/(units.kHz*2*np.pi),
                    self.freq_LPF1/(units.MHZ*2*np.pi),
                    self.freq_LPF2/(units.MHZ*2*np.pi),
-                   self.freq_LHPFd, 
-                   self.freq_LPF1d, 
+                   self.freq_LHPFd,
+                   self.freq_LPF1d,
                    self.freq_LPF2d,
                    self.noise_FEEPMB_rms/units.mA,
                    self.LSB/units.mV)
@@ -190,7 +190,7 @@ class NoisyDAQ:
         output the class to string
         """
         s = """
-        (NIBTS = {0:d}, LSB = {1:7.2g} volts/adc, volts to adc = {2:7.2g}, 
+        (NIBTS = {0:d}, LSB = {1:7.2g} volts/adc, volts to adc = {2:7.2g},
          noise = {3:7.2g})
         """.format(self.NBITS, self.LSB/units.volt, self.voltsToAdc, self.DAQnoise_rms/units.mV)
         return s
@@ -322,10 +322,26 @@ def i_to_v(sfee):
 #     return sfee.noise_rms/units.volt/sdaq.voltsToAdc
 
 def noise_adc(sdaq, signal_in):
-    
+
     #noise_DAQout = np.random.normal(0,0.64*LSB_DAQ,len(signal_in))
     # Equivalent Noise of the DAQ added at the output of the system
-    return signal_in + np.random.normal(0,(sdaq.DAQnoise_rms),len(signal_in)) 
+    return signal_in + np.random.normal(0,(sdaq.DAQnoise_rms),len(signal_in))
+
+
+
+def daq_decimator(f_sample1, f_sample2, signal_in):
+
+    aliasingLPF = f_sample2/units.hertz*np.pi
+    #ANTIALISING Filter at f_sample/2
+    aliasingLPFd = aliasingLPF/(f_sample1/units.hertz*np.pi)
+    b, a = signal.butter(10, aliasingLPFd, 'low', analog=False)
+
+    signal_filtered=signal.lfilter(b, a, signal_in)
+
+    return signal_filtered[range(0,len(signal_filtered),int(f_sample1/f_sample2))]
+
+
+
 
 def filter_fee(sfe):
     """
@@ -353,7 +369,7 @@ def filter_feepmt(feep):
     input: an instance of class FeePmt
     output: buttersworth parameters of the equivalent FEE filter
     """
-    
+
     # high pass butterswoth filter ~1/RC
     b1, a1 = signal.butter(1, feep.freq_LHPFd, 'high', analog=False)
     b2, a2 = signal.butter(1, feep.freq_LHPFd, 'low', analog=False)
@@ -377,9 +393,9 @@ def filter_feepmt(feep):
 
 
 def filter_cleaner(feep):
-    freq_zero=1/((feep.R1/units.ohm)*(feep.C1/units.farad)); 
+    freq_zero=1/((feep.R1/units.ohm)*(feep.C1/units.farad));
     #print ('Zero(Hz) =',freq_zero/(2*np.pi));
-    freq_zerod= freq_zero / ((feep.f_sample/units.hertz)*np.pi); 
+    freq_zerod= freq_zero / ((feep.f_sample/units.hertz)*np.pi);
     #print ('Zero(rad/sec) =',freq_zero,'// (half-cycles/sample) =',freq_zerod)
 
     b, a = signal.butter(1, freq_zerod, 'high', analog=False);
@@ -426,11 +442,11 @@ def signal_feepmt(feep, signal_in):
     """
     input: instance of class sfe and a signal
     outputs: signal convolved with effect FEE
-    
+
     ++++++++++++++++++++++++++++++++++++++++++++++++
     +++++++++++ PMT+FEE NOISE ADDED HERE +++++++++++
     ++++++++++++++++++++++++++++++++++++++++++++++++
-    
+
     """
     if (feep.noise_FEEPMB_rms == 0.0):
         noise_FEEin = np.zeros(len(signal_in))
@@ -438,7 +454,7 @@ def signal_feepmt(feep, signal_in):
     else:
         noise_FEEin = np.random.normal(0,feep.noise_FEEPMB_rms/units.ampere,len(signal_in))*units.ampere
         #print("RUIDO (Arms) = ",feep.noise_FEEPMB_rms/units.ampere)
-        
+
     # Equivalent Noise of the FEE + PMT BASE added at the input of the system to get the noise filtering effect
 
 
