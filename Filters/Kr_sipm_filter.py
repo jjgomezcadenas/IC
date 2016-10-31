@@ -25,7 +25,7 @@ def create_new_file(h5out, h5in, nfiles):
     rungroup = h5out.create_group(h5out.root, "Run")
     h5in.root.Run.runInfo.copy(newparent=rungroup)
     evt_out = h5out.create_earray(h5out.root.Run, "event_number",
-                                  atom=tb.Int16Atom(),
+                                  atom=tb.Int32Atom(),
                                   shape=(0,),
                                   expectedrows=NEVT)
 
@@ -73,21 +73,24 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
         n_events_out = 0
         for i, filename in enumerate(inputfilenames):
             print("Opening", filename, end="... ")
-            with tb.open_file(filename, "r") as h5in:
-                filtered_events = filter_events(h5in)
-                n_events_in += h5in.root.RD.pmtrwf.shape[0]
-                n_events_out += len(filtered_events)
-                if create_file and filtered_events.size:
-                    evt_out, pmt_out, blr_out, sipm_out = create_new_file(
-                                                          h5out, h5in,
-                                                          len(inputfilenames))
-                    create_file = False
-                for evt in filtered_events:
-                    evt_out.append(h5in.root.Run.event_number[evt][np.newaxis])
-                    pmt_out.append(h5in.root.RD.pmtrwf[evt][np.newaxis])
-                    blr_out.append(h5in.root.RD.pmtblr[evt][np.newaxis])
-                    sipm_out.append(h5in.root.RD.sipmrwf[evt][np.newaxis])
-            print("Done")
+            try:
+                with tb.open_file(filename, "r") as h5in:
+                    filtered_events = filter_events(h5in)
+                    n_events_in += h5in.root.RD.pmtrwf.shape[0]
+                    n_events_out += len(filtered_events)
+                    if create_file and filtered_events.size:
+                        evt_out, pmt_out, blr_out, sipm_out = create_new_file(
+                                                              h5out, h5in,
+                                                              len(inputfilenames))
+                        create_file = False
+                    for evt in filtered_events:
+                        evt_out.append(h5in.root.Run.event_number[evt][np.newaxis])
+                        pmt_out.append(h5in.root.RD.pmtrwf[evt][np.newaxis])
+                        blr_out.append(h5in.root.RD.pmtblr[evt][np.newaxis])
+                        sipm_out.append(h5in.root.RD.sipmrwf[evt][np.newaxis])
+                print("OK")
+            except:
+                print("Error")
         pmt_out.flush()
         blr_out.flush()
         sipm_out.flush()
