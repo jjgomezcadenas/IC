@@ -25,6 +25,7 @@ C1 = 2714*units.nF
 R1 = 1567*units.ohm
 Zin = 62*units.ohm
 f_sample = 1./(25*units.ns)
+f_mc = 1./(1*units.ns)
 f_LPF1 = 3*units.MHZ
 f_LPF2 = 10*units.MHZ
 
