@@ -91,6 +91,7 @@ class SimpleDAQ:
         """
         return self.__str__()
 
+
 def filter_sfee(sfe):
     """
     input: an instance of class SimpleFee
@@ -138,30 +139,31 @@ def filter_sfee_hpf(sfe):
     b = sfe.GAIN*b0
     return b, a
 
-def signal_fee(sfe, signal_in):
+
+def signal_sfee(sfe, signal_in):
     """
     input: instance of class sfe and a signal
     outputs: signal convolved with effect FEE
     """
-    b, a = filter_fee(sfe)
+    b, a = filter_sfee(sfe)
     return signal.lfilter(b/sfe.GAIN, a, signal_in)
 
 
-def signal_fee_lpf(sfe, signal_in):
+def signal_sfee_lpf(sfe, signal_in):
     """
     input: instance of class sfe and a signal
     outputs: signal convolved with LPF
     """
-    b, a = filter_fee_lpf(sfe)
+    b, a = filter_sfee_lpf(sfe)
     return signal.lfilter(b/sfe.GAIN, a, signal_in)
 
 
-def signal_fee_hpf(sfe, signal_in):
+def signal_sfee_hpf(sfe, signal_in):
     """
     input: instance of class sfe and a signal
     outputs: signal convolved with HPF
     """
-    b, a = filter_fee_hpf(sfe)
+    b, a = filter_sfee_hpf(sfe)
     return signal.lfilter(b/sfe.GAIN, a, signal_in)
 
 

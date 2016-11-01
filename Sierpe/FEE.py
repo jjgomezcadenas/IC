@@ -11,11 +11,22 @@ import numpy as np
 from scipy import signal
 import system_of_units as units
 
-
+# globals describing FEE
+PMT_GAIN = 4.5e6
 MEASURED_GAIN = 582.237*units.ohm
 DAQ_GAIN = 1.25
 NBITS = 12
-LSB = (2.0*units.V/2**NBITS/DAQ_GAIN)*units.V
+LSB = 2.0*units.V/2**NBITS/DAQ_GAIN
+NOISE_I = LSB/(MEASURED_GAIN*DAQ_GAIN)
+NOISE_DAQ = 0.313*units.mV
+
+C2 = 8*units.nF
+C1 = 2714*units.nF
+R1 = 1567*units.ohm
+Zin = 62*units.ohm
+f_sample = 1./(25*units.ns)
+f_LPF1 = 3*units.MHZ
+f_LPF2 = 10*units.MHZ
 
 
 class SPE:
@@ -23,7 +34,7 @@ class SPE:
     Represents a single photo-electron in the PMT
     """
 
-    def __init__(self, pmt_gain=4.5e6, x_slope=5.*units.ns,
+    def __init__(self, pmt_gain=PMT_GAIN, x_slope=5.*units.ns,
                  x_flat=1.*units.ns):
 
         self.pmt_gain = pmt_gain
@@ -121,40 +132,35 @@ class FEE:
     """
 
     def __init__(self, gain=MEASURED_GAIN,
-                 C2=8*units.nF, C1=2714*units.nF,
-                 R1=1567*units.ohm, Zin=62*units.ohm,
-                 f_sample=1./(25*units.ns), f_LPF1=3E6*units.hertz,
-                 f_LPF2=10E6*units.hertz,
-                 noise_FEEPMB_rms=0.20*units.muA,
-                 nbits=NBITS, DAQnoise_rms=0.313*units.mV):
+                 c2=C2, c1=C1, r1=R1, zin=Zin, fsample=f_sample,
+                 flpf1=f_LPF1, flpf2=f_LPF2,
+                 noise_FEEPMB_rms=NOISE_I, noise_DAQ_rms=NOISE_DAQ, lsb=LSB):
 
-        self.R1 = R1
-        self.Zin = Zin
-        self.C2 = C2
-        self.C1 = C1
+        self.R1 = r1
+        self.Zin = zin
+        self.C2 = c2
+        self.C1 = c1
         self.GAIN = gain
-        self.A1 = R1*Zin/(R1+Zin)  # ohms
+        self.A1 = self.R1 * self.Zin/(self.R1 + self.Zin)  # ohms
         self.A2 = gain/self.A1  # ohms/ohms = []
-        self.R = self.R1+self.Zin
-        self.Cr = 1+self.C1/self.C2
+        self.R = self.R1 + self.Zin
+        self.Cr = 1. + self.C1/self.C2
         self.C = self.C1/self.Cr
         self.ZC = self.Zin/self.Cr
 
-        self.f_sample = f_sample
-        self.freq_LHPF = 1./(self.R*self.C)
-        self.freq_LPF1 = f_LPF1*2*np.pi
-        self.freq_LPF2 = f_LPF2*2*np.pi
+        self.f_sample = fsample
+        self.freq_LHPF = 1./(self.R * self.C)
+        self.freq_LPF1 = flpf1*2*np.pi
+        self.freq_LPF2 = flpf2*2*np.pi
 
         self.freq_LHPFd = self.freq_LHPF/(self.f_sample*np.pi)
         self.freq_LPF1d = self.freq_LPF1/(self.f_sample*np.pi)
         self.freq_LPF2d = self.freq_LPF2/(self.f_sample*np.pi)
 
         self.noise_FEEPMB_rms = noise_FEEPMB_rms
-
-        self.NBITS = nbits
-        self.LSB = 2*units.volt/2**self.NBITS/DAQ_GAIN
+        self.LSB = lsb
         self.voltsToAdc = self.LSB/units.volt
-        self.DAQnoise_rms = DAQnoise_rms
+        self.DAQnoise_rms = noise_DAQ_rms
 
     def __str__(self):
         """
@@ -174,10 +180,9 @@ class FEE:
          freq_LPF1d = {10:7.2f},
          freq_LPF2d = {11:7.2f},
          noise_FEEPMB_rms = {12:7.2f} muA,
-         NIBTS = {13:d},
-         LSB = {14:7.2g} mV,
-         volts to adc = {15:7.2g},
-         DAQnoise_rms = {16:7.2g}
+         LSB = {13:7.2g} mV,
+         volts to adc = {14:7.2g},
+         DAQnoise_rms = {15:7.2g}
         )
         """.format(self.C1/units.nF,
                    self.C2/units.nF,
@@ -192,7 +197,7 @@ class FEE:
                    self.freq_LPF1d,
                    self.freq_LPF2d,
                    self.noise_FEEPMB_rms/units.muA,
-                   self.NBITS, self.LSB/units.mV,
+                   self.LSB/units.mV,
                    self.voltsToAdc,
                    self.DAQnoise_rms/units.mV)
         return s
