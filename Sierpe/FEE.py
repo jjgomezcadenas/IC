@@ -320,11 +320,11 @@ def signal_v_fee(feep, signal_i):
     return signal.lfilter(b, a, signal_i + noise_FEEin)
 
 
-def signal_v_clean(feep, signal_v_fee):
+def signal_clean(feep, signal_fee):
     """
-    input: signal_v_fee = volts, convoluted
+    input: signal_fee = adc, convoluted
            instance of class FEE
-    output: signal_v_c cleaning filter passed
+    output: signal_c cleaning filter passed
 
     ++++++++++++++++++++++++++++++++++++++++++++++++
     +++++++++++ PMT+FEE NOISE ADDED HERE +++++++++++
@@ -332,7 +332,7 @@ def signal_v_clean(feep, signal_v_fee):
 
     """
     b, a = filter_cleaner(feep)
-    return signal.lfilter(b, a, signal_v_fee)
+    return signal.lfilter(b, a, signal_fee)
 
 
 def daq_decimator(f_sample1, f_sample2, signal_in):
