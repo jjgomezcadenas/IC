@@ -12,6 +12,12 @@ from scipy import signal
 import system_of_units as units
 
 
+MEASURED_GAIN = 582.237*units.ohm
+DAQ_GAIN = 1.25
+NBITS = 12
+LSB = (2.0*units.V/2**NBITS/DAQ_GAIN)*units.V
+
+
 class SPE:
     """
     Represents a single photo-electron in the PMT
@@ -43,8 +49,10 @@ class SPE:
         output the class to string
         """
         s = """
-        (PMT gain = {0:5.2g}, slope = {1:5.2f} ns, flat = {2:5.2f} ns)
-        """.format(self.pmt_gain, self.x_slope/units.ns,
+        (PMT gain = {0:5.2g}, amplitude = {1:5.2g} muA
+         slope = {2:5.2f} ns, flat = {3:5.2f} ns)
+        """.format(self.pmt_gain, self.A/units.muA,
+                   self.x_slope/units.ns,
                    self.x_flat/units.ns)
         return s
 
@@ -112,21 +120,21 @@ class FEE:
     Complete model of Front-end electronics.
     """
 
-    def __init__(self, gain=582.2*units.ohm,
+    def __init__(self, gain=MEASURED_GAIN,
                  C2=8*units.nF, C1=2714*units.nF,
                  R1=1567*units.ohm, Zin=62*units.ohm,
                  f_sample=1./(25*units.ns), f_LPF1=3E6*units.hertz,
                  f_LPF2=10E6*units.hertz,
                  noise_FEEPMB_rms=0.20*units.muA,
-                 nbits=12, DAQnoise_rms=0.313*units.mV):
+                 nbits=NBITS, DAQnoise_rms=0.313*units.mV):
 
         self.R1 = R1
         self.Zin = Zin
         self.C2 = C2
         self.C1 = C1
         self.GAIN = gain
-        self.A1 = R1*Zin/(R1+Zin) # ohms
-        self.A2 = gain/self.A1 # ohms/ohms = []
+        self.A1 = R1*Zin/(R1+Zin)  # ohms
+        self.A2 = gain/self.A1  # ohms/ohms = []
         self.R = self.R1+self.Zin
         self.Cr = 1+self.C1/self.C2
         self.C = self.C1/self.Cr
@@ -144,7 +152,7 @@ class FEE:
         self.noise_FEEPMB_rms = noise_FEEPMB_rms
 
         self.NBITS = nbits
-        self.LSB = 2*units.volt/2**self.NBITS/1.25
+        self.LSB = 2*units.volt/2**self.NBITS/DAQ_GAIN
         self.voltsToAdc = self.LSB/units.volt
         self.DAQnoise_rms = DAQnoise_rms
 
@@ -210,6 +218,7 @@ def i_to_v(fee):
     output: current to voltage
     """
     return fee.GAIN
+
 
 def v_to_adc(fee):
     """
@@ -301,7 +310,7 @@ def signal_v_fee(feep, signal_i):
     # Equivalent Noise of the FEE + PMT BASE added at the input
     # of the system to get the noise filtering effect
 
-    b, a = filter_fee(feep) # b in ohms
+    b, a = filter_fee(feep)  # b in ohms
     # filtered signal in I*R = V
     return signal.lfilter(b, a, signal_i + noise_FEEin)
 
@@ -319,3 +328,15 @@ def signal_v_clean(feep, signal_v_fee):
     """
     b, a = filter_cleaner(feep)
     return signal.lfilter(b, a, signal_v_fee)
+
+
+def daq_decimator(f_sample1, f_sample2, signal_in):
+    """
+    downscales the signal vector according to the
+    scale defined by f_sample1 (1 GHZ) and
+    f_sample2 (40 Mhz).
+    Includes anti-aliasing filter
+    """
+
+    scale = int(f_sample1/f_sample2)
+    return signal.decimate(signal_in, scale, ftype='fir')
