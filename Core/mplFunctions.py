@@ -17,7 +17,7 @@ import wfmFunctions as wfm
 import tblFunctions as tbl
 
 
-matplotlib.style.use("ggplot")
+# matplotlib.style.use("ggplot")
 
 
 # histograms, signals and shortcuts
