@@ -24,7 +24,8 @@ C2 = 8*units.nF
 C1 = 2714*units.nF
 R1 = 1567*units.ohm
 Zin = 62*units.ohm
-f_sample = 1./(25*units.ns)
+t_sample = 25*units.ns
+f_sample = 1./t_sample
 f_mc = 1./(1*units.ns)
 f_LPF1 = 3*units.MHZ
 f_LPF2 = 10*units.MHZ
@@ -234,18 +235,18 @@ def v_to_adc(fee):
     return 1./fee.LSB
 
 
-def noise_adc(fee, signal_in):
+def noise_adc(fee, signal_in_adc):
     """
     Equivalent Noise of the DAQ added at the output
     of the system
-    input: a signal (in units of voltage)
+    input: a signal (in units of adc counts)
            an instance of FEE class
     output: a signal with DAQ noise added
     """
-
-    return signal_in + np.random.normal(0,
-                                        fee.DAQnoise_rms,
-                                        len(signal_in))
+    noise_daq = fee.DAQnoise_rms*v_to_adc(fee)
+    return signal_in_adc + np.random.normal(0,
+                                            noise_daq,
+                                            len(signal_in_adc))
 
 
 def filter_fee(feep):
