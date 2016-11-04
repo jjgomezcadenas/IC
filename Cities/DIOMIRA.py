@@ -274,8 +274,8 @@ def DIOMIRA(argv):
         sipmdf = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
-        noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
-                                           sipmdf, SIPMWL, True)
+        noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
+                                           SIPMWL, True)
         sipms_thresholds_ = NOISE_CUT * np.array(sipmdf["adc_to_pes"])
 
         # open the output file

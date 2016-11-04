@@ -5,9 +5,10 @@ GML October 2016
 What ANASTASIA does:
 1) Reads a hdf5 file containing the PMT's CWF and the SiPMs' RWF in ADC counts.
 2) Creates a single "big" PMT summing up PMTs' waveforms.
-3) Applies zero-suppression to both the big PMT and the individual SiPMs.
-3) Converts the waveforms from adc to pes.
-4) Writes the ZS waveforms in the same file as earrays.
+3) Subtracts the SiPMs' baseline.
+4) Applies zero-suppression to both the big PMT and the individual SiPMs.
+5) Converts the waveforms from adc to pes.
+6) Writes the ZS waveforms in the same file as earrays.
 """
 
 from __future__ import print_function
@@ -17,6 +18,7 @@ from time import time
 
 import numpy as np
 import tables as tb
+import scipy as sc
 
 from LogConfig import logger
 from Configure import configure, define_event_loop
@@ -34,9 +36,21 @@ ChangeLog:
 
 18.10 Big PMT and ZS methods implemented.
 
-21.10 several fixes. PRE-RELEASE.
+21.10 Several fixes. PRE-RELEASE.
+
+31.10 Baseline subtraction for SiPMs introduced.
 
 """
+
+
+def subtract_baseline(wfs, mau_len = 100):
+    """
+    Computes the baseline for each SiPM in the event and subtracts it.
+    For doing so, the first mau_len samples in the waveform are taken.
+    """
+    b_mau = np.ones(mau_len)*1.0/mau_len
+    bls = map(lambda wf: sc.signal.lfilter(b_mau, 1, wf)[-1], wfs[:,:mau_len] )
+    return wfs - np.array(bls).reshape(wfs.shape[0],1)
 
 
 def ANASTASIA(argv):
@@ -101,8 +115,8 @@ def ANASTASIA(argv):
         noise_adc = h5in.root.MC.FEE.col("noise_adc")[0]
 
         # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.dat",
-                                                 sipmdf, SIPMWL)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
+                                                 SIPMWL)
 
         # Increate thresholds by 1% for safety
         pmts_noise_threshold_raw_ = (PMT_NOISE_CUT_RAW * NPMT /
@@ -112,7 +126,7 @@ def ANASTASIA(argv):
 
         if SIPM_ZS_METHOD == "FRACTION":
             sipms_thresholds_ = sipms_noise_sampler_.ComputeThresholds(
-                                SIPM_NOISE_CUT)
+                                SIPM_NOISE_CUT, sipmdf['adc_to_pes'])
         else:
             sipms_thresholds_ = np.ones(NSIPM) * SIPM_NOISE_CUT
 
@@ -161,7 +175,8 @@ def ANASTASIA(argv):
             pmt_zs_.append(pmtcwf_int_pes.reshape(1, 1, PMTWL))
             pmt_zs_blr_.append(pmtblr_int_pes.reshape(1, 1, PMTWL))
 
-            SiPMdata = wfm.noise_suppression(sipmrwf[i], sipms_thresholds_)
+            SiPMdata = subtract_baseline(sipmrwf[i], 120)
+            SiPMdata = wfm.noise_suppression(SiPMdata, sipms_thresholds_)
             SiPMdata = wfm.to_pes(SiPMdata, sipmdf)
 
             sipm_zs_.append(SiPMdata.reshape(1, NSIPM, SIPMWL))
