@@ -10,12 +10,12 @@ install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - export ICDIR=`pwd`
-  - echo $ICDIR
   - conda config --set always_yes yes --set changeps1 no
   - conda update conda
 
   # Install dependencies
   - conda create -n icenv python=2.7 numpy pandas cython nose pytables mysql-python
+  - pip install coveralls
   - source activate icenv
 
 script:
