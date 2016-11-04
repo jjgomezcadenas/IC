@@ -13,7 +13,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n icenv python=2.7 numpy pandas cython nose pytables
+  - conda create -n icenv python=2.7 numpy pandas cython nose pytables mysql-python
   - source activate icenv
 
 script:
