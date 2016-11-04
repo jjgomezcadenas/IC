@@ -15,11 +15,11 @@ install:
 
   # Install dependencies
   - conda create -n icenv python=2.7 numpy pandas cython nose pytables mysql-python
-  - pip install coveralls
   - source activate icenv
+  - pip install coveralls
 
 script:
-  - nosetests tests/test_*.py
+    - nosetests --with-coverage tests/test_*.py
 
 after_success:
   - coveralls
