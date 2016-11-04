@@ -21,3 +21,6 @@ install:
 script:
   - nosetests tests/test_*.py
 
+after_success:
+  - coveralls
+
