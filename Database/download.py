@@ -44,7 +44,7 @@ def loadPMTs(h5f, cursor):
 def loadDB():
     fname = os.environ['ICDIR'] + '/Database/localdb.h5'
     h5out = tb.open_file(fname, 'w')
-    db = MySQLdb.connect(host="neutrinos1.ific.uv.es", user="next",
+    db = MySQLdb.connect(host="neutrinos1.ific.uv.es", user=dec('am1iZW5sbG9jaA=='),
                          passwd=eval(dec('Jycuam9pbihtYXAobGFtYmRhIGM6IGNocihjLTUpLCBbNzIsIDEwMiwgMTE1LCAxMDcsIDExOSwgMTAyLCAxMTUsIDEwNF0pKQ==')), db="ICNEWDB")
     cur = db.cursor()
     loadPMTs(h5out, cur)
