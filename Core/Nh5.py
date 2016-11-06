@@ -3,6 +3,14 @@ Tables defining the DM
 """
 import tables
 
+class RunInfo(tables.IsDescription):
+    run_number = tables.Int32Col(shape=(), pos=0)
+
+
+class EventInfo(tables.IsDescription):
+    evt_number = tables.Int32Col(shape=(), pos=0)
+    timestamp = tables.UInt64Col(shape=(), pos=1)
+
 
 class DetectorGeometry(tables.IsDescription):
     """
