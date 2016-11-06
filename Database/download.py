@@ -11,12 +11,13 @@ class DataSensor(tb.IsDescription):
     """
     sensorID = tb.Int32Col(pos=0)
     channel = tb.Int32Col(pos=1)
-    active = tb.Int32Col(pos=2)
-    x = tb.Float32Col(pos=3)
-    y = tb.Float32Col(pos=4)
-    coeff = tb.Float64Col(pos=5)
-    adc_to_pes = tb.Float32Col(pos=6)
-    noise_rms = tb.Float32Col(pos=7)
+    pmtid = tb.StringCol(5,pos=2)
+    active = tb.Int32Col(pos=3)
+    x = tb.Float32Col(pos=4)
+    y = tb.Float32Col(pos=5)
+    deconvClean = tb.Float64Col(pos=6)
+    deconvCoeff = tb.Float64Col(pos=7)
+    noise_rms = tb.Float64Col(pos=8)
 
 
 def loadPMTs(h5f, cursor):
@@ -30,12 +31,13 @@ def loadPMTs(h5f, cursor):
         pmt = pmt_table.row
         pmt['sensorID'] = row[0]
         pmt['channel'] = row[1]
-        pmt['active'] = row[2]
-        pmt['noise_rms'] = row[3]
-        pmt['coeff'] = row[4]
-        pmt['adc_to_pes'] = row[5]
-        pmt['x'] = row[6]
-        pmt['y'] = row[7]
+        pmt['pmtid'] = row[2]
+        pmt['active'] = row[3]
+        pmt['x'] = row[4]
+        pmt['y'] = row[5]
+        pmt['deconvClean'] = row[6]
+        pmt['deconvCoeff'] = row[7]
+        pmt['noise_rms'] = row[8]
         pmt.append()
 
     pmt_table.flush()
