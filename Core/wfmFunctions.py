@@ -90,10 +90,10 @@ def get_energy(pmtea, event_list=[0]):
     with the sum of the energies for event_number
     """
     NPMT = pmtea.shape[1]
-    epmt = np.zeros(NPMT)
     EPMT = []
 
     for i in event_list:
+        epmt = np.zeros(NPMT)
         for j in range(NPMT):
             epmt[j] = np.sum(pmtea[i, j])
         EPMT.append(epmt)
