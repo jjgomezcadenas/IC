@@ -59,6 +59,7 @@ def create_new_file(h5out, h5in, nfiles):
 def filter_events(h5in, min_signal = 0):
     if "/RD/sipmrwf" not in h5in:
         return np.array([])
+    
     sipms = h5in.root.RD.sipmrwf
     if min_signal > 0:
         filtered_events = []
@@ -66,7 +67,7 @@ def filter_events(h5in, min_signal = 0):
             evt = wfm.subtract_baseline(evt, 200)
             if np.max(evt) > min_signal:
                 filtered_events.append(i)
-        return filtered_events
+        return np.array(filtered_events)
     else:
         return np.arange(sipms.shape[0])
 
@@ -84,7 +85,8 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
         for i, filename in enumerate(inputfilenames):
             print("Opening", filename, end="... ")
             sys.stdout.flush()
-            try:
+            #try:
+            for i in range(1):
                 with tb.open_file(filename, "r") as h5in:
                     filtered_events = filter_events(h5in, MIN_SIGNAL)
                     n_events_in += h5in.root.RD.pmtrwf.shape[0]
@@ -110,8 +112,8 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
 
                     evt_out.flush()
                 print("OK")
-            except:
-                print("Error")
+#            except:
+#                print("Error")
         pmt_out.flush()
         blr_out.flush()
         sipm_out.flush()
