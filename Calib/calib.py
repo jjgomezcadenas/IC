@@ -429,10 +429,13 @@ def cal_fit_(ps0, xs, ys, fun, bounds=None):
 
     result = least_squares(func, ps0, bounds=bounds)
     chi2 = -1.
+    cov = []
     if (result.success):
-        res = func(result.x)
-        chi2 = np.sum(res*res)/(1.*(len(ys)-len(ps0)))
+        chi2 = np.sum(result.fun**2)/(1.*(len(ys)-len(ps0)))
+        cov = (np.linalg.inv(np.dot(result.jac.T,result.jac)))*chi2
     result.chi2 = chi2
+    result.cov = cov
+
     return result
 
 
@@ -465,7 +468,7 @@ def cal_fit_poissongauss(cal, indexes=None, ngauss=5,
     if (not indexes):
         indexes = cal.indexes
     fun = ffun_poissongauss
-    chi2, pss = [], []
+    chi2, pss, cov = [], [], []
     for index in indexes:
         xs, ys = cal.values_in_range(index, xrange)
         if (index % 200 == 0):
@@ -475,7 +478,8 @@ def cal_fit_poissongauss(cal, indexes=None, ngauss=5,
             print(' fit {} success {}'.format(index, result.success))
         chi2.append(result.chi2)
         pss.append(result.x)
-    return chi2, pss
+        cov = result.cov
+    return chi2, pss, cov
 
 
 # initial parameters and bounds to fit SiPMs to poisson+n-gauss
@@ -499,7 +503,7 @@ def cal_fit_ngauss(cal, indexes=None, ngauss=5,
     a list of parameters for each sensor on the indexes list.
     """
     fun = ffun_ngauss
-    chi2, pss = [], []
+    chi2, pss, cov = [], [], []
     for i, index in enumerate(indexes):
         xs, ys = cal.values_in_range(index, xrange)
         if (index % 400 == 0):
@@ -510,10 +514,11 @@ def cal_fit_ngauss(cal, indexes=None, ngauss=5,
         # success.append(result.success)
         chi2.append(result.chi2)
         pss.append(result.x)
+        cov = result.cov
         # print(' fit success {}'.format(result.success))
         # print(' guess values {}'.format(ps0))
         # print(' fit results {}'.format(pshat))
-    return chi2, pss
+    return chi2, pss, cov
 
 
 def cal_fit_ngauss_panda(indexes, chi2, pss):
