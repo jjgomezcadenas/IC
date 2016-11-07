@@ -56,11 +56,11 @@ def create_new_file(h5out, h5in, nfiles):
     return evt_out, pmt_out, blr_out, sipm_out
 
 
-def filter_events(h5in, min_signal = 0.):
+def filter_events(h5in, min_signal = 0):
     if "/RD/sipmrwf" not in h5in:
         return np.array([])
     sipms = h5in.root.RD.sipmrwf
-    if min_signal > 0.:
+    if min_signal > 0:
         filtered_events = []
         for i, evt in enumerate(sipms):
             evt = wfm.subtract_baseline(evt, 200)
@@ -73,7 +73,7 @@ def filter_events(h5in, min_signal = 0.):
 
 def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
     COMPRESSION = options.get("compression", "ZLIB4")
-    MIN_SIGNAL = options.get("min_signal", 0.)
+    MIN_SIGNAL = options.get("min_signal", 0)
     print("Using compression mode", COMPRESSION)
 
     with tb.open_file(outputfilename, "w",
@@ -123,4 +123,4 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print_usage()
-    Kr_sipm_filter(sys.argv[1], *sys.argv[2:], single_dice=True)
+    Kr_sipm_filter(sys.argv[1], *sys.argv[2:], min_signal=20)
