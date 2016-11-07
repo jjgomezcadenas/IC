@@ -9,6 +9,7 @@ import sys
 import tables as tb
 import numpy as np
 
+import wfmFunctions as wfm
 import tblFunctions as tbl
 from Nh5 import EventInfo
 
@@ -55,15 +56,25 @@ def create_new_file(h5out, h5in, nfiles):
     return evt_out, pmt_out, blr_out, sipm_out
 
 
-def filter_events(h5in):
+def filter_events(h5in, min_signal=0):
     if "/RD/sipmrwf" not in h5in:
         return np.array([])
+
+    sipms = h5in.root.RD.sipmrwf
+    if min_signal > 0:
+        filtered_events = []
+        for i, evt in enumerate(sipms):
+            evt = wfm.subtract_baseline(evt, 200)
+            if np.max(evt) > min_signal:
+                filtered_events.append(i)
+        return np.array(filtered_events)
     else:
-        return np.arange(h5in.root.RD.sipmrwf.shape[0])
+        return np.arange(sipms.shape[0])
 
 
 def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
     COMPRESSION = options.get("compression", "ZLIB4")
+    MIN_SIGNAL = options.get("min_signal", 0)
     print("Using compression mode", COMPRESSION)
 
     with tb.open_file(outputfilename, "w",
@@ -76,7 +87,7 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
             sys.stdout.flush()
             try:
                 with tb.open_file(filename, "r") as h5in:
-                    filtered_events = filter_events(h5in)
+                    filtered_events = filter_events(h5in, MIN_SIGNAL)
                     n_events_in += h5in.root.RD.pmtrwf.shape[0]
                     n_events_out += len(filtered_events)
                     if create_file and filtered_events.size:
@@ -113,4 +124,4 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print_usage()
-    Kr_sipm_filter(sys.argv[1], *sys.argv[2:])
+    Kr_sipm_filter(sys.argv[1], *sys.argv[2:], min_signal=20)
