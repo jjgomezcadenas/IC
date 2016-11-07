@@ -3,20 +3,19 @@ Defines a class for random sampling.
 """
 from __future__ import print_function
 
+import tables as tb
 import numpy as np
 
 
 class NoiseSampler:
-    def __init__(self, filename, sipmdf, sample_size=1, smear=True):
+    def __init__(self, filename, sample_size=1, smear=True):
         """
         Samples a histogram as if it was a PDF.
 
         Parameters
         ----------
         filename : string
-            Path to the txt file containing the matrix of noise distributions.
-        sipmdf: pandas DataFrame
-            Contains the SiPMs info in DF format.
+            Path and name to the hdf5 file containing the noise distributions.
         sample_size: int
             Number of samples per sensor and call.
         smear: bool
@@ -24,6 +23,8 @@ class NoiseSampler:
 
         Attributes
         ---------
+        baselines : array of floats
+            Pedestal for each SiPM.
         xbins : numpy.ndarray
             Contains the the bins centers in pes.
         dx: float
@@ -32,27 +33,22 @@ class NoiseSampler:
             Matrix holding the probability for each sensor at each bin.
         nsamples: int
             Number of samples per sensor taken at each call.
-        nsensors: int
-            Number of sensors to simulate.
-        output_shape: tuple of ints
-            Shape of the output array
         """
+        self.nsamples = sample_size
 
-        # Read data, take xbins and compute (half of) bin size.
-        data = np.loadtxt(filename)
-        self.xbins = data[0, 1:]
+        # Read data, take xbins, compute (half of) bin size and normalize
+        # probabilities.
+        h5in = tb.open_file(filename)
+        data = h5in.root.data
+
+        self.baselines = np.copy(data.attrs.baselines)
+        self.baselines = self.baselines.reshape(self.baselines.shape[0], 1)
+
+        self.xbins = np.copy(data.attrs.bins)
         self.dx = np.diff(self.xbins)[0] * 0.5
 
-        # Remove masked channels and normalize probabilities
-        self._df = sipmdf
-        channels = self._df["channel"]
-        data = data[np.where(map(channels.values.__contains__, data[:, 0]))]
-        self.probs = np.apply_along_axis(lambda ps: ps/np.sum(ps),
-                                         1, data[:, 1:])
-
-        self.nsamples = sample_size
-        self.nsensors = len(self.probs)
-        self.output_shape = (self.nsensors, self.nsamples)
+        self.probs = np.apply_along_axis(lambda ps: ps/np.sum(ps), 1, data[:])
+        h5in.close()
 
         # Sampling functions
         self._sample_sensor = lambda probs: np.random.choice(
@@ -73,7 +69,7 @@ class NoiseSampler:
         """
         Return a sample of each distribution.
         """
-        return self._sampler()
+        return self._sampler() + self.baselines
 
     def ComputeThresholds(self, noise_cut=0.99, pes_to_adc=None):
         """
@@ -86,19 +82,19 @@ class NoiseSampler:
             Fraction of the distribution to be left behind. Default is 0.99.
         pes_to_adc : float or array of floats, optional
             Constant(s) for adc to pes conversion (default None).
-            If not present, constants are taken from DataFrame given to the
-            constructor.
+            If not present, the thresholds are given in pes.
 
         Returns
         -------
         cuts: array of floats
-            Cuts in adc.
+            Cuts in adc or pes.
         """
         def findcut(probs):
             return self.xbins[probs > noise_cut][0]
 
         if pes_to_adc is None:
-            pes_to_adc = self._df["adc_to_pes"]
+            pes_to_adc = np.ones(self.probs.shape[0])
+        pes_to_adc.reshape(self.probs.shape[0], 1)
 
         cumprobs = np.apply_along_axis(np.cumsum, 1, self.probs)
         return np.apply_along_axis(findcut, 1, cumprobs) * pes_to_adc
