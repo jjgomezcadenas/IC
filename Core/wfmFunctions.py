@@ -9,6 +9,8 @@ ChangeLog
 import math
 import pandas as pd
 import numpy as np
+import scipy as sc
+import scipy.signal
 
 from coreFunctions import dict_map
 import FEParam as FP
@@ -88,10 +90,10 @@ def get_energy(pmtea, event_list=[0]):
     with the sum of the energies for event_number
     """
     NPMT = pmtea.shape[1]
-    epmt = np.zeros(NPMT)
     EPMT = []
 
     for i in event_list:
+        epmt = np.zeros(NPMT)
         for j in range(NPMT):
             epmt[j] = np.sum(pmtea[i, j])
         EPMT.append(epmt)
@@ -201,6 +203,20 @@ def noise_suppression(data, thresholds):
         thresholds = np.ones(data.shape[0]) * thresholds
     suppressed_data = map(suppress_wf, data, thresholds)
     return np.array(suppressed_data)
+
+
+def subtract_baseline(wfs, mau_len = None):
+    """
+    Computes the baseline for each SiPM in the event and subtracts it.
+    For doing so, the first mau_len samples in the waveform are taken.
+    """
+    if mau_len is None:
+        mau_len = wfs.shape[1]
+    b_mau = np.ones(mau_len)*1.0/mau_len
+
+    baseline = lambda wf: sc.signal.lfilter(b_mau, 1, wf)[-1]
+    bls = np.apply_along_axis(baseline, 1, wfs[:,:mau_len])
+    return wfs - bls.reshape(wfs.shape[0],1)
 
 
 def in_window(data, tmin, tmax):
