@@ -13,7 +13,7 @@ np.set_printoptions(threshold='nan')
 offset = 2500
 ceiling = 4096
 n_PMT = 12
-PMT_GAIN = 4.5e6
+PMT_GAIN = 1.7e6
 MAU_WindowSize = 512
 # V_GAIN = 570*units.ohm*0.5 #Gain current --> V = IR Gain = R = 250 Ohm
 V_GAIN = 250*units.ohm
