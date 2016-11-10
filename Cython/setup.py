@@ -10,4 +10,4 @@ np_path = os.environ['NPPATH']
 setup(ext_modules=cythonize('cBLR.pyx'),
       include_dirs=[np_path])
 
-os.system('cp ./build/lib.macosx-10.6-x86_64-2.7/cBLR.so .') 
+os.system('cp ./build/lib.macosx-10.6-x86_64-2.7/Cython/cBLR.so .')
