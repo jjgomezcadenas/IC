@@ -12,12 +12,12 @@ from scipy import signal
 import system_of_units as units
 
 # globals describing FEE
-PMT_GAIN = 4.5e6
-MEASURED_GAIN = 582.237*units.ohm
+PMT_GAIN = 1.7e6
+FEE_GAIN = 582.237*units.ohm
 DAQ_GAIN = 1.25
 NBITS = 12
 LSB = 2.0*units.V/2**NBITS/DAQ_GAIN
-NOISE_I = LSB/(MEASURED_GAIN*DAQ_GAIN)
+NOISE_I = LSB/(FEE_GAIN*DAQ_GAIN)
 NOISE_DAQ = 0.313*units.mV
 
 C2 = 8*units.nF
@@ -29,6 +29,29 @@ f_sample = 1./t_sample
 f_mc = 1./(1*units.ns)
 f_LPF1 = 3*units.MHZ
 f_LPF2 = 10*units.MHZ
+ADC_TO_PES = 20  # nominal factor, comes out from spe area
+OFFSET = 2500  # offset adc
+
+
+def i_to_adc():
+    """
+    current to adc counts
+    """
+    return FEE_GAIN/LSB
+
+
+def i_to_v():
+    """
+    current to voltage
+    """
+    return FEE_GAIN
+
+
+def v_to_adc():
+    """
+    voltage to adc
+    """
+    return 1./LSB
 
 
 class SPE:
@@ -133,7 +156,7 @@ class FEE:
     Complete model of Front-end electronics.
     """
 
-    def __init__(self, gain=MEASURED_GAIN,
+    def __init__(self, gain=FEE_GAIN,
                  c2=C2, c1=C1, r1=R1, zin=Zin, fsample=f_sample,
                  flpf1=f_LPF1, flpf2=f_LPF2,
                  noise_FEEPMB_rms=NOISE_I, noise_DAQ_rms=NOISE_DAQ, lsb=LSB):
@@ -211,30 +234,6 @@ class FEE:
         return self.__str__()
 
 
-def i_to_adc(fee):
-    """
-    input: instances of classes SimpleFEE, SimpleDAQ
-    outputs: current to adc counts
-    """
-    return fee.GAIN/fee.LSB
-
-
-def i_to_v(fee):
-    """
-    input: instance of class FEE
-    output: current to voltage
-    """
-    return fee.GAIN
-
-
-def v_to_adc(fee):
-    """
-    input: instance of class FEE
-    output: voltage to adc
-    """
-    return 1./fee.LSB
-
-
 def noise_adc(fee, signal_in_adc):
     """
     Equivalent Noise of the DAQ added at the output
@@ -243,7 +242,7 @@ def noise_adc(fee, signal_in_adc):
            an instance of FEE class
     output: a signal with DAQ noise added
     """
-    noise_daq = fee.DAQnoise_rms*v_to_adc(fee)
+    noise_daq = fee.DAQnoise_rms*v_to_adc()
     return signal_in_adc + np.random.normal(0,
                                             noise_daq,
                                             len(signal_in_adc))

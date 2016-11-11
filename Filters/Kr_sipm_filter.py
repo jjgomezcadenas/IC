@@ -9,7 +9,9 @@ import sys
 import tables as tb
 import numpy as np
 
+import wfmFunctions as wfm
 import tblFunctions as tbl
+from Nh5 import EventInfo
 
 
 def print_usage():
@@ -24,10 +26,9 @@ def create_new_file(h5out, h5in, nfiles):
 
     rungroup = h5out.create_group(h5out.root, "Run")
     h5in.root.Run.runInfo.copy(newparent=rungroup)
-    evt_out = h5out.create_earray(h5out.root.Run, "event_number",
-                                  atom=tb.Int32Atom(),
-                                  shape=(0,),
-                                  expectedrows=NEVT)
+    evt_out = h5out.create_table(h5out.root.Run, "events", EventInfo,
+                                 "Events information",
+                                 tbl.filters("NOCOMPR"))
 
     detgroup = h5out.create_group(h5out.root, "Detector")
     h5in.root.Detector.DetectorGeometry.copy(newparent=detgroup)
@@ -55,15 +56,25 @@ def create_new_file(h5out, h5in, nfiles):
     return evt_out, pmt_out, blr_out, sipm_out
 
 
-def filter_events(h5in):
+def filter_events(h5in, min_signal=0):
     if "/RD/sipmrwf" not in h5in:
         return np.array([])
+
+    sipms = h5in.root.RD.sipmrwf
+    if min_signal > 0:
+        filtered_events = []
+        for i, evt in enumerate(sipms):
+            evt = wfm.subtract_baseline(evt, 200)
+            if np.max(evt) > min_signal:
+                filtered_events.append(i)
+        return np.array(filtered_events)
     else:
-        return np.arange(h5in.root.RD.sipmrwf.shape[0])
+        return np.arange(sipms.shape[0])
 
 
 def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
     COMPRESSION = options.get("compression", "ZLIB4")
+    MIN_SIGNAL = options.get("min_signal", 0)
     print("Using compression mode", COMPRESSION)
 
     with tb.open_file(outputfilename, "w",
@@ -73,21 +84,32 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
         n_events_out = 0
         for i, filename in enumerate(inputfilenames):
             print("Opening", filename, end="... ")
+            sys.stdout.flush()
             try:
                 with tb.open_file(filename, "r") as h5in:
-                    filtered_events = filter_events(h5in)
+                    filtered_events = filter_events(h5in, MIN_SIGNAL)
                     n_events_in += h5in.root.RD.pmtrwf.shape[0]
                     n_events_out += len(filtered_events)
                     if create_file and filtered_events.size:
-                        evt_out, pmt_out, blr_out, sipm_out = create_new_file(
-                                                              h5out, h5in,
-                                                              len(inputfilenames))
+                        output_data = create_new_file(h5out, h5in,
+                                                      len(inputfilenames))
+                        evt_out, pmt_out, blr_out, sipm_out = output_data
                         create_file = False
+
+                    run = h5in.root.Run.events.cols
+                    evtrow = evt_out.row
+                    rd = h5in.root.RD
                     for evt in filtered_events:
-                        evt_out.append(h5in.root.Run.event_number[evt][np.newaxis])
-                        pmt_out.append(h5in.root.RD.pmtrwf[evt][np.newaxis])
-                        blr_out.append(h5in.root.RD.pmtblr[evt][np.newaxis])
-                        sipm_out.append(h5in.root.RD.sipmrwf[evt][np.newaxis])
+                        evtrow["evt_number"] = run.evt_number[evt]
+                        evtrow["timestamp"] = run.timestamp[evt]
+                        evtrow.append()
+
+                        pmt_out.append(rd.pmtrwf[evt][np.newaxis])
+                        if '/RD/pmtblr' in h5in:
+                            blr_out.append(rd.pmtblr[evt][np.newaxis])
+                        sipm_out.append(rd.sipmrwf[evt][np.newaxis])
+
+                    evt_out.flush()
                 print("OK")
             except:
                 print("Error")
@@ -102,4 +124,4 @@ def Kr_sipm_filter(outputfilename, *inputfilenames, **options):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print_usage()
-    Kr_sipm_filter(sys.argv[1], *sys.argv[2:])
+    Kr_sipm_filter(sys.argv[1], *sys.argv[2:], min_signal=20)

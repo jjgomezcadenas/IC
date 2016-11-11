@@ -19,6 +19,7 @@ from time import time
 import numpy as np
 import tables as tb
 import scipy as sc
+import scipy.signal
 
 from LogConfig import logger
 from Configure import configure, define_event_loop
@@ -41,16 +42,6 @@ ChangeLog:
 31.10 Baseline subtraction for SiPMs introduced.
 
 """
-
-
-def subtract_baseline(wfs, mau_len = 100):
-    """
-    Computes the baseline for each SiPM in the event and subtracts it.
-    For doing so, the first mau_len samples in the waveform are taken.
-    """
-    b_mau = np.ones(mau_len)*1.0/mau_len
-    bls = map(lambda wf: sc.signal.lfilter(b_mau, 1, wf)[-1], wfs[:,:mau_len] )
-    return wfs - np.array(bls).reshape(wfs.shape[0],1)
 
 
 def ANASTASIA(argv):
@@ -106,13 +97,13 @@ def ANASTASIA(argv):
         logger.info("PMT WFL = {} SiPM WFL = {}".format(PMTWL, SIPMWL))
 
         # Calibration constants and their average
-        pmt_cal_consts_raw = pmtdfraw["adc_to_pes"].reshape(NPMT, 1)
-        pmt_cal_consts_blr = pmtdfblr["adc_to_pes"].reshape(NPMT, 1)
+        pmt_cal_consts_raw = abs(pmtdfraw["adc_to_pes"].reshape(NPMT, 1))
+        pmt_cal_consts_blr = abs(pmtdfblr["adc_to_pes"].reshape(NPMT, 1))
         pmt_ave_consts_raw = np.mean(pmt_cal_consts_raw)
         pmt_ave_consts_blr = np.mean(pmt_cal_consts_blr)
 
         # FEE noise in ADC
-        noise_adc = h5in.root.MC.FEE.col("noise_adc")[0]
+        noise_adc = 0.789#h5in.root.MC.FEE.col("noise_adc")[0]
 
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
@@ -175,9 +166,9 @@ def ANASTASIA(argv):
             pmt_zs_.append(pmtcwf_int_pes.reshape(1, 1, PMTWL))
             pmt_zs_blr_.append(pmtblr_int_pes.reshape(1, 1, PMTWL))
 
-            SiPMdata = subtract_baseline(sipmrwf[i], 120)
+            SiPMdata = wfm.subtract_baseline(sipmrwf[i], None)
             SiPMdata = wfm.noise_suppression(SiPMdata, sipms_thresholds_)
-            SiPMdata = wfm.to_pes(SiPMdata, sipmdf)
+            #SiPMdata = wfm.to_pes(SiPMdata, sipmdf)
 
             sipm_zs_.append(SiPMdata.reshape(1, NSIPM, SIPMWL))
         t1 = time()
@@ -185,6 +176,7 @@ def ANASTASIA(argv):
 
         print("ANASTASIA has run over {} events in {} seconds".format(i, dt))
     print("Leaving ANASTASIA. Safe travels!")
+
 
 if __name__ == "__main__":
     from cities import anastasia
