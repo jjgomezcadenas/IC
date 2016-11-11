@@ -15,6 +15,7 @@ import numpy as np
 import tables as tb
 import pandas as pd
 import wfmFunctions as wfm
+import HLObjects as hlo
 
 
 def filters(name):
@@ -173,3 +174,39 @@ def read_wf_table(table, event_number):
                       field="ID"))
     return pd.Panel({isens: wfm.wf2df(*read_wf(table, event_number, isens))
                      for isens in sensor_list})
+
+
+def store_pmap(pmap, table, evt):
+    """
+    Stores a pmap in a table.
+    """
+    row = table.row
+    for i, peak in enumerate(pmap.peaks):
+        for time, ToT, e, qs in peak:
+            row["event"] = evt
+            row["peak"] = i
+            row["signal"] = peak.signal
+            row["time"] = time
+            row["ToT"] = ToT
+            row["cathode"] = e
+            row["anode"] = qs
+            row.append()
+    table.flush()
+
+
+def read_pmap(table, evt):
+    """
+    Reads back the pmap stored in table.
+    """
+    pmap = hlo.PMap()
+    peaks = set(table.read_where("event=={}".format(evt), field="peak"))
+    for peak in peaks:
+        coords = table.get_where_list("(event == {}) & "
+                                      "(peak == {})".format(evt, peak))
+        signal = table[coords[0]]["signal"]
+        times = table.read_coordinates(coords, "time")
+        ToT = table.read_coordinates(coords, "ToT")
+        cathode = table.read_coordinates(coords, "cathode")
+        anode = table.read_coordinates(coords, "anode")
+        pmap.peaks.append(hlo.Peak(times, cathode, anode, ToT, signal))
+    return pmap
