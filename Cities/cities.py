@@ -45,7 +45,7 @@ gives form to desire takes from desire its form, and you believe you are
 enjoying Anastasia wholly when you are only its slave.
 """
 
-dorotea = """
+dorothea = """
 There are two ways of describing the city of Dorothea: you can say that four
 aluminum towers rise from its walls flanking seven gates with spring-operated
 drawbirdges that span the moat whose water feeds four green canals wichi cross
