@@ -77,3 +77,16 @@ class FEE(tables.IsDescription):
     AC = tables.Float32Col(shape=12, pos=15)  # Accumulator coefficients
     CR = tables.Float32Col(shape=12, pos=16)  # calibration constants RAW
     CB = tables.Float32Col(shape=12, pos=17)  # calibration constants BLR
+
+
+class PMAP(tables.IsDescription):
+    """
+    Store for a PMap
+    """
+    event = tables.Int32Col(pos=0)
+    peak = tables.UInt8Col(pos=1)
+    signal = tables.StringCol(2, pos=2)
+    time = tables.Float32Col(pos=3)
+    ToT = tables.UInt16Col(pos=4)
+    cathode = tables.Float32Col(pos=5)
+    anode = tables.Float32Col(pos=6, shape=(1792,))
