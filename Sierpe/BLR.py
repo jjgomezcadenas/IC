@@ -222,6 +222,111 @@ def accumulator_coefficients(CA,NPMT,len_WF):
 
     return coef_acc
 
+
+def discharge_acum(length_d=5000, tau=2500, compress=0.005):
+    t_discharge = np.arange(0,length_d,1,dtype=np.double)
+    exp =  np.exp(-(t_discharge-length_d/2)/tau)
+    cf = 1./(1. + exp)
+    discharge_curve = compress*(1. - cf) + (1. - compress)
+    return discharge_curve
+
+
+def deconvolve_signal_acum(signal_i, n_baseline=500, noise_rms= 0.8,
+                      coef_clean=2.905447E-06, coef_blr=1.632411E-03,
+                      thr_trigger=5, thr_acum=1000, coeff_acum = 0.9995,
+                      acum_discharge_length = 5000, acum_tau=2500, acum_compress=0.0025,
+                      filter_c=True):
+
+    """
+    The accumulator approach by Master VHB
+    decorations by JJGC
+    """
+
+    coef = coef_blr
+    nm = n_baseline
+    len_signal_daq = len(signal_i)
+
+    signal_r = np.zeros(len_signal_daq, dtype=np.double)
+    acum = np.zeros(len_signal_daq, dtype=np.double)
+    pulse_on = np.zeros(len_signal_daq, dtype=np.int8)
+    j_reg = np.zeros(len_signal_daq, dtype=np.double)
+    trigger = np.zeros(len_signal_daq, dtype=np.double)
+
+    # signal_daq in floats
+    signal_daq = signal_i.astype(float)
+
+    # compute baseline and noise
+    baseline = np.mean(signal_daq[0:nm])
+    noise_rms = np.std(signal_daq[0:nm],ddof=1)
+
+    # change sign and subtract baseline
+    signal_daq =  baseline - signal_daq
+
+    # clean the signal_daq
+    if filter_c==True:
+        b_cf, a_cf = SGN.butter(1, coef_clean, 'high', analog=False);
+        signal_daq = SGN.lfilter(b_cf,a_cf,signal_daq)
+
+    # compute discharge curve
+    discharge_curve = discharge_acum(length_d=acum_discharge_length,
+                                     tau=acum_tau,
+                                     compress=acum_compress)
+
+
+    # signal_r equals to signal_d (baseline suppressed and change signed)
+    # for the first nm samples
+    signal_r[0:nm] = signal_daq[0:nm]
+    p_on = 0
+    j=0
+    # print ("baseline = {}, noise (LSB_rms) = {} MAU[nm] ={} ".format(
+    #        baseline, noise_rms, MAU[nm]))
+
+    trigger_line = thr_trigger*noise_rms  # fixed trigger line
+
+    for k in range(nm,len_signal_daq):
+        pulse_on[k] = p_on
+        trigger[k] = trigger_line
+
+        # update recovered signal
+        signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) + coef*acum[k-1]
+
+        # condition: raw signal raises above trigger line
+        # once signal raises above trigger line condition is on until
+        # accumulator drops below thr_acum
+        if (signal_daq[k] > trigger_line) or (acum[k-1] > thr_acum):
+            if p_on == 0:
+                p_on = 1
+
+            # update accumulator
+            acum[k] = acum[k-1] + signal_daq[k]
+        else:
+            if p_on == 1:
+                p_on = 0
+                j = 0
+
+            # discharge acumulator
+            if acum[k-1]>1:
+                acum[k] = acum[k-1]*discharge_curve[j]
+                if j<acum_discharge_length-1:
+                    j=j+1
+                else:
+                    j=acum_discharge_length-1
+            else:
+                acum[k]=0
+                j=0
+        j_reg[k]=j
+
+    BLR={}
+    BLR['acum'] = acum
+    BLR['pulse_on'] = pulse_on
+    BLR['signal_daq'] = signal_daq
+    BLR['signal_r'] = signal_r
+    BLR['j_reg'] = j_reg
+    BLR['trigger'] = trigger
+
+    return pd.DataFrame(BLR)
+
+
 def DBLR(pmtrd, event_number, coeff_acc, mau_len=250,
          thr1 = FP.NOISE_ADC, thr2=0, thr3 = FP.NOISE_ADC, log='INFO'):
     """
