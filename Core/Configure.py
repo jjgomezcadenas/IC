@@ -83,6 +83,8 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
     """
     defines the number of events to run in the loop
     """
+    if RUN_ALL:
+        return 0, NEVENTS_DST
     first = FIRST_EVT
     last = LAST_EVT
     if NEVENTS > NEVENTS_DST and RUN_ALL is False:
