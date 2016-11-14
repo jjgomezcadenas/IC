@@ -171,7 +171,7 @@ cpdef BLR(np.ndarray[np.int16_t, ndim=1] signal_daq, float coef,
     #return  signal_r.astype(int)
     return  signal_r.astype(int), MAU, pulse_, wait_
 
-cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
+cpdef deconvolve_signal_acum_simple(np.ndarray[np.int16_t, ndim=1] signal_i,
                              int n_baseline=500,
                              float coef_clean=2.905447E-06,
                              float coef_blr=1.632411E-03,
@@ -224,3 +224,110 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
                 acum[k]=acum[k-1]*coeff_acum
 
     return signal_r.astype(int), acum
+
+
+cpef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
+                            int n_baseline=500,
+                            float coef_clean=2.905447E-06,
+                            float coef_blr=1.632411E-03,
+                            float thr_trigger=5,
+                            float thr_acum=1000,
+                            int acum_discharge_length = 5000,
+                            float acum_tau=2500,
+                            float acum_compress=0.0025):
+
+    """
+    The accumulator approach by Master VHB
+    decorated and cythonized  by JJGC
+    """
+
+    cdef float coef = coef_blr
+    cdef int nm = n_baseline
+    cdef int len_signal_daq = len(signal_i)
+
+    cdef np.ndarray[np.float64_t, ndim=1] signal_r = np.zeros(len_signal_daq,
+                                                              dtype=np.double)
+    cdef np.ndarray[np.float64_t, ndim=1] acum = np.zeros(len_signal_daq,
+                                                          dtype=np.double)
+    # signal_daq in floats
+    cdef np.ndarray[np.float64_t, ndim=1] signal_daq = signal_i.astype(float)
+
+    # compute baseline and noise
+
+    cdef int j
+    cdef float baseline = 0.
+    for j in range(0,nm):
+        baseline += signal_daq[j]
+    baseline /= nm
+
+    # reverse sign of signal and subtract baseline
+    signal_daq =  baseline - signal_daq
+
+    # compute noise
+    cdef float noise =  0.
+    for j in range(0,nm):
+        noise += signal_daq[j]*signal_daq[j]
+    noise /= nm
+    cdef float noise_rms = np.sqrt(noise)
+
+    # trigger line
+
+    cdef float trigger_line
+    trigger_line = thr_trigger*noise_rms
+
+    # cleaning signal
+    cdef np.ndarray[np.float64_t, ndim=1] b_cf
+    cdef np.ndarray[np.float64_t, ndim=1] a_cf
+
+    b_cf, a_cf = SGN.butter(1, coef_clean, 'high', analog=False);
+    signal_daq = SGN.lfilter(b_cf,a_cf,signal_daq)
+
+    # compute discharge curve
+    cdef np.ndarray[np.float64_t, ndim=1] t_discharge
+    cdef np.ndarray[np.float64_t, ndim=1] exp
+    cdef np.ndarray[np.float64_t, ndim=1] cf
+    cdef np.ndarray[np.float64_t, ndim=1] discharge_curve
+
+    cdef float d_length = float(acum_discharge_length)
+    t_discharge = np.arange(0, d_length, 1, dtype=np.double)
+    exp =  np.exp(-(t_discharge - d_length/2.)/acum_tau)
+    cf = 1./(1. + exp)
+    discharge_curve = acum_compress*(1. - cf) + (1. - acum_compress)
+
+    # signal_r equals to signal_d (baseline suppressed and change signed)
+    # for the first nm samples
+    signal_r[0:nm] = signal_daq[0:nm]
+
+    # print ("baseline = {}, noise (LSB_rms) = {} MAU[nm] ={} ".format(
+    #        baseline, noise_rms, MAU[nm]))
+
+    cdef int k, j
+    j=0
+    for k in range(nm,len_signal_daq):
+
+        # update recovered signal
+        signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) +\
+                      coef_blr * acum[k-1]
+
+        # condition: raw signal raises above trigger line
+        # once signal raises above trigger line condition is on until
+        # accumulator drops below thr_acum
+        if (signal_daq[k] > trigger_line) or (acum[k-1] > thr_acum):
+
+            # update accumulator (signal_daq is already baseline subtracted)
+            acum[k] = acum[k-1] + signal_daq[k]
+        else:
+                j = 0
+
+            # discharge acumulator
+            if acum[k-1]>1:
+                acum[k] = acum[k-1] * discharge_curve[j]
+                if j < acum_discharge_length - 1:
+                    j = j + 1
+                else:
+                    j = acum_discharge_length - 1
+            else:
+                acum[k]=0
+                j=0
+
+    return signal_r, acum
