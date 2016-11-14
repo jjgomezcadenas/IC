@@ -226,7 +226,7 @@ cpdef deconvolve_signal_acum_simple(np.ndarray[np.int16_t, ndim=1] signal_i,
     return signal_r.astype(int), acum
 
 
-cpef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
+cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
                             int n_baseline=500,
                             float coef_clean=2.905447E-06,
                             float coef_blr=1.632411E-03,
@@ -298,10 +298,10 @@ cpef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
     # for the first nm samples
     signal_r[0:nm] = signal_daq[0:nm]
 
-    # print ("baseline = {}, noise (LSB_rms) = {} MAU[nm] ={} ".format(
-    #        baseline, noise_rms, MAU[nm]))
+    print ("baseline = {}, noise (LSB_rms) = {} ".format(
+            baseline, noise_rms,))
 
-    cdef int k, j
+    cdef int k
     j=0
     for k in range(nm,len_signal_daq):
 
@@ -317,8 +317,7 @@ cpef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
             # update accumulator (signal_daq is already baseline subtracted)
             acum[k] = acum[k-1] + signal_daq[k]
         else:
-                j = 0
-
+            j = 0
             # discharge acumulator
             if acum[k-1]>1:
                 acum[k] = acum[k-1] * discharge_curve[j]
