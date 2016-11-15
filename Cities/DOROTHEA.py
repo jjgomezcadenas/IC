@@ -192,12 +192,14 @@ def DOROTHEA(argv):
             pmaps_blr_.cols.event.create_index()
 
             # LOOP
-            first_evt, last_evt = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                    NEVENTS, NEVT,
-                                                    RUN_ALL)
+            first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT,
+                                                               LAST_EVT,
+                                                               NEVENTS, NEVT,
+                                                               RUN_ALL)
             t0 = time()
             for i in range(first_evt, last_evt):
-                logger.info("-->event number = {}".format(i))
+                if not i%print_mod:
+                    logger.info("-->event number = {}".format(i))
 
                 pmtwf = np.sum(pmtzs_[i] * pmt_to_pes, axis=0)
                 blrwf = np.sum(blrzs_[i] * blr_to_pes, axis=0)

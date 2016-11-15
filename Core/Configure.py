@@ -84,7 +84,7 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
     defines the number of events to run in the loop
     """
     if RUN_ALL:
-        return 0, NEVENTS_DST
+        return 0, NEVENTS_DST, NEVENTS_DST//20
     first = FIRST_EVT
     last = LAST_EVT
     if NEVENTS > NEVENTS_DST and RUN_ALL is False:
@@ -102,7 +102,7 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
     elif NEVENTS > NEVENTS_DST and RUN_ALL is True:
         first = 0
         last = NEVENTS_DST
-    return first, last
+    return first, last, (last-first)//20
 
 #
 #
