@@ -1,21 +1,24 @@
-#Configuration file for DIOMIRA
+# Configuration file for DIOMIRA
 # The parameters for DIOMIRA are:
 #
 #        PATH_IN = path to input DST file (must be a MCRD file)
 #        FILE_IN = name of input DST file
-#        PATH_OUT = path to output DST file (RWF file)
-#        FILE_OUT = name of ouput DST file (RWF file)
-#        PATH_DB  = path to the database directory
-#        FIRST_EVT,LAST_EVT,RUN_ALL,
+#        PATH_OUT = path to output DST file (RD file)
+#        FILE_OUT = name of output DST file (RD file)
+#        FIRST_EVT = first event to be read
+#        LAST_EVT = last event to be read
+#        RUN_ALL = flag to decide whether to run over all events (in which case
+#                  the previous two parameters are ignored)
+#        NOISE_CUT = soft noise cut (max of 1 pes) to reduce SiPM size
+#        COMPRESSION = defines the compression library
+#                      (available options in tblFunctions.filters)
 #
-#        RUN_ALL is used to decide whether to run all the events in the file
-#        in case that the total number of events requested (LAST_EVT-FIRST_EVT)
-#        exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True),
-#        the script will run over all elements in the DST,
-#        otherwise it will exit with a warning.
-#        COMPRESSION defines the compression library
-#        CLEVEL = compression level
-#        Soft noise cut (max of 1 pes) to reduce SiPM size
-#
-PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,FIRST_EVT,LAST_EVT,RUN_ALL,NOISE_CUT,COMPRESSION
-$ICDATA,$ICDATA/,in0.h5,out0.h5,0,500,1,0.9,ZLIB4
+PATH_IN $ICDATADIR
+PATH_OUT $ICDATADIR
+FILE_IN in0.h5
+FILE_OUT out0.h5
+FIRST_EVT 0
+LAST_EVT 100
+RUN_ALL True
+NOISE_CUT 0.9
+COMPRESSION ZLIB4

@@ -74,8 +74,7 @@ def configure(pname, argv):
         usage(pname)
         sys.exit()
 
-    cfp = pd.read_csv(cfile, comment="#")
-    CFP = cdf_to_dict(cfp)
+    CFP = read_config_file(cfile)
     return DEBUG, INFO, CFP
 
 
@@ -104,9 +103,29 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
         last = NEVENTS_DST
     return first, last, (last-first)//20
 
-#
-#
-#
-#
-# if __name__ == '__main__':
-#     INFO, CFP = configure(sys.argv[0],sys.argv[1:])
+
+def cast(value):
+    if value == "True":
+        return True
+    if value == "False":
+        return False
+    if value.isdigit():
+        return int(value)
+    if value.replace(".", "").isdigit():
+        return float(value)
+    if "$" in value:
+        value = os.path.expandvars(value)
+    return value
+
+
+def read_config_file(cfile):
+    d = {"PATH_DB": os.environ["ICDBDIR"]}
+    for line in open(cfile, "r"):
+        if line[0] == "#":
+            continue
+        tokens = line.rstrip().split(" ")
+        key = tokens[0]
+
+        value = map(cast, tokens[1:])
+        d[key] = value[0] if len(value) == 1 else value
+    return d
