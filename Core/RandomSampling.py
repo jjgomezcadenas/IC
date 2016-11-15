@@ -47,23 +47,26 @@ class NoiseSampler:
         self.xbins = np.copy(data.attrs.bins)
         self.dx = np.diff(self.xbins)[0] * 0.5
 
-        self.probs = np.apply_along_axis(lambda ps: ps/np.sum(ps), 1, data[:])
+        def norm(ps):
+            return ps/np.sum(ps) if ps.any() else ps
+
+        self.probs = np.apply_along_axis(norm, 1, data[:])
+        print('probs shape',self.probs.shape)
         h5in.close()
 
         # Sampling functions
-        self._sample_sensor = lambda probs: np.random.choice(
-                                            self.xbins,
-                                            size=self.nsamples,
-                                            p=probs)
-        self._discrete_sampler = lambda: np.apply_along_axis(
-                                         self._sample_sensor,
-                                         1, self.probs)
-        self._continuous_sampler = lambda: (self._discrete_sampler() +
-                                            np.random.uniform(-self.dx,
-                                                              self.dx))
+        def _sample_sensor(probs):
+            if not probs.any():
+                return np.zeros(self.nsamples)
+            return np.random.choice(self.xbins, size=self.nsamples, p=probs)
 
-        self._sampler = (self._continuous_sampler if smear
-                         else self._discrete_sampler)
+
+        _discrete_sampler = lambda: np.apply_along_axis(_sample_sensor,
+                                                        1, self.probs)
+        _continuous_sampler = lambda: (_discrete_sampler() +
+                                       np.random.uniform(-self.dx, self.dx))
+
+        self._sampler = _continuous_sampler if smear else _discrete_sampler
 
     def Sample(self):
         """
@@ -90,6 +93,8 @@ class NoiseSampler:
             Cuts in adc or pes.
         """
         def findcut(probs):
+            if not probs.any():
+                return np.inf
             return self.xbins[probs > noise_cut][0]
 
         if pes_to_adc is None:
