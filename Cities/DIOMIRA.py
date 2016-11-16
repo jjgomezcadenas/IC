@@ -30,7 +30,7 @@ import Core.tblFunctions as tbl
 from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 
 import Sierpe.FEE as FE
-from Database import loadDB
+import Database.loadDB as DB
 
 
 """

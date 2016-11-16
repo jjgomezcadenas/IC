@@ -18,6 +18,8 @@ import pandas as pd
 
 import Core.wfmFunctions as wfm
 import Core.Bridges as bdg
+import Database.loadDB as DB
+import Sierpe.FEE as FE
 
 
 def filters(name):
@@ -57,7 +59,7 @@ def FEE_param_table(fee_table):
     """
     Stores the parameters of the EP FEE simulation
     """
-    DataPMT = loadDB.DataPMT()
+    DataPMT = DB.DataPMT()
     row = fee_table.row
     row["OFFSET"] = FE.OFFSET
     row["CEILING"] = FE.CEILING

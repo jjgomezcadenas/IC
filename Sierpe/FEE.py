@@ -9,7 +9,7 @@ from __future__ import print_function
 
 import numpy as np
 from scipy import signal
-import system_of_units as units
+import Core.system_of_units as units
 
 # globals describing FEE
 PMT_GAIN = 1.7e6

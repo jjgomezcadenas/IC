@@ -68,28 +68,28 @@ class FEE(tb.IsDescription):
     """
     Stores the parameters used by the EP simulation as metadata
     """
-    OFFSET = tables.Int16Col(pos=1)  # displaces the baseline (e.g, 700)
-    CEILING = tables.Int16Col(pos=2)  # adc top count (4096)
-    PMT_GAIN = tables.Float32Col(pos=3)  # Gain of PMT (4.5e6)
-    FEE_GAIN = tables.Float32Col(pos=4)  # FE gain (250*ohm)
-    R1 = tables.Float32Col(pos=5)  # resistor in Ohms (2350*ohm)
-    C1 = tables.Float32Col(pos=6)  # Capacitor C1 in nF
-    C2 = tables.Float32Col(pos=7)  # Capacitor C2 in nF
-    ZIN = tables.Float32Col(pos=8)  # equivalent impedence
-    DAQ_GAIN = tables.Float32Col(pos=9)
-    NBITS = tables.Float32Col(pos=10)  # number of bits ADC
-    LSB = tables.Float32Col(pos=11)  # LSB (adc count)
-    NOISE_I = tables.Float32Col(pos=12)  # Noise at the input
-    NOISE_DAQ = tables.Float32Col(pos=13) # Noise at DAQ
-    t_sample = tables.Float32Col(pos=14) # sampling time
-    f_sample = tables.Float32Col(pos=15) # sampling frequency
-    f_mc = tables.Float32Col(pos=16) # sampling frequency in MC (1ns)
-    f_LPF1 = tables.Float32Col(pos=17)  # LPF
-    f_LPF2 = tables.Float32Col(pos=18)  # LPF
-    coeff_c = tables.Float64Col(shape=12, pos=19)  # cleaning coeff
-    coeff_blr = tables.Float64Col(shape=12, pos=20)  # COEFF BLR
-    adc_to_pes = tables.Float32Col(shape=12, pos=21)  # CALIB CONST
-    pmt_noise_rms = tables.Float32Col(shape=12, pos=22)  # rms noise
+    OFFSET = tb.Int16Col(pos=1)  # displaces the baseline (e.g, 700)
+    CEILING = tb.Int16Col(pos=2)  # adc top count (4096)
+    PMT_GAIN = tb.Float32Col(pos=3)  # Gain of PMT (4.5e6)
+    FEE_GAIN = tb.Float32Col(pos=4)  # FE gain (250*ohm)
+    R1 = tb.Float32Col(pos=5)  # resistor in Ohms (2350*ohm)
+    C1 = tb.Float32Col(pos=6)  # Capacitor C1 in nF
+    C2 = tb.Float32Col(pos=7)  # Capacitor C2 in nF
+    ZIN = tb.Float32Col(pos=8)  # equivalent impedence
+    DAQ_GAIN = tb.Float32Col(pos=9)
+    NBITS = tb.Float32Col(pos=10)  # number of bits ADC
+    LSB = tb.Float32Col(pos=11)  # LSB (adc count)
+    NOISE_I = tb.Float32Col(pos=12)  # Noise at the input
+    NOISE_DAQ = tb.Float32Col(pos=13) # Noise at DAQ
+    t_sample = tb.Float32Col(pos=14) # sampling time
+    f_sample = tb.Float32Col(pos=15) # sampling frequency
+    f_mc = tb.Float32Col(pos=16) # sampling frequency in MC (1ns)
+    f_LPF1 = tb.Float32Col(pos=17)  # LPF
+    f_LPF2 = tb.Float32Col(pos=18)  # LPF
+    coeff_c = tb.Float64Col(shape=12, pos=19)  # cleaning coeff
+    coeff_blr = tb.Float64Col(shape=12, pos=20)  # COEFF BLR
+    adc_to_pes = tb.Float32Col(shape=12, pos=21)  # CALIB CONST
+    pmt_noise_rms = tb.Float32Col(shape=12, pos=22)  # rms noise
 
 
 class PMAP(tb.IsDescription):
