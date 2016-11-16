@@ -100,8 +100,8 @@ def ISIDORA(argv):
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
     COEFF = CFP["COEF"]
-    CA = CFP["CA"] * units.nF
-    AC = CFP["AC"]
+    CA = np.array(CFP["CA"]) * units.nF
+    AC = np.array(CFP["AC"])
     MAU_LEN = CFP["MAU_LEN"]
     NSIGMA1 = CFP["NSIGMA1"]
     NSIGMA2 = CFP["NSIGMA2"]
