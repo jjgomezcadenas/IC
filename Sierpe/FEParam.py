@@ -4,7 +4,7 @@ Parameters defining NEW PMT + FEE
 import math
 import numpy as np
 
-import system_of_units as units
+import Core.system_of_units as units
 
 
 np.set_printoptions(threshold='nan')

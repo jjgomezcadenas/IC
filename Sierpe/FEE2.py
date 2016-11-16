@@ -8,10 +8,10 @@ import numpy as np
 from scipy import signal as SGN
 import matplotlib.pyplot as plt
 
-import system_of_units as units
-import mplFunctions as mpl
-import FEParam as FP
-import SPE as SP
+import Core.system_of_units as units
+import Core.mplFunctions as mpl
+import Sierpe.FEParam as FP
+import Sierpe.SPE as SP
 
 
 def DownScaleSignal(signal_t, signal, scale):
