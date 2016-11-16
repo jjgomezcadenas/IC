@@ -114,25 +114,25 @@ def W_LPF_daq():
 
 
 def print_FEE():
-    print """
-    NEW FEE: DEFAULT PARAMETERS
-    PMT gain = %7.2g
-    sampling time: (fine) = %7.2f ns (DAQ) = %7.2f ns
-    decoupling capacitor = %7.2f nF
-    decoupling resistor = %7.2f ohm
-    HPF frequency = %7.2f Hz  W_HPF_fine = %7.2g W_HPF_daq = %7.2g
-    LPF frequency = %7.2f Hz  W_LPF_fine = %7.2g W_LPF_daq = %7.2g
-    noise = %7.2f mV
-    noise (adc) = %7.2f
-    vots to adc factor = %7.2f
-    """.format(pmt_gain(), sampling_time()/units.ns, sampling_DAQ()/units.ns,
-               decoupling_capacitor()/units.nF, decoupling_resitor()/units.ohm,
-               f_HPF()/units.hertz, W_HPF_fine(), W_HPF_daq(),
-               f_LPF()/units.hertz, W_LPF_fine(), W_LPF_daq(),
-               NOISE_FEE_rms/units.mV, NOISE_FEE_rms/voltsToAdc,
-               units.mV/voltsToAdc)
-    print "decoupling capacitors for energy plane = %s".format(C12/units.nF)
 
+  print("""
+  NEW FEE: DEFAULT PARAMETERS
+  PMT gain = %7.2g
+  sampling time: (fine) = %7.2f ns (DAQ) = %7.2f ns
+  decoupling capacitor = %7.2f nF
+  decoupling resistor = %7.2f ohm
+  HPF frequency = %7.2f Hz  W_HPF_fine = %7.2g W_HPF_daq = %7.2g
+  LPF frequency = %7.2f Hz  W_LPF_fine = %7.2g W_LPF_daq = %7.2g
+  noise = %7.2f mV
+  noise (adc) = %7.2f
+  vots to adc factor = %7.2f
+  """%(pmt_gain(),sampling_time()/ns,sampling_DAQ()/ns,
+    decoupling_capacitor()/nF,decoupling_resitor()/ohm,f_HPF()/hertz,
+    W_HPF_fine(), W_HPF_daq(), f_LPF()/hertz,
+     W_LPF_fine(), W_LPF_daq(), NOISE_FEE_rms/mV, NOISE_FEE_rms/voltsToAdc,
+     mV/voltsToAdc ))
+
+  print("decoupling capacitors for energy plane = %s"%(C12/nF))
 
 def pulse_area(pulse):
     return np.sum(pulse)
