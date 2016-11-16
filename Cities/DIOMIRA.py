@@ -237,7 +237,6 @@ def DIOMIRA(argv):
     logger.info("Debug level = {}".format(DEBUG_LEVEL))
     logger.info("Input path = {}; output path = {}".format(PATH_IN, PATH_OUT))
     logger.info("File_in = {} file_out = {}".format(FILE_IN, FILE_OUT))
-    logger.info("Path to database = {}".format(PATH_DB))
     logger.info("First event = {} last event = {} "
                 "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
     logger.info("Compression library/level = {}".format(COMPRESSION))
