@@ -125,12 +125,14 @@ def ANASTASIA(argv):
                                       shape=(0, NSIPM, SIPMWL),
                                       expectedrows=NEVT)
 
-        first_evt, last_evt = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                NEVENTS, NEVT, RUN_ALL)
+        first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
+                                                           NEVENTS,
+                                                           NEVT, RUN_ALL)
 
         t0 = time()
         for i in range(first_evt, last_evt):
-            logger.info("-->event number ={}".format(i))
+            if not i%print_mod:
+                logger.info("-->event number = {}".format(i))
 
             pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)
             blrzs = wfm.noise_suppression(pmtblr[i], PMT_NOISE_CUT_BLR)
