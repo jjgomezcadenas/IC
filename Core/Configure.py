@@ -128,7 +128,7 @@ def read_config_file(cfile):
     """
     d = {"PATH_DB": os.environ["ICDBDIR"]}
     for line in open(cfile, "r"):
-        if line[0] == "#":
+        if line == "\n" or line[0] == "#":
             continue
         tokens = line.rstrip().split(" ")
         key = tokens[0]
