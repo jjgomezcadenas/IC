@@ -20,8 +20,8 @@ import tables as tb
 from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
 
-import Core.sensorFunctions as snf
 import Core.wfmFunctions as wfm
+import Database.loadDB as DB
 
 from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 """
@@ -38,6 +38,8 @@ ChangeLog:
 31.10 Baseline subtraction for SiPMs introduced.
 
 10.11 Waveforms stay in adc counts. All PMTs are now stored.
+
+16.11 Using new database facility
 """
 
 
@@ -52,7 +54,6 @@ def ANASTASIA(argv):
 
     PATH_IN = CFP["PATH_IN"]
     FILE_IN = CFP["FILE_IN"]
-    PATH_DB = CFP["PATH_DB"]
     FIRST_EVT = CFP["FIRST_EVT"]
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
@@ -66,7 +67,6 @@ def ANASTASIA(argv):
 
     logger.info("Debug level = {}".format(DEBUG_LEVEL))
     logger.info("input file = {}/{}".format(PATH_IN, FILE_IN))
-    logger.info("path to database = {}".format(PATH_DB))
     logger.info("First event = {} last event = {} "
                 "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
     logger.info("ZS method PMTS RAW = {}. "
@@ -80,8 +80,7 @@ def ANASTASIA(argv):
         pmtblr = h5in.root.RD.pmtblr
         pmtcwf = h5in.root.RD.pmtcwf
         sipmrwf = h5in.root.RD.sipmrwf
-        sipmdata = h5in.root.Sensors.DataSiPM
-        sipmdf = snf.read_data_sensors(sipmdata)
+        sipmdf = DB.DataSiPM()
 
         NEVT, NPMT, PMTWL = pmtcwf.shape
         NEVT, NSIPM, SIPMWL = sipmrwf.shape
@@ -91,8 +90,7 @@ def ANASTASIA(argv):
         logger.info("PMT WFL = {} SiPM WFL = {}".format(PMTWL, SIPMWL))
 
         # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
-                                                 SIPMWL)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(SIPMWL)
 
         if SIPM_ZS_METHOD == "FRACTION":
             sipms_thresholds_ = sipms_noise_sampler_.ComputeThresholds(
@@ -131,7 +129,7 @@ def ANASTASIA(argv):
 
         t0 = time()
         for i in range(first_evt, last_evt):
-            if not i%print_mod:
+            if not i % print_mod:
                 logger.info("-->event number = {}".format(i))
 
             pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)

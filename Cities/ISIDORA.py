@@ -24,7 +24,6 @@ from Core.Configure import configure, define_event_loop
 
 import Sierpe.FEParam as FP
 import Sierpe.FEE2 as FE
-import Core.coreFunctions as cf
 from ICython import cBLR
 
 
@@ -179,7 +178,7 @@ def ISIDORA(argv):
 
         t0 = time()
         for i in range(first_evt, last_evt):
-            if not i%print_mod:
+            if not i % print_mod:
                 logger.info("-->event number = {}".format(i))
 
             signal_r, xmau, pulse_, wait_ = DBLR(pmtrd_, i, coeff_acc,
