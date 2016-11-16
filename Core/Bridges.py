@@ -1,7 +1,6 @@
 """
 Definition of high level objects.
 """
-
 import numpy as np
 
 

@@ -2,10 +2,11 @@
 Configure running options for the cities
 JJGC August 2016
 """
-from LogConfig import logger
 import getopt
 import sys
 import os
+
+from Core.LogConfig import logger
 
 
 def cdf_to_dict(cdf):

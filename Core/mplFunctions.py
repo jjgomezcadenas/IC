@@ -10,10 +10,10 @@ from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 # from mpl_toolkits.mplot3d import Axes3D
 
-import coreFunctions as cf
-import system_of_units as units
-import wfmFunctions as wfm
-import tblFunctions as tbl
+import Core.coreFunctions as cf
+import Core.system_of_units as units
+import Core.wfmFunctions as wfm
+import Core.tblFunctions as tbl
 
 
 # matplotlib.style.use("ggplot")
