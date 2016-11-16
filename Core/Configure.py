@@ -2,10 +2,11 @@
 Configure running options for the cities
 JJGC August 2016
 """
-from LogConfig import logger
 import getopt
 import sys
 import os
+
+from Core.LogConfig import logger
 
 
 def cdf_to_dict(cdf):
@@ -85,7 +86,7 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
         return 0, NEVENTS_DST, NEVENTS_DST//20
     first = FIRST_EVT
     last = LAST_EVT
-    if NEVENTS > NEVENTS_DST and RUN_ALL is False:
+    if NEVENTS > NEVENTS_DST:
         print("""
                 Refusing to run: you have requested
                 FIRST_EVT = {}
@@ -97,10 +98,8 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
                 """.format(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST))
         sys.exit(0)
 
-    elif NEVENTS > NEVENTS_DST and RUN_ALL is True:
-        first = 0
-        last = NEVENTS_DST
-    return first, last, (last-first)//20
+    print_mod = (last-first)//20 if last-first >= 20 else 1
+    return first, last, print_mod
 
 
 def cast(value):

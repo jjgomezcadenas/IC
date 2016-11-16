@@ -346,7 +346,7 @@ def DIOMIRA(argv):
                                           shape=(0, NSIPM, SIPMWL),
                                           expectedrows=NEVENTS_DST)
             # LOOP
-            first_evt, last_evt, prind_mod = define_event_loop(FIRST_EVT,
+            first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT,
                                                                LAST_EVT,
                                                                NEVENTS,
                                                                NEVENTS_DST,

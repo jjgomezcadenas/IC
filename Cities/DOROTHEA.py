@@ -22,7 +22,7 @@ from time import time
 import Core.system_of_units as units
 from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
-from Core.HLObjects import Signal, Peak, PMap
+from Core.Bridges import Signal, Peak, PMap
 from Core.Nh5 import PMAP
 
 import Core.tblFunctions as tbl

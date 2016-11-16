@@ -5,7 +5,7 @@ from __future__ import print_function
 
 import sys
 
-import Core.HLObjects as hlo
+import Core.Bridges as bdg
 import Core.tblFunctions as tbl
 
 
@@ -32,8 +32,8 @@ class numberS1S2:
 
     def __call__(self, f, i):
         pmap = tbl.read_pmap(f.root.PMAPS.PMaps, i)
-        if len(filter(lambda p: p.signal == hlo.Signal.S1, pmap)) != self.nS1:
+        if len(filter(lambda p: p.signal == bdg.Signal.S1, pmap)) != self.nS1:
             return False
-        if len(filter(lambda p: p.signal == hlo.Signal.S2, pmap)) != self.nS2:
+        if len(filter(lambda p: p.signal == bdg.Signal.S2, pmap)) != self.nS2:
             return False
         return True

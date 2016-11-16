@@ -11,11 +11,13 @@ now returns also calibration constants for RWF and BLR (MC version)
 """
 
 from __future__ import print_function
+
 import numpy as np
 import tables as tb
 import pandas as pd
-import wfmFunctions as wfm
-import HLObjects as hlo
+
+import Core.wfmFunctions as wfm
+import Core.Bridges as bdg
 
 
 def filters(name):
@@ -198,7 +200,7 @@ def read_pmap(table, evt):
     """
     Reads back the pmap stored in table.
     """
-    pmap = hlo.PMap()
+    pmap = bdg.PMap()
     peaks = set(table.read_where("event=={}".format(evt), field="peak"))
     for peak in peaks:
         coords = table.get_where_list("(event == {}) & "
@@ -208,5 +210,5 @@ def read_pmap(table, evt):
         ToT = table.read_coordinates(coords, "ToT")
         cathode = table.read_coordinates(coords, "cathode")
         anode = table.read_coordinates(coords, "anode")
-        pmap.peaks.append(hlo.Peak(times, cathode, anode, ToT, signal))
+        pmap.peaks.append(bdg.Peak(times, cathode, anode, ToT, signal))
     return pmap
