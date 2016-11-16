@@ -15,7 +15,7 @@ def wait():
 
 def dict_map(F, D):
     '''
-    Apply map to dictionary values without losing correspondence.
+    Apply map to dictionary values maintaining correspondence.
     '''
     return {key: F(val) for key, val in D.iteritems()}
 

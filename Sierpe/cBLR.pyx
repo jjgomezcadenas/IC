@@ -1,16 +1,13 @@
 
 import numpy as np
 cimport numpy as np
-import pandas as pd
-import FEParam as FP
-import SPE as SP
-import FEE2 as FE
 from scipy import signal as SGN
 
+cpdef test():
+    print('hello')
 
-cpdef cBLR(np.ndarray[np.int16_t, ndim=1] signal_daq, float coef,
-           int nm=250, float thr1 = 3*FP.NOISE_ADC, float thr2 = 0,
-           float thr3 = FP.NOISE_ADC):
+cpdef BLR(np.ndarray[np.int16_t, ndim=1] signal_daq, float coef,
+           int nm, float thr1, float thr2, float thr3):
     """
     Deconvolution offline of the DAQ signal
     """
@@ -173,3 +170,57 @@ cpdef cBLR(np.ndarray[np.int16_t, ndim=1] signal_daq, float coef,
 
     #return  signal_r.astype(int)
     return  signal_r.astype(int), MAU, pulse_, wait_
+
+cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
+                             int n_baseline=500,
+                             float coef_clean=2.905447E-06,
+                             float coef_blr=1.632411E-03,
+                             float noise_rms = 0.9,
+                             float thr_trigger=5, float thr_acum=800,
+                             float coeff_acum = 0.9995):
+
+    """
+    The accumulator approach by Master VHB
+
+    """
+
+    cdef float coef = coef_blr
+    cdef int nm = n_baseline
+
+    cdef int len_signal_daq = len(signal_i)
+    cdef np.ndarray[np.float64_t, ndim=1] signal_r = np.zeros(len_signal_daq,
+                                                              dtype=np.float64)
+    cdef np.ndarray[np.float64_t, ndim=1] acum = np.zeros(len_signal_daq,
+                                                          dtype=np.double)
+
+    cdef np.ndarray[np.float64_t, ndim=1] signal_daq = signal_i.astype(float)
+    cdef int j
+    cdef float baseline = 0.
+    for j in range(0,nm):
+        baseline += signal_daq[j]
+    baseline /= nm
+    cdef float trigger_line
+    trigger_line = thr_trigger*noise_rms
+
+    signal_daq =  baseline - signal_daq
+
+    b_cf, a_cf = SGN.butter(1, coef_clean, 'high', analog=False);
+    signal_daq = SGN.lfilter(b_cf,a_cf,signal_daq)
+
+    # BLR
+    signal_r[0:nm] = signal_daq[0:nm]
+    cdef int k
+    for k in range(nm,len_signal_daq):
+        # condition: raw signal raises above trigger line
+        if (signal_daq[k] > trigger_line) or (acum[k-1] > thr_acum):
+
+            signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) + coef*acum[k-1]
+            acum[k] = acum[k-1] + signal_daq[k]
+
+        else:
+            signal_r[k] = signal_daq[k]
+            # deplete the accumulator before or after the signal to avoid runoffs
+            if (acum[k-1]>0):
+                acum[k]=acum[k-1]*coeff_acum
+
+    return signal_r.astype(int), acum

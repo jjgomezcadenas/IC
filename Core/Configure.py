@@ -2,11 +2,11 @@
 Configure running options for the cities
 JJGC August 2016
 """
-import logging
 from LogConfig import logger
 import pandas as pd
 import getopt
 import sys
+import os
 
 
 def cdf_to_dict(cdf):
@@ -15,7 +15,11 @@ def cdf_to_dict(cdf):
     """
     dc = {}
     for k in cdf.keys():
-        dc[k] = cdf[k][0]
+        value = cdf[k][0]
+        if isinstance(value, str) and "$" in value:
+            value = os.path.expandvars(value)
+        dc[k] = value
+    dc["PATH_DB"] = os.environ["ICDBDIR"]
     return dc
 
 
@@ -63,8 +67,7 @@ def configure(pname, argv):
         elif opt in ("-c", "--cfile"):
             cfile = arg
 
-    lg = ''.join(['logging.', DEBUG])
-    logger.setLevel(eval(lg))
+    logger.setLevel(DEBUG)
 
     if cfile == '':
         print("Path to configuration file not given")
@@ -80,6 +83,8 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
     """
     defines the number of events to run in the loop
     """
+    if RUN_ALL:
+        return 0, NEVENTS_DST
     first = FIRST_EVT
     last = LAST_EVT
     if NEVENTS > NEVENTS_DST and RUN_ALL is False:
