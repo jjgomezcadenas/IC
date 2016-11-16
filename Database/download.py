@@ -1,6 +1,7 @@
 import tables as tb
 import os
 import MySQLdb
+import numpy as np
 from base64 import b64decode as dec
 
 
@@ -10,7 +11,7 @@ class DataSensor(tb.IsDescription):
     (position, gain, calibration-constant, mask)
     """
     channel = tb.Int32Col(pos=0)
-    pmtid = tb.StringCol(5,pos=1)
+    pmtid = tb.StringCol(5, pos=1)
     active = tb.Int32Col(pos=2)
     x = tb.Float32Col(pos=3)
     y = tb.Float32Col(pos=4)
@@ -71,7 +72,7 @@ def loadPMTs(h5f, group, cursor):
 
 def loadSiPMs(h5f, group, cursor):
     sipm_table = h5f.create_table(group, "DataSiPM", DataSensorSipm,
-                                 "DataSiPM", tb.Filters(0))
+                                  "DataSiPM", tb.Filters(0))
 
     cursor.execute("SELECT * FROM Sipms")
 
@@ -108,11 +109,49 @@ def loadDetGeo(h5f, group, cursor):
     geo_table.flush()
 
 
+def loadNoiseSipm(h5f, group, cursor):
+    # noise
+    noise_sipm = h5f.create_earray(group, "noise_sipm",
+                                   atom=tb.Float32Atom(),
+                                   shape=(0, 300),
+                                   expectedrows=1792)
+
+    cursor.execute("SELECT * FROM NoiseSiPM")
+    data = cursor.fetchall()
+    data = np.array(data).reshape(1792, 300)
+
+    for row in data:
+        noise_sipm.append(row.reshape(1, 300))
+
+    noise_sipm.flush()
+
+    # baseline
+    baseline_sipm = h5f.create_carray(group, "baseline_sipm",
+                                      atom=tb.Float32Atom(),
+                                      shape=(1792,))
+
+    cursor.execute("SELECT * FROM Sipm_Baseline")
+    data = cursor.fetchall()
+    data = np.array(map(lambda s: s[1], data))
+    baseline_sipm[0:1792] = data
+
+    # bins energy
+    noise_bins = h5f.create_carray(group, "noise_bins",
+                                   atom=tb.Float32Atom(),
+                                   shape=(300,))
+
+    cursor.execute("SELECT * FROM NoiseBins")
+    data = cursor.fetchall()
+    data = np.array(map(lambda s: s[1], data))
+    noise_bins[0:300] = data
+
+
 def loadDB():
     fname = os.environ['ICDIR'] + '/Database/localdb.h5'
     h5out = tb.open_file(fname, 'w')
     db = MySQLdb.connect(host="neutrinos1.ific.uv.es", user=dec('am1iZW5sbG9jaA=='),
-                         passwd=eval(dec('Jycuam9pbihtYXAobGFtYmRhIGM6IGNocihjLTUpLCBbNzIsIDEwMiwgMTE1LCAxMDcsIDExOSwgMTAyLCAxMTUsIDEwNF0pKQ==')), db="ICNEWDB")
+                         passwd=eval(dec('Jycuam9pbihtYXAobGFtYmRhIGM6IGNocihjLTUpLCBbNzIsIDEwMiwgMTE1LCAxMDcsIDExOSwgMTAyLCAxMTUsIDEwNF0pKQ==')),
+                         db="ICNEWDB")
     cur = db.cursor()
 
     gSensors = h5out.create_group(h5out.root, "Sensors")
@@ -120,6 +159,8 @@ def loadDB():
     loadSiPMs(h5out, gSensors, cur)
     gGeo = h5out.create_group(h5out.root, "Detector")
     loadDetGeo(h5out, gGeo, cur)
+    gNoise = h5out.create_group(h5out.root, "NoiseSipm")
+    loadNoiseSipm(h5out, gNoise, cur)
 
     db.close()
     h5out.close()

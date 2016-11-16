@@ -17,13 +17,13 @@ from time import time
 import numpy as np
 import tables as tb
 
-from LogConfig import logger
-from Configure import configure, define_event_loop
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
 
-import sensorFunctions as snf
-import wfmFunctions as wfm
+import Core.sensorFunctions as snf
+import Core.wfmFunctions as wfm
 
-from RandomSampling import NoiseSampler as SiPMsNoiseSampler
+from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 """
 
 ANASTASIA

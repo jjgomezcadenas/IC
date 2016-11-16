@@ -19,13 +19,13 @@ import numpy as np
 import tables
 from time import time
 
-import system_of_units as units
-from LogConfig import logger
-from Configure import configure, define_event_loop
-from HLObjects import Signal, Peak, PMap
-from Nh5 import PMAP
+import Core.system_of_units as units
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
+from Core.HLObjects import Signal, Peak, PMap
+from Core.Nh5 import PMAP
 
-import tblFunctions as tbl
+import Core.tblFunctions as tbl
 
 
 """
@@ -40,7 +40,7 @@ ChangeLog:
 
 
 def classify_signal(slices, foundS2):
-    if len(slices)>1:
+    if len(slices) > 1:
         sig = Signal.S2
     elif not foundS2:
         sig = Signal.S1
@@ -73,7 +73,7 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
 
         # Non-empty slice, append it and carry on
         if e > 0.:
-            if t<tmin:
+            if t < tmin:
                 tmin = t
             ene_pmt.append(e)
             # q = np.concatenate((q,np.zeros(3)))
@@ -84,7 +84,7 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
         # It will be S1-like if it is a short peak
         elif len(ene_pmt) > 0:
             sigtype = classify_signal(ene_pmt, foundS2)
-            if sigtype==Signal.S2:
+            if sigtype == Signal.S2:
                 foundS2 = True
             tmax = t
             peak = Peak(np.arange(tmin, tmax)*to_mus,
@@ -92,7 +92,6 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
                         time_over_thrs, sigtype)
             pmap.peaks.append(peak)
 
-            rebin_wf = []
             tmin = float("inf")
             ene_pmt = []
             ene_sipms = []
@@ -165,8 +164,12 @@ def DOROTHEA(argv):
             # create groups and copy MC data to the new file
             if "/MC" in h5in:
                 mcgroup = h5out.create_group(h5out.root, "MC")
+                twfgroup = h5out.create_group(h5out.root, "TWF")
+                print(h5out)
                 h5in.root.MC.MCTracks.copy(newparent=mcgroup)
                 h5in.root.MC.FEE.copy(newparent=mcgroup)
+                h5in.root.TWF.PMT.copy(newparent=twfgroup)
+                h5in.root.TWF.SiPM.copy(newparent=twfgroup)
 
             detgroup = h5out.create_group(h5out.root, "Detector")
             geom_t.copy(newparent=detgroup)

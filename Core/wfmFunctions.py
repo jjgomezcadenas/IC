@@ -9,11 +9,10 @@ ChangeLog
 import math
 import pandas as pd
 import numpy as np
-import scipy as sc
-import scipy.signal
+import scipy.signal as signal
 
 from coreFunctions import dict_map
-import FEParam as FP
+import Sierpe.FEParam as FP
 
 
 def to_adc(wfs, sensdf):
@@ -205,7 +204,7 @@ def noise_suppression(data, thresholds):
     return np.array(suppressed_data)
 
 
-def subtract_baseline(wfs, mau_len = None):
+def subtract_baseline(wfs, mau_len=None):
     """
     Computes the baseline for each SiPM in the event and subtracts it.
     For doing so, the first mau_len samples in the waveform are taken.
@@ -214,9 +213,11 @@ def subtract_baseline(wfs, mau_len = None):
         mau_len = wfs.shape[1]
     b_mau = np.ones(mau_len)*1.0/mau_len
 
-    baseline = lambda wf: sc.signal.lfilter(b_mau, 1, wf)[-1]
-    bls = np.apply_along_axis(baseline, 1, wfs[:,:mau_len])
-    return wfs - bls.reshape(wfs.shape[0],1)
+    def find_baseline(wf):
+        return signal.lfilter(b_mau, 1, wf)[-1]
+
+    bls = np.apply_along_axis(find_baseline, 1, wfs[:, :mau_len])
+    return wfs - bls.reshape(wfs.shape[0], 1)
 
 
 def in_window(data, tmin, tmax):

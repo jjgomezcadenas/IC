@@ -51,7 +51,6 @@ class NoiseSampler:
             return ps/np.sum(ps) if ps.any() else ps
 
         self.probs = np.apply_along_axis(norm, 1, data[:])
-        print('probs shape',self.probs.shape)
         h5in.close()
 
         # Sampling functions
