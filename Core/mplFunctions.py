@@ -5,16 +5,15 @@ from __future__ import print_function
 
 import math
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 # from mpl_toolkits.mplot3d import Axes3D
 
-import coreFunctions as cf
-import system_of_units as units
-import wfmFunctions as wfm
-import tblFunctions as tbl
+import Core.coreFunctions as cf
+import Core.system_of_units as units
+import Core.wfmFunctions as wfm
+import Core.tblFunctions as tbl
 
 
 # matplotlib.style.use("ggplot")
@@ -353,6 +352,16 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
         plt.xlabel("time ($\mu$s)")
         plt.ylabel("Energy (adc)")
     plt.tight_layout()
+
+
+def plot_pmap(pmap):
+    for i, peak in enumerate(pmap.peaks):
+        plt.plot(peak.times, peak.cathode, '*-',
+                 label="peak #{} type {}".format(i, peak.signal))
+
+    plt.legend(loc="upper left")
+    plt.xlabel("time ($\mu$s)")
+    plt.ylabel("energy (pes)")
 
 
 def plot_track(geom_df, mchits_df, vox_size=10, zoom=False):

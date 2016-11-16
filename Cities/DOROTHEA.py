@@ -19,13 +19,14 @@ import numpy as np
 import tables
 from time import time
 
-import system_of_units as units
-from LogConfig import logger
-from Configure import configure, define_event_loop
-from HLObjects import Signal, Peak, PMap
-from Nh5 import PMAP
+import Core.system_of_units as units
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
+from Core.Bridges import Signal, Peak, PMap
+from Core.Nh5 import PMAP
 
-import tblFunctions as tbl
+import Core.tblFunctions as tbl
+import Database.loadDB as DB
 
 
 """
@@ -40,7 +41,7 @@ ChangeLog:
 
 
 def classify_signal(slices, foundS2):
-    if len(slices)>1:
+    if len(slices) > 1:
         sig = Signal.S2
     elif not foundS2:
         sig = Signal.S1
@@ -73,7 +74,7 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
 
         # Non-empty slice, append it and carry on
         if e > 0.:
-            if t<tmin:
+            if t < tmin:
                 tmin = t
             ene_pmt.append(e)
             # q = np.concatenate((q,np.zeros(3)))
@@ -84,7 +85,7 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
         # It will be S1-like if it is a short peak
         elif len(ene_pmt) > 0:
             sigtype = classify_signal(ene_pmt, foundS2)
-            if sigtype==Signal.S2:
+            if sigtype == Signal.S2:
                 foundS2 = True
             tmax = t
             peak = Peak(np.arange(tmin, tmax)*to_mus,
@@ -92,7 +93,6 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
                         time_over_thrs, sigtype)
             pmap.peaks.append(peak)
 
-            rebin_wf = []
             tmin = float("inf")
             ene_pmt = []
             ene_sipms = []
@@ -114,7 +114,6 @@ def DOROTHEA(argv):
     PATH_OUT = CFP["PATH_OUT"]
     FILE_IN = CFP["FILE_IN"]
     FILE_OUT = CFP["FILE_OUT"]
-    PATH_DB = CFP["PATH_DB"]
     FIRST_EVT = CFP["FIRST_EVT"]
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
@@ -124,7 +123,6 @@ def DOROTHEA(argv):
     logger.info("Debug level = {}".format(DEBUG_LEVEL))
     logger.info("Input path = {}; output path = {}".format(PATH_IN, PATH_OUT))
     logger.info("File_in = {} file_out = {}".format(FILE_IN, FILE_OUT))
-    logger.info("Path to database = {}".format(PATH_DB))
     logger.info("First event = {} last event = {} "
                 "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
     logger.info("Compression library/level = {}".format(COMPRESSION))
@@ -144,18 +142,10 @@ def DOROTHEA(argv):
         logger.info("# PMTs = {}, # SiPMs = {} ".format(NPMT, NSIPM))
         logger.info("PMT WFL = {}, SiPM WFL = {}".format(PMTWL, SIPMWL))
 
-        # access the geometry and the sensors metadata info
-        geom_t = h5in.root.Detector.DetectorGeometry
-        pmt_t = h5in.root.Sensors.DataPMT
-        blr_t = h5in.root.Sensors.DataBLR
-        sipm_t = h5in.root.Sensors.DataSiPM
-
-        pmtdf = tbl.read_sensors_table(pmt_t)
-        blrdf = tbl.read_sensors_table(blr_t)
-        sipmdf = tbl.read_sensors_table(sipm_t)
+        pmtdf = DB.DataPMT()
+        sipmdf = DB.DataSiPM()
 
         pmt_to_pes = abs(1.0 / pmtdf.adc_to_pes.reshape(NPMT, 1))
-        blr_to_pes = abs(1.0 / blrdf.adc_to_pes.reshape(NPMT, 1))
         sipm_to_pes = abs(1.0 / sipmdf.adc_to_pes.reshape(NSIPM, 1))
 
         # open the output file
@@ -165,16 +155,12 @@ def DOROTHEA(argv):
             # create groups and copy MC data to the new file
             if "/MC" in h5in:
                 mcgroup = h5out.create_group(h5out.root, "MC")
+                twfgroup = h5out.create_group(h5out.root, "TWF")
+
                 h5in.root.MC.MCTracks.copy(newparent=mcgroup)
                 h5in.root.MC.FEE.copy(newparent=mcgroup)
-
-            detgroup = h5out.create_group(h5out.root, "Detector")
-            geom_t.copy(newparent=detgroup)
-
-            sgroup = h5out.create_group(h5out.root, "Sensors")
-            pmt_t.copy(newparent=sgroup)
-            blr_t.copy(newparent=sgroup)
-            sipm_t.copy(newparent=sgroup)
+                h5in.root.TWF.PMT.copy(newparent=twfgroup)
+                h5in.root.TWF.SiPM.copy(newparent=twfgroup)
 
             pmapsgroup = h5out.create_group(h5out.root, "PMAPS")
 
@@ -192,15 +178,17 @@ def DOROTHEA(argv):
             pmaps_blr_.cols.event.create_index()
 
             # LOOP
-            first_evt, last_evt = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                    NEVENTS, NEVT,
-                                                    RUN_ALL)
+            first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT,
+                                                               LAST_EVT,
+                                                               NEVENTS, NEVT,
+                                                               RUN_ALL)
             t0 = time()
             for i in range(first_evt, last_evt):
-                logger.info("-->event number = {}".format(i))
+                if not i % print_mod:
+                    logger.info("-->event number = {}".format(i))
 
                 pmtwf = np.sum(pmtzs_[i] * pmt_to_pes, axis=0)
-                blrwf = np.sum(blrzs_[i] * blr_to_pes, axis=0)
+                blrwf = np.sum(blrzs_[i] * pmt_to_pes, axis=0)
                 sipmwfs = sipmzs_[i] * sipm_to_pes
 
                 pmap = build_pmap(pmtwf, sipmwfs)

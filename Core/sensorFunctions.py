@@ -85,5 +85,5 @@ def find_sensor(x0, y0, df):
     ID : int
         Channel ID of the sensor with the given coordinates.
     """
-    data = df[ (df.x == x0) & (df.y == y0) ]['channel']
+    data = df[(df.x == x0) & (df.y == y0)]['channel']
     return data.index[0], data.values[0]

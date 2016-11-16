@@ -18,14 +18,13 @@ from time import time
 import numpy as np
 import tables
 
-import system_of_units as units
-from LogConfig import logger
-from Configure import configure, define_event_loop
+import Core.system_of_units as units
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
 
-import FEParam as FP
-import FEE2 as FE
-import coreFunctions as cf
-import cBLR
+import Sierpe.FEParam as FP
+import Sierpe.FEE2 as FE
+from ICython import cBLR
 
 
 def accumulator_coefficients(CA, NPMT, len_WF):
@@ -100,8 +99,8 @@ def ISIDORA(argv):
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
     COEFF = CFP["COEF"]
-    CA = cf.farray_from_string(CFP["CA"])*units.nF
-    AC = cf.farray_from_string(CFP["AC"])
+    CA = np.array(CFP["CA"]) * units.nF
+    AC = np.array(CFP["AC"])
     MAU_LEN = CFP["MAU_LEN"]
     NSIGMA1 = CFP["NSIGMA1"]
     NSIGMA2 = CFP["NSIGMA2"]
@@ -172,12 +171,16 @@ def ISIDORA(argv):
         coeff_acc = AC if COEFF else accumulator_coefficients(CA, NPMT, PMTWL)
 
         # LOOP
-        first_evt, last_evt = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                NEVENTS, NEVENTS_DST, RUN_ALL)
+        first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
+                                                           NEVENTS,
+                                                           NEVENTS_DST,
+                                                           RUN_ALL)
 
         t0 = time()
         for i in range(first_evt, last_evt):
-            logger.info("-->event number ={}".format(i))
+            if not i % print_mod:
+                logger.info("-->event number = {}".format(i))
+
             signal_r, xmau, pulse_, wait_ = DBLR(pmtrd_, i, coeff_acc,
                                                  mau_len=MAU_LEN,
                                                  thr1=NSIGMA1*FP.NOISE_ADC,
