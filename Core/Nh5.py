@@ -86,8 +86,8 @@ class FEE(tables.IsDescription):
     f_mc = tables.Float32Col(pos=16) # sampling frequency in MC (1ns)
     f_LPF1 = tables.Float32Col(pos=17)  # LPF
     f_LPF2 = tables.Float32Col(pos=18)  # LPF
-    coeff_c = tables.Float32Col(shape=12, pos=19)  # cleaning coeff
-    coeff_blr = tables.Float32Col(shape=12, pos=20)  # COEFF BLR
+    coeff_c = tables.Float64Col(shape=12, pos=19)  # cleaning coeff
+    coeff_blr = tables.Float64Col(shape=12, pos=20)  # COEFF BLR
     adc_to_pes = tables.Float32Col(shape=12, pos=21)  # CALIB CONST
     pmt_noise_rms = tables.Float32Col(shape=12, pos=22)  # rms noise
 

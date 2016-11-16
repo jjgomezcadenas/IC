@@ -18,7 +18,6 @@ from __future__ import print_function
 import sys
 import numpy as np
 import tables
-from scipy import signal as SGN
 from time import time
 
 import system_of_units as units
@@ -26,8 +25,6 @@ from LogConfig import logger
 from Configure import configure, define_event_loop
 from Nh5 import FEE, SENSOR_WF
 
-import FEParam as FP
-import SPE as SP
 import FEE as FE
 
 import wfmFunctions as wfm
@@ -97,7 +94,7 @@ def FEE_param_table(fee_table):
     row["OFFSET"] = FE.OFFSET
     row["CEILING"] = FE.CEILING
     row["PMT_GAIN"] = FE.PMT_GAIN
-    row["FEE_gain"] = FE.FEE_GAIN
+    row["FEE_GAIN"] = FE.FEE_GAIN
     row["R1"] = FE.R1
     row["C1"] = FE.C1
     row["C2"] = FE.C2
@@ -139,28 +136,27 @@ def simulate_pmt_response(event, pmtrd):
     array of BLR waveforms (only decimation)
     """
 
-    spe = FE.SPE()  #spe
+    spe = FE.SPE()  # spe
     # FEE, with noise PMT
-    fee = FE.FEE(noise_FEEPMB_rms=1*FE.NOISE_I,noise_DAQ_rms=FE.NOISE_DAQ)
+    fee = FE.FEE(noise_FEEPMB_rms=1*FE.NOISE_I, noise_DAQ_rms=FE.NOISE_DAQ)
     NPMT = pmtrd.shape[1]
     RWF = []
     BLRX = []
     for pmt in range(NPMT):
-    # signal_i in current units
-    signal_i = FE.spe_pulse_from_vector(spe, pmtrd[event,pmt])
-    # Decimate (DAQ decimation)
-    signal_d = FE.daq_decimator(FE.f_mc, FE.f_sample, signal_i)
-    # Effect of FEE and transform to adc counts
-    signal_fee = FE.signal_v_fee(fee, signal_d)*FE.v_to_adc()
-    # add noise daq
-    signal_daq = FE.noise_adc(fee, signal_fee)
-    # signal blr is just pure MC decimated by adc in adc counts
-    signal_blr = signal_d*FE.i_to_adc()
-    # raw waveform stored with negative sign and offset
-    RWF.append(FE.OFFSET - signal_daq)
-    # blr waveform stored with positive sign and no offset
-    BLRX.append(signal_blr)
-
+        # signal_i in current units
+        signal_i = FE.spe_pulse_from_vector(spe, pmtrd[event, pmt])
+        # Decimate (DAQ decimation)
+        signal_d = FE.daq_decimator(FE.f_mc, FE.f_sample, signal_i)
+        # Effect of FEE and transform to adc counts
+        signal_fee = FE.signal_v_fee(fee, signal_d)*FE.v_to_adc()
+        # add noise daq
+        signal_daq = FE.noise_adc(fee, signal_fee)
+        # signal blr is just pure MC decimated by adc in adc counts
+        signal_blr = signal_d*FE.i_to_adc()
+        # raw waveform stored with negative sign and offset
+        RWF.append(FE.OFFSET - signal_daq)
+        # blr waveform stored with positive sign and no offset
+        BLRX.append(signal_blr)
     return np.array(RWF), np.array(BLRX)
 
 
@@ -183,7 +179,7 @@ def DIOMIRA(argv):
         4. Add a table describing the FEE parameters used for simulation
         5. Copies the tables on geometry, detector data and MC
         """)
-        FP.print_FEE()
+        # FP.print_FEE()
 
     PATH_IN = CFP["PATH_IN"]
     PATH_OUT = CFP["PATH_OUT"]
@@ -217,7 +213,7 @@ def DIOMIRA(argv):
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2]
         # PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ) #old format
-        PMTWL_FEE = int(PMTWL/FP.time_DAQ)
+        PMTWL_FEE = int(PMTWL/FE.t_sample)
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
@@ -284,10 +280,10 @@ def DIOMIRA(argv):
 
             # fill FEE table
             FEE_param_table(fee_table)
-            pmt_t_copy = h5out.root.Sensors.DataPMT
-            blr_t_copy = h5out.root.Sensors.DataBLR
-            save_pmt_cal_consts(pmt_t_copy, fee_table.cols.CR[0])
-            save_pmt_cal_consts(blr_t_copy, fee_table.cols.CB[0])
+            # pmt_t_copy = h5out.root.Sensors.DataPMT
+            # blr_t_copy = h5out.root.Sensors.DataBLR
+            # save_pmt_cal_consts(pmt_t_copy, fee_table.cols.CR[0])
+            # save_pmt_cal_consts(blr_t_copy, fee_table.cols.CB[0])
 
             # create a group to store RawData
             h5out.create_group(h5out.root, "RD")

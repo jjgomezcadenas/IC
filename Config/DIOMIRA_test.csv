@@ -1,0 +1,20 @@
+# Configuration file for DIOMIRA
+# The parameters for DIOMIRA are:
+
+# PATH_IN = path to input DST file (must be a MCRD file)
+# PATH_OUT = path to output DST file (RWF file)
+# FILE_IN = path to input DST file (must be a MCRD file)
+# FILE_OUT = name of ouput DST file (RWF file)
+# PATH_DB =  = path to the database directory
+# FIRST_EVT,LAST_EVT,RUN_ALL,
+#
+# RUN_ALL is used to decide whether to run all the events in the file
+# in case that the total number of events requested (LAST_EVT-FIRST_EVT)
+# exceeds the number of events in the DST file. If RUN_ALL is set to 1 (True),
+# the script will run over all elements in the DST,
+# otherwise it will exit with a warning.
+# COMPRESSION = compression library used (ZLIB for now)
+# NOISE_CUT = noise cut level for SiPMs
+
+PATH_IN,PATH_OUT,FILE_IN,FILE_OUT,PATH_DB,FIRST_EVT,LAST_EVT,RUN_ALL,COMPRESSION,NOISE_CUT,END
+/Users/jjgomezcadenas/Documents/Development/NEXT/icdata,/Users/jjgomezcadenas/Documents/Development/NEXT/icdata/IC,electrons.40.0keV.z250mm.next_1000.root.h5,electrons.40.0keV.z250mm.next_1000.RWF.h5,/Users/jjgomezcadenas/Documents/Development/NEXT/IC/Database,0,1000,1,ZLIB4,0.9,1

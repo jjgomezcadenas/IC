@@ -58,24 +58,25 @@ def read_FEE_table(fee_t):
     """
 
     fa = fee_t.read()
+
     F = pd.Series([fa[0][0], fa[0][1], fa[0][2], fa[0][3], fa[0][4],
                    fa[0][5], fa[0][6], fa[0][7], fa[0][8], fa[0][9],
-                   fa[0][10], fa[0][11], fa[0][12]],
-                  index=["offset", "ceiling", "pmt_gain", "V_gain", "R",
-                         "time_step", "time_daq", "freq_LPF", "freq_HPF",
-                         "LSB", "volts_to_adc", "noise_fee_rms", "noise_adc"])
-
-    C = pd.Series([fa[0][13]], index=["C12"])
-    AC = pd.Series([fa[0][14]], index=["AC"])
-    CR = pd.Series([fa[0][15]], index=["CR"])
-    CB = pd.Series([fa[0][16]], index=["CB"])
-
+                   fa[0][10], fa[0][11], fa[0][12],fa[0][13],fa[0][14],
+                   fa[0][15],fa[0][16],fa[0][17]],
+                  index=["OFFSET", "CEILING", "PMT_GAIN", "FEE_GAIN", "R1",
+                         "C1","C2","Zin","DAQ_GAIN","NBITS","LSB",
+                         "NOISE_I","NOISE_DAQ","t_sample","f_sample","f_mc",
+                         "f_LPF1","f_LPF2"])
     FEE = {}
     FEE["fee_param"] = F
-    FEE["fee_C_nF"] = C
-    FEE["fee_accum"] = AC
-    FEE["fee_adc_to_pes_raw"] = CR
-    FEE["fee_adc_to_pes_blr"] = CB
+    #FEE["coeff_c"] = pd.Series([fa[0][18]], index=["coeff_c"])
+    #FEE["coeff_blr"] = pd.Series([fa[0][19]], index=["coeff_blr"])
+    #FEE["adc_to_pes"] = pd.Series([fa[0][20]], index=["adc_to_pes"])
+    #FEE["pmt_noise_rms"] = pd.Series([fa[0][21]], index=["pmt_noise_rms"])
+    FEE["coeff_c"] = np.array(fa[0][18], dtype=np.double)
+    FEE["coeff_blr"] = np.array(fa[0][19], dtype=np.double)
+    FEE["adc_to_pes"] = np.array(fa[0][20], dtype=np.double)
+    FEE["pmt_noise_rms"] = np.array(fa[0][21], dtype=np.double)
 
     return FEE
 
@@ -114,15 +115,33 @@ def get_vectors(h5f):
     pmtrwf = h5f.root.RD.pmtrwf
     pmtblr = h5f.root.RD.pmtblr
     sipmrwf = h5f.root.RD.sipmrwf
-    geom_t = h5f.root.Detector.DetectorGeometry
-    fee_t = h5f.root.MC.FEE
-    pmt_t = h5f.root.Sensors.DataPMT
-    sipm_t = h5f.root.Sensors.DataSiPM
-    gdf = read_geom_table(geom_t)
-    pmtdf = read_sensors_table(pmt_t)
-    sipmdf = read_sensors_table(sipm_t)
-    dFEE = read_FEE_table(fee_t)
-    return pmttwf, sipmtwf, pmtrwf, pmtblr, sipmrwf, pmtdf, sipmdf, gdf, dFEE
+    # geom_t = h5f.root.Detector.DetectorGeometry
+    # fee_t = h5f.root.MC.FEE
+    # pmt_t = h5f.root.Sensors.DataPMT
+    # sipm_t = h5f.root.Sensors.DataSiPM
+    # gdf = read_geom_table(geom_t)
+    # pmtdf = read_sensors_table(pmt_t)
+    # sipmdf = read_sensors_table(sipm_t)
+    # dFEE = read_FEE_table(fee_t)
+    return pmttwf, sipmtwf, pmtrwf, pmtblr, sipmrwf
+
+
+def get_pmt_vectors(h5f):
+    """
+        Return the most relevant fields stored in a raw data file.
+    """
+    pmttwf = h5f.root.TWF.PMT
+    pmtrwf = h5f.root.RD.pmtrwf
+    pmtblr = h5f.root.RD.pmtblr
+    # geom_t = h5f.root.Detector.DetectorGeometry
+    # fee_t = h5f.root.MC.FEE
+    # pmt_t = h5f.root.Sensors.DataPMT
+    # sipm_t = h5f.root.Sensors.DataSiPM
+    # gdf = read_geom_table(geom_t)
+    # pmtdf = read_sensors_table(pmt_t)
+    # sipmdf = read_sensors_table(sipm_t)
+    # dFEE = read_FEE_table(fee_t)
+    return pmttwf, pmtrwf, pmtblr
 
 
 def get_cwf_vectors(h5f):
