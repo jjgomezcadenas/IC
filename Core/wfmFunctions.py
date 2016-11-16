@@ -11,8 +11,8 @@ import pandas as pd
 import numpy as np
 import scipy.signal as signal
 
-from coreFunctions import dict_map
-import FEParam as FP
+from Core.coreFunctions import dict_map
+import Sierpe.FEParam as FP
 
 
 def to_adc(wfs, sensdf):

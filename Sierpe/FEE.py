@@ -9,7 +9,7 @@ from __future__ import print_function
 
 import numpy as np
 from scipy import signal
-import system_of_units as units
+import Core.system_of_units as units
 
 # globals describing FEE
 PMT_GAIN = 1.7e6
@@ -31,6 +31,7 @@ f_LPF1 = 3*units.MHZ
 f_LPF2 = 10*units.MHZ
 ADC_TO_PES = 20  # nominal factor, comes out from spe area
 OFFSET = 2500  # offset adc
+CEILING = 4096 # ceiling of adc
 
 
 def i_to_adc():
