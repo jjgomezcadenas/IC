@@ -1,7 +1,6 @@
 """
 Definition of high level objects.
 """
-
 import numpy as np
 
 
@@ -58,7 +57,10 @@ class Peak:
         self.peakmax = (self.times[np.argmax(self.cathode)],
                         np.max(self.cathode))
         self.cathode_integral = self.cathode.sum()
-        self.anode_integral = self.anode.sum()
+        self.anode_integral = np.nansum(self.anode)
+
+    def __len__(self):
+        return self.times.size
 
     def __iter__(self):
         for data in zip(self.times, self.tothrs, self.cathode, self.anode):

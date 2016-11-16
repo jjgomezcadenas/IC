@@ -11,11 +11,13 @@ now returns also calibration constants for RWF and BLR (MC version)
 """
 
 from __future__ import print_function
+
 import numpy as np
 import tables as tb
 import pandas as pd
-import wfmFunctions as wfm
-import HLObjects as hlo
+
+import Core.wfmFunctions as wfm
+import Core.Bridges as bdg
 
 
 def filters(name):
@@ -49,6 +51,38 @@ def read_geom_table(geom_t):
                   index=["xdet_min", "xdet_max", "ydet_min", "ydet_max",
                          "zdet_min", "zdet_max", "R"])
     return G
+
+
+def FEE_param_table(fee_table):
+    """
+    Stores the parameters of the EP FEE simulation
+    """
+    DataPMT = loadDB.DataPMT()
+    row = fee_table.row
+    row["OFFSET"] = FE.OFFSET
+    row["CEILING"] = FE.CEILING
+    row["PMT_GAIN"] = FE.PMT_GAIN
+    row["FEE_GAIN"] = FE.FEE_GAIN
+    row["R1"] = FE.R1
+    row["C1"] = FE.C1
+    row["C2"] = FE.C2
+    row["ZIN"] = FE.Zin
+    row["DAQ_GAIN"] = FE.DAQ_GAIN
+    row["NBITS"] = FE.NBITS
+    row["LSB"] = FE.LSB
+    row["NOISE_I"] = FE.NOISE_I
+    row["NOISE_DAQ"] = FE.NOISE_DAQ
+    row["t_sample"] = FE.t_sample
+    row["f_sample"] = FE.f_sample
+    row["f_mc"] = FE.f_mc
+    row["f_LPF1"] = FE.f_LPF1
+    row["f_LPF2"] = FE.f_LPF2
+    row["coeff_c"] = DataPMT.coeff_c.values
+    row["coeff_blr"] = DataPMT.coeff_blr.values
+    row["adc_to_pes"] = DataPMT.adc_to_pes.values
+    row["pmt_noise_rms"] = DataPMT.noise_rms
+    row.append()
+    fee_table.flush()
 
 
 def read_FEE_table(fee_t):
@@ -217,7 +251,7 @@ def read_pmap(table, evt):
     """
     Reads back the pmap stored in table.
     """
-    pmap = hlo.PMap()
+    pmap = bdg.PMap()
     peaks = set(table.read_where("event=={}".format(evt), field="peak"))
     for peak in peaks:
         coords = table.get_where_list("(event == {}) & "
@@ -227,5 +261,5 @@ def read_pmap(table, evt):
         ToT = table.read_coordinates(coords, "ToT")
         cathode = table.read_coordinates(coords, "cathode")
         anode = table.read_coordinates(coords, "anode")
-        pmap.peaks.append(hlo.Peak(times, cathode, anode, ToT, signal))
+        pmap.peaks.append(bdg.Peak(times, cathode, anode, ToT, signal))
     return pmap

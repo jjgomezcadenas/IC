@@ -3,7 +3,7 @@ import numpy as np
 from scipy import signal as SGN
 
 import FEParam as FP
-import system_of_units as units
+import Core.system_of_units as units
 
 
 # spe is parameterized as an isosceles trapezoid of diagonal
