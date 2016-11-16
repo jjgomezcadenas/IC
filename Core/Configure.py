@@ -124,7 +124,7 @@ def read_config_file(cfile):
     Read a configuration file of the form
     PARAMETER VALUE
     """
-    d = {"PATH_DB": os.environ["ICDBDIR"]}
+    d = {}
     for line in open(cfile, "r"):
         if line == "\n" or line[0] == "#":
             continue

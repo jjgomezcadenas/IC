@@ -227,7 +227,6 @@ def DIOMIRA(argv):
     PATH_OUT = CFP["PATH_OUT"]
     FILE_IN = CFP["FILE_IN"]
     FILE_OUT = CFP["FILE_OUT"]
-    PATH_DB = CFP["PATH_DB"]
     FIRST_EVT = CFP["FIRST_EVT"]
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
@@ -274,8 +273,7 @@ def DIOMIRA(argv):
         sipmdf = snf.read_data_sensors(sipm_t)
 
         # Create instance of the noise sampler
-        noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
-                                           SIPMWL, True)
+        noise_sampler_ = SiPMsNoiseSampler(SIPMWL, True)
         sipms_thresholds_ = NOISE_CUT * np.array(sipmdf["adc_to_pes"])
 
         # open the output file
