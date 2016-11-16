@@ -20,21 +20,21 @@ import tables
 from scipy import signal as SGN
 from time import time
 
-import system_of_units as units
-from LogConfig import logger
-from Configure import configure, define_event_loop
-from Nh5 import FEE, SENSOR_WF
+import Core.system_of_units as units
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
+from Core.Nh5 import FEE, SENSOR_WF
 
-import FEParam as FP
-import SPE as SP
-import FEE2 as FE
+import Sierpe.FEParam as FP
+import Sierpe.SPE as SP
+import Sierpe.FEE2 as FE
 
-import wfmFunctions as wfm
-import coreFunctions as cf
-import tblFunctions as tbl
-import sensorFunctions as snf
+import Core.wfmFunctions as wfm
+import Core.coreFunctions as cf
+import Core.tblFunctions as tbl
+import Core.sensorFunctions as snf
 
-from RandomSampling import NoiseSampler as SiPMsNoiseSampler
+from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 """
 
 DIOMIRA

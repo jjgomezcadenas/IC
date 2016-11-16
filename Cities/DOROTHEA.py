@@ -19,13 +19,13 @@ import numpy as np
 import tables
 from time import time
 
-import system_of_units as units
-from LogConfig import logger
-from Configure import configure, define_event_loop
-from HLObjects import Signal, Peak, PMap
-from Nh5 import PMAP
+import Core.system_of_units as units
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
+from Core.HLObjects import Signal, Peak, PMap
+from Core.Nh5 import PMAP
 
-import tblFunctions as tbl
+import Core.tblFunctions as tbl
 
 
 """

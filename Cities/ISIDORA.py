@@ -18,14 +18,14 @@ from time import time
 import numpy as np
 import tables
 
-import system_of_units as units
-from LogConfig import logger
-from Configure import configure, define_event_loop
+import Core.system_of_units as units
+from Core.LogConfig import logger
+from Core.Configure import configure, define_event_loop
 
-import FEParam as FP
-import FEE2 as FE
-import coreFunctions as cf
-import cBLR
+import Sierpe.FEParam as FP
+import Sierpe.FEE2 as FE
+import Core.coreFunctions as cf
+from ICCython import cBLR
 
 
 def accumulator_coefficients(CA, NPMT, len_WF):
