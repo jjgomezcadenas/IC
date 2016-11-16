@@ -6,7 +6,7 @@ from __future__ import print_function
 import sys
 import numpy as np
 
-import wfmFunctions as wfm
+import Core.wfmFunctions as wfm
 
 
 class min_charge:

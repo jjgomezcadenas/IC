@@ -3,7 +3,6 @@ Configure running options for the cities
 JJGC August 2016
 """
 from LogConfig import logger
-import pandas as pd
 import getopt
 import sys
 import os

@@ -4,9 +4,6 @@ Select only those events with energy above some threshold.
 from __future__ import print_function
 
 import sys
-import numpy as np
-
-import wfmFunctions as wfm
 
 
 class min_energy:

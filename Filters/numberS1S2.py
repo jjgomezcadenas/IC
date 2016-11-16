@@ -4,10 +4,9 @@ Select only those events with N S1 and M S2. UNKNOWN signals are ignored.
 from __future__ import print_function
 
 import sys
-import numpy as np
 
-import HLObjects as hlo
-import tblFunctions as tbl
+import Core.HLObjects as hlo
+import Core.tblFunctions as tbl
 
 
 class numberS1S2:

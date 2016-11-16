@@ -11,9 +11,9 @@ import argparse
 import tables as tb
 import numpy as np
 
-import tblFunctions as tbl
-from Nh5 import EventInfo, SENSOR_WF, PMAP
-from Configure import read_config_file, filter_options
+import Core.tblFunctions as tbl
+from Core.Nh5 import EventInfo, SENSOR_WF, PMAP
+from Core.Configure import read_config_file, filter_options
 
 
 def init_filter(filtername, **options):
@@ -36,6 +36,7 @@ def init_filter(filtername, **options):
         Callable object taking an hdf5 file and event number and
         returning a boolean.
     """
+    filtername = "Filters." + filtername
     module = importlib.import_module(filtername)
     filter_ = getattr(module, filtername)
     globals()[filtername] = module
