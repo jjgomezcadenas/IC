@@ -32,7 +32,8 @@ import Sierpe.FEE2 as FE
 import Core.wfmFunctions as wfm
 import Core.coreFunctions as cf
 import Core.tblFunctions as tbl
-import Core.sensorFunctions as snf
+
+import Database.loadDB as DB
 
 from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 """
@@ -80,6 +81,7 @@ Some variables, classes and functions renamed for clarity.
 20.10: GML, overwrite calibration constants in DataPMT with values
 from FEE table. PRE-RELEASE
 
+16.11: Using new database facility
 """
 
 
@@ -107,15 +109,6 @@ def FEE_param_table(fee_table):
 
     row.append()
     fee_table.flush()
-
-
-def save_pmt_cal_consts(pmt_table, consts):
-    """
-    Overwrite PMT cal constats in table.
-    """
-    adc_to_pes = pmt_table.cols.adc_to_pes
-    for i, const in enumerate(consts):
-        adc_to_pes[i] = const
 
 
 def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
@@ -264,12 +257,8 @@ def DIOMIRA(argv):
                     "lof PMT WF (FEE) = {}".format(PMTWL, SIPMWL, PMTWL_FEE))
 
         # access the geometry and the sensors metadata info
-        geom_t = h5in.root.Detector.DetectorGeometry
-        pmt_t = h5in.root.Sensors.DataPMT
-        blr_t = h5in.root.Sensors.DataBLR
-        sipm_t = h5in.root.Sensors.DataSiPM
         mctrk_t = h5in.root.MC.MCTracks
-        sipmdf = snf.read_data_sensors(sipm_t)
+        sipmdf = DB.DataSiPM()
 
         # Create instance of the noise sampler
         noise_sampler_ = SiPMsNoiseSampler(SIPMWL, True)
@@ -283,19 +272,6 @@ def DIOMIRA(argv):
             mcgroup = h5out.create_group(h5out.root, "MC")
             # copy the mctrk table
             mctrk_t.copy(newparent=mcgroup)
-
-            # create a group  to store geom data
-            detgroup = h5out.create_group(h5out.root, "Detector")
-            # copy the geom table
-            geom_t.copy(newparent=detgroup)
-
-            # create a group  store sensor data
-            sgroup = h5out.create_group(h5out.root, "Sensors")
-            # copy the pmt table
-            pmt_t.copy(newparent=sgroup)
-            blr_t.copy(newparent=sgroup)
-            # copy the sipm table
-            sipm_t.copy(newparent=sgroup)
 
             # create a table to store Energy plane FEE, hang it from MC group
             fee_table = h5out.create_table(mcgroup, "FEE", FEE,
@@ -319,10 +295,6 @@ def DIOMIRA(argv):
 
             # fill FEE table
             FEE_param_table(fee_table)
-            pmt_t_copy = h5out.root.Sensors.DataPMT
-            blr_t_copy = h5out.root.Sensors.DataBLR
-            save_pmt_cal_consts(pmt_t_copy, fee_table.cols.CR[0])
-            save_pmt_cal_consts(blr_t_copy, fee_table.cols.CB[0])
 
             # create a group to store RawData
             h5out.create_group(h5out.root, "RD")
@@ -350,7 +322,7 @@ def DIOMIRA(argv):
                                                                RUN_ALL)
             t0 = time()
             for i in range(first_evt, last_evt):
-                if not i%print_mod:
+                if not i % print_mod:
                     logger.info("-->event number = {}".format(i))
 
                 # supress zeros in MCRD and rebin the ZS function in 1 mus bins
@@ -372,10 +344,7 @@ def DIOMIRA(argv):
 
                 dataPMT, blrPMT = simulate_pmt_response(i, pmtrd_)
                 pmtrwf.append(dataPMT.astype(int).reshape(1, NPMT, PMTWL_FEE))
-
-                pmtblr.append(blrPMT.astype(int).reshape(1,
-                                                         NPMT,
-                                                         PMTWL_FEE))
+                pmtblr.append(blrPMT.astype(int).reshape(1, NPMT, PMTWL_FEE))
 
                 # simulate SiPM response and return an array with RWF
                 # convert to float, zero suppress and dump to table
