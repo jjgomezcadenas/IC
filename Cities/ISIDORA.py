@@ -25,7 +25,7 @@ from Core.Configure import configure, define_event_loop
 import Sierpe.FEParam as FP
 import Sierpe.FEE2 as FE
 import Core.coreFunctions as cf
-from ICCython import cBLR
+from ICython import cBLR
 
 
 def accumulator_coefficients(CA, NPMT, len_WF):
