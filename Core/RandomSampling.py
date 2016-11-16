@@ -6,16 +6,15 @@ from __future__ import print_function
 import tables as tb
 import numpy as np
 
+import Database.loadDB as loadDB
 
 class NoiseSampler:
-    def __init__(self, filename, sample_size=1, smear=True):
+    def __init__(self, sample_size=1, smear=True):
         """
         Samples a histogram as if it was a PDF.
 
         Parameters
         ----------
-        filename : string
-            Path and name to the hdf5 file containing the noise distributions.
         sample_size: int
             Number of samples per sensor and call.
         smear: bool
@@ -34,31 +33,21 @@ class NoiseSampler:
         nsamples: int
             Number of samples per sensor taken at each call.
         """
-        self.nsamples = sample_size
-
-        # Read data, take xbins, compute (half of) bin size and normalize
-        # probabilities.
-        h5in = tb.open_file(filename)
-        data = h5in.root.data
-
-        self.baselines = np.copy(data.attrs.baselines)
-        self.baselines = self.baselines.reshape(self.baselines.shape[0], 1)
-
-        self.xbins = np.copy(data.attrs.bins)
-        self.dx = np.diff(self.xbins)[0] * 0.5
-
         def norm(ps):
             return ps/np.sum(ps) if ps.any() else ps
 
-        self.probs = np.apply_along_axis(norm, 1, data[:])
-        h5in.close()
+        self.nsamples = sample_size
+        self.probs, self.xbins, self.baselines = loadDB.SiPMNoise()
+
+        self.probs = np.apply_along_axis(norm, 1, self.probs)
+        self.baselines = self.baselines.reshape(self.baselines.shape[0], 1)
+        self.dx = np.diff(self.xbins)[0] * 0.5
 
         # Sampling functions
         def _sample_sensor(probs):
             if not probs.any():
                 return np.zeros(self.nsamples)
             return np.random.choice(self.xbins, size=self.nsamples, p=probs)
-
 
         _discrete_sampler = lambda: np.apply_along_axis(_sample_sensor,
                                                         1, self.probs)
