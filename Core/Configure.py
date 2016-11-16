@@ -105,6 +105,9 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
 
 
 def cast(value):
+    """
+    Cast value from string to a python type.
+    """
     if value == "True":
         return True
     if value == "False":
@@ -119,6 +122,10 @@ def cast(value):
 
 
 def read_config_file(cfile):
+    """
+    Read a configuration file of the form
+    PARAMETER VALUE
+    """
     d = {"PATH_DB": os.environ["ICDBDIR"]}
     for line in open(cfile, "r"):
         if line[0] == "#":
@@ -129,3 +136,27 @@ def read_config_file(cfile):
         value = map(cast, tokens[1:])
         d[key] = value[0] if len(value) == 1 else value
     return d
+
+
+def filter_options(options, name):
+    """
+    Construct a new option dictionary with the parameters relevant to some
+    module.
+
+    Parameters
+    ----------
+    options : dictionary
+        Dictionary of options with format "MODULE:PARAMETER": value.
+    name : string
+        Selected module name.
+
+    Returns
+    -------
+    out : dictionary
+        Filtered dictionary.
+    """
+    out = {}
+    for key, value in options.items():
+        if name in key:
+            out[key.split(":")[1]] = value
+    return out
