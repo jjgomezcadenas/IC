@@ -52,7 +52,6 @@ def ANASTASIA(argv):
 
     PATH_IN = CFP["PATH_IN"]
     FILE_IN = CFP["FILE_IN"]
-    PATH_DB = CFP["PATH_DB"]
     FIRST_EVT = CFP["FIRST_EVT"]
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
@@ -66,7 +65,6 @@ def ANASTASIA(argv):
 
     logger.info("Debug level = {}".format(DEBUG_LEVEL))
     logger.info("input file = {}/{}".format(PATH_IN, FILE_IN))
-    logger.info("path to database = {}".format(PATH_DB))
     logger.info("First event = {} last event = {} "
                 "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
     logger.info("ZS method PMTS RAW = {}. "
@@ -91,8 +89,7 @@ def ANASTASIA(argv):
         logger.info("PMT WFL = {} SiPM WFL = {}".format(PMTWL, SIPMWL))
 
         # Create instance of the noise sampler and compute noise thresholds
-        sipms_noise_sampler_ = SiPMsNoiseSampler(PATH_DB+"/NoiseSiPM_NEW.h5",
-                                                 SIPMWL)
+        sipms_noise_sampler_ = SiPMsNoiseSampler(SIPMWL)
 
         if SIPM_ZS_METHOD == "FRACTION":
             sipms_thresholds_ = sipms_noise_sampler_.ComputeThresholds(
