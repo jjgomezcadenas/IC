@@ -101,7 +101,9 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
     elif NEVENTS > NEVENTS_DST and RUN_ALL is True:
         first = 0
         last = NEVENTS_DST
-    return first, last, (last-first)//20
+
+    print_mod = (last-first)//20 if last-first >= 20 else 1
+    return first, last, print_mod
 
 
 def cast(value):
