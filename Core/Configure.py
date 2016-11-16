@@ -86,7 +86,7 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
         return 0, NEVENTS_DST, NEVENTS_DST//20
     first = FIRST_EVT
     last = LAST_EVT
-    if NEVENTS > NEVENTS_DST and RUN_ALL is False:
+    if NEVENTS > NEVENTS_DST:
         print("""
                 Refusing to run: you have requested
                 FIRST_EVT = {}
@@ -97,10 +97,6 @@ def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
                 to run over the whole DST when this happens
                 """.format(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST))
         sys.exit(0)
-
-    elif NEVENTS > NEVENTS_DST and RUN_ALL is True:
-        first = 0
-        last = NEVENTS_DST
 
     print_mod = (last-first)//20 if last-first >= 20 else 1
     return first, last, print_mod
