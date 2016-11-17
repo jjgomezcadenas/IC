@@ -78,9 +78,9 @@ Some variables, classes and functions renamed for clarity.
 20.10: GML, overwrite calibration constants in DataPMT with values
 from FEE table. PRE-RELEASE
 
-
 15.11, new version of FEE for PMTs
-16.11: Using new database facility
+
+16.11: Using new database utility
 """
 
 
@@ -229,7 +229,7 @@ def DIOMIRA(argv):
             sipm_twf_table.cols.event.create_index()
 
             # fill FEE table
-            tbl.FEE_param_table(fee_table)
+            tbl.store_FEE_table(fee_table)
 
             # create a group to store RawData
             h5out.create_group(h5out.root, "RD")
@@ -271,8 +271,8 @@ def DIOMIRA(argv):
                                       0., to_mus=int(units.ns/units.ms)))
 
                 # store in table
-                tbl.store_wf(i, pmt_twf_table, truePMT)
-                tbl.store_wf(i, sipm_twf_table, trueSiPM)
+                tbl.store_wf_table(i, pmt_twf_table, truePMT)
+                tbl.store_wf_table(i, sipm_twf_table, trueSiPM)
 
                 # simulate PMT response and return an array with RWF;BLR
                 # convert to float, append to EVector

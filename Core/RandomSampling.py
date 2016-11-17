@@ -3,10 +3,10 @@ Defines a class for random sampling.
 """
 from __future__ import print_function
 
-import tables as tb
 import numpy as np
 
-import Database.loadDB as loadDB
+import Database.loadDB as DB
+
 
 class NoiseSampler:
     def __init__(self, sample_size=1, smear=True):
@@ -37,7 +37,7 @@ class NoiseSampler:
             return ps/np.sum(ps) if ps.any() else ps
 
         self.nsamples = sample_size
-        self.probs, self.xbins, self.baselines = loadDB.SiPMNoise()
+        self.probs, self.xbins, self.baselines = DB.SiPMNoise()
 
         self.probs = np.apply_along_axis(norm, 1, self.probs)
         self.baselines = self.baselines.reshape(self.baselines.shape[0], 1)
@@ -49,10 +49,11 @@ class NoiseSampler:
                 return np.zeros(self.nsamples)
             return np.random.choice(self.xbins, size=self.nsamples, p=probs)
 
-        _discrete_sampler = lambda: np.apply_along_axis(_sample_sensor,
-                                                        1, self.probs)
-        _continuous_sampler = lambda: (_discrete_sampler() +
-                                       np.random.uniform(-self.dx, self.dx))
+        def _discrete_sampler():
+            return np.apply_along_axis(_sample_sensor, 1, self.probs)
+
+        def _continuous_sampler():
+            return _discrete_sampler() + np.random.uniform(-self.dx, self.dx)
 
         self._sampler = _continuous_sampler if smear else _discrete_sampler
 
