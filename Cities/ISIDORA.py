@@ -53,8 +53,8 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
                                  acum_discharge_length=acum_discharge_length,
                                  acum_tau=acum_tau,
                                  acum_compress=acum_compress)
-        CWF[pmt] = np.copy(signal_r)
-        ACUM[pmt] = np.copy(acum)
+        CWF[pmt] = signal_r
+        ACUM[pmt] = acum
     return CWF, ACUM
 
 
