@@ -3,6 +3,7 @@ Tables defining the DM
 """
 import tables as tb
 
+
 class RunInfo(tb.IsDescription):
     run_number = tb.Int32Col(shape=(), pos=0)
 
@@ -80,10 +81,10 @@ class FEE(tb.IsDescription):
     NBITS = tb.Float32Col(pos=10)  # number of bits ADC
     LSB = tb.Float32Col(pos=11)  # LSB (adc count)
     NOISE_I = tb.Float32Col(pos=12)  # Noise at the input
-    NOISE_DAQ = tb.Float32Col(pos=13) # Noise at DAQ
-    t_sample = tb.Float32Col(pos=14) # sampling time
-    f_sample = tb.Float32Col(pos=15) # sampling frequency
-    f_mc = tb.Float32Col(pos=16) # sampling frequency in MC (1ns)
+    NOISE_DAQ = tb.Float32Col(pos=13)  # Noise at DAQ
+    t_sample = tb.Float32Col(pos=14)  # sampling time
+    f_sample = tb.Float32Col(pos=15)  # sampling frequency
+    f_mc = tb.Float32Col(pos=16)  # sampling frequency in MC (1ns)
     f_LPF1 = tb.Float32Col(pos=17)  # LPF
     f_LPF2 = tb.Float32Col(pos=18)  # LPF
     coeff_c = tb.Float64Col(shape=12, pos=19)  # cleaning coeff

@@ -39,7 +39,7 @@ ChangeLog:
 
 10.11 Waveforms stay in adc counts. All PMTs are now stored.
 
-16.11 Using new database facility
+16.11 Using new database utility
 """
 
 

@@ -9,20 +9,6 @@ import os
 from Core.LogConfig import logger
 
 
-def cdf_to_dict(cdf):
-    """
-    transforms the configuration data frame into a dictionary
-    """
-    dc = {}
-    for k in cdf.keys():
-        value = cdf[k][0]
-        if isinstance(value, str) and "$" in value:
-            value = os.path.expandvars(value)
-        dc[k] = value
-    dc["PATH_DB"] = os.environ["ICDBDIR"]
-    return dc
-
-
 def usage(program_name):
     """
     Usage of program
