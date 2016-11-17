@@ -109,21 +109,24 @@ def simulate_pmt_response(event, pmtrd):
     NPMT = pmtrd.shape[1]
     RWF = []
     BLRX = []
+    DataPMT = DB.DataPMT()
+    adc_to_pes = np.abs(DataPMT.adc_to_pes.values)
     for pmt in range(NPMT):
         # signal_i in current units
+        cc = adc_to_pes[pmt]/FE.ADC_TO_PES
         signal_i = FE.spe_pulse_from_vector(spe, pmtrd[event, pmt])
         # Decimate (DAQ decimation)
         signal_d = FE.daq_decimator(FE.f_mc, FE.f_sample, signal_i)
         # Effect of FEE and transform to adc counts
-        signal_fee = FE.signal_v_fee(fee, signal_d)*FE.v_to_adc()
+        signal_fee = FE.signal_v_fee(fee, signal_d, pmt)*FE.v_to_adc()
         # add noise daq
-        signal_daq = FE.noise_adc(fee, signal_fee)
+        signal_daq =  cc*FE.noise_adc(fee, signal_fee)
         # signal blr is just pure MC decimated by adc in adc counts
         signal_blr = signal_d*FE.i_to_adc()
         # raw waveform stored with negative sign and offset
         RWF.append(FE.OFFSET - signal_daq)
         # blr waveform stored with positive sign and no offset
-        BLRX.append(signal_blr)
+        BLRX.append(FE.OFFSET - signal_blr)
     return np.array(RWF), np.array(BLRX)
 
 
