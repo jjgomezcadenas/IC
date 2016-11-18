@@ -30,7 +30,8 @@ f_sample = 1./t_sample
 f_mc = 1./(1*units.ns)
 f_LPF1 = 3*units.MHZ
 f_LPF2 = 10*units.MHZ
-ADC_TO_PES = 24  # nominal factor, comes out from spe area
+ADC_TO_PES_LPF = 24.1  # After LPF, comes out from spe area
+ADC_TO_PES = 23.1
 OFFSET = 2500  # offset adc
 CEILING = 4096  # ceiling of adc
 
@@ -287,6 +288,22 @@ def noise_adc(fee, signal_in_adc):
                                             len(signal_in_adc))
 
 
+def filter_sfee_lpf(sfe):
+    """
+    input: an instance of class Fee
+    output: buttersworth parameters of the equivalent LPT FEE filter
+    """
+    # LPF order 1
+    b1, a1 = signal.butter(1, sfe.freq_LPF1d, 'low', analog=False)
+    # LPF order 4
+    b2, a2 = signal.butter(4, sfe.freq_LPF2d, 'low', analog=False)
+    # convolve LPF1, LPF2
+    a = np.convolve(a1, a2, mode='full')
+    b_aux = np.convolve(b1, b2, mode='full')
+    b = sfe.GAIN*b_aux
+    return b, a
+
+
 def filter_fee(feep, ipmt):
     """
     input: an instance of class FEE
@@ -371,6 +388,15 @@ def signal_v_fee(feep, signal_i, ipmt):
     b, a = filter_fee(feep, ipmt)  # b in ohms
     # filtered signal in I*R = V
     return signal.lfilter(b, a, signal_i + noise_FEEin)
+
+
+def signal_v_lpf(feep, signal_in):
+    """
+    input: instance of class sfe and a current signal
+    outputs: signal convolved with LPF in voltage
+    """
+    b, a = filter_sfee_lpf(feep)
+    return signal.lfilter(b, a, signal_in)
 
 
 def signal_clean(feep, signal_fee, ipmt):
