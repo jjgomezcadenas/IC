@@ -122,7 +122,7 @@ def simulate_pmt_response(event, pmtrd):
         # add noise daq
         signal_daq = cc * FE.noise_adc(fee, signal_fee)
         # signal blr is just pure MC decimated by adc in adc counts
-        signal_blr = FE.signal_v_lpf(fee, signal_d)*FE.v_to_adc()
+        signal_blr = cc * FE.signal_v_lpf(fee, signal_d)*FE.v_to_adc()
         # raw waveform stored with negative sign and offset
         RWF.append(FE.OFFSET - signal_daq)
         # blr waveform stored with positive sign and no offset
