@@ -9,7 +9,7 @@ import Core.Bridges as bdg
 import Core.tblFunctions as tbl
 
 
-class numberS1S2:
+class NumberS1S2:
     """
     Select only those events with N S1 and M S2. UNKNOWN signals are ignored.
 
@@ -32,8 +32,8 @@ class numberS1S2:
 
     def __call__(self, f, i):
         pmap = tbl.read_pmap(f.root.PMAPS.PMaps, i)
-        if len(filter(lambda p: p.signal == bdg.Signal.S1, pmap)) != self.nS1:
+        if len(pmap.get(Signal.S1)) != self.nS1:
             return False
-        if len(filter(lambda p: p.signal == bdg.Signal.S2, pmap)) != self.nS2:
+        if len(pmap.get(Signal.S2)) != self.nS2:
             return False
         return True

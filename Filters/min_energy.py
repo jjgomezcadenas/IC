@@ -6,7 +6,7 @@ from __future__ import print_function
 import sys
 
 
-class min_energy:
+class Min_energy:
     """
     Select only those events with integrated energy above some threshold.
 

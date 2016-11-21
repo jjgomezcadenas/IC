@@ -9,7 +9,7 @@ import numpy as np
 import Core.wfmFunctions as wfm
 
 
-class min_charge:
+class Min_charge:
     """
     Select only those events with at least one SiPM with some minimum charge.
 
