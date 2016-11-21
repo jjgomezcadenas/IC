@@ -32,7 +32,6 @@ import Database.loadDB as DB
 
 
 def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
-         thr_acum=2000,
          acum_discharge_length=5000,
          acum_tau=2500,
          acum_compress=0.01):
@@ -45,6 +44,7 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
     ACUM = np.empty(pmtrwf.shape)
 
     for pmt in range(NPMT):
+        thr_acum = thr_trigger/DataPMT.coeff_blr[pmt]
         signal_r, acum = cblr.\
           deconvolve_signal_acum(pmtrwf[pmt],
                                  n_baseline=n_baseline,
@@ -87,7 +87,6 @@ def ISIDORA(argv):
     RUN_ALL = CFP["RUN_ALL"]
     N_BASELINE = CFP["N_BASELINE"]
     THR_TRIGGER = CFP["THR_TRIGGER"]
-    THR_ACUM = CFP["THR_ACUM"]
     ACUM_DISCHARGE_LENGTH = CFP["ACUM_DISCHARGE_LENGTH"]
     ACUM_TAU = CFP["ACUM_TAU"]
     ACUM_COMPRESS = CFP["ACUM_COMPRESS"]
@@ -102,11 +101,10 @@ def ISIDORA(argv):
 
     logger.info(textwrap.dedent("""\
                 Accumulator Parameters:
-                accumulator threshold = {}
                 length for discharge = {}
                 tau for discharge = {}
                 compression factor = {}
-                """.format(THR_ACUM, ACUM_DISCHARGE_LENGTH,
+                """.format(ACUM_DISCHARGE_LENGTH,
                            ACUM_TAU, ACUM_COMPRESS)))
 
     # open the input file in mode append
@@ -162,7 +160,6 @@ def ISIDORA(argv):
             signal_r, acum = DBLR(pmtrd_[i],
                                   n_baseline=N_BASELINE,
                                   thr_trigger=THR_TRIGGER,
-                                  thr_acum=THR_ACUM,
                                   acum_discharge_length=ACUM_DISCHARGE_LENGTH,
                                   acum_tau=ACUM_TAU,
                                   acum_compress=ACUM_COMPRESS)
