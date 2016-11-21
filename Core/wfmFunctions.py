@@ -411,7 +411,7 @@ def find_baseline(waveform, n_samples=500, check_no_signal=True):
             subsample = waveform[low:upp]
             if np.std(subsample) < 3:
                 return np.mean(subsample)
-    return np.mean(waveform[:mau_len])
+    return np.mean(waveform[:n_samples])
 
 
 def subtract_baseline(waveforms, n_samples=500, check_no_signal=True):
