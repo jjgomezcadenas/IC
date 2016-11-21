@@ -383,7 +383,7 @@ def noise_suppression(waveforms, thresholds):
     return np.array(suppressed_wfs)
 
 
-def find_baseline(waveform, b_mau=None):
+def find_baseline(waveform, n_samples=500, check_no_signal=True):
     """
     Finds baseline in waveform.
 
@@ -392,20 +392,29 @@ def find_baseline(waveform, b_mau=None):
     waveform : 1-dim np.ndarray
         Any sensor's waveform.
 
-    b_mau : 1-dim np.ndarray, optional
-        Flat signal of amplitude 1/length. It is computed if not given.
+    n_samples : int, optional
+        Number of samples to measure baseline. Default is 500.
+
+    check_no_signal : bool, optional
+        Check RMS in waveform subsample to ensure there is no signal present
+        in it. Default is True.
 
     Returns
     -------
     baseline : int or float
         Waveform's baseline.
     """
-    if b_mau is None:
-        b_mau = np.ones(waveform.size)*1.0/waveform.size
-    return signal.lfilter(b_mau, 1, waveform)[-1]
+    if check_no_signal:
+        for i in range(waveform.size//n_samples):
+            low = i * n_samples
+            upp = low + n_samples
+            subsample = waveform[low:upp]
+            if np.std(subsample) < 3:
+                return np.mean(subsample)
+    return np.mean(waveform[:mau_len])
 
 
-def subtract_baseline(waveforms, mau_len=None):
+def subtract_baseline(waveforms, n_samples=500, check_no_signal=True):
     """
     Computes the baseline for each sensor in the event and subtracts it.
 
@@ -413,19 +422,18 @@ def subtract_baseline(waveforms, mau_len=None):
     ----------
     waveforms : 2-dim np.ndarray
         The waveform amplitudes (axis 1) for each sensor (axis 0)
-    mau_len : int
-        Number of samples (from the beginning of the waveform) to be taken.
+    n_samples : int
+        Number of samples to measure baseline. Default is 500.
+    check_no_signal : bool, optional
+        Check RMS in waveform subsample to ensure there is no signal present
+        in it. Default is True.
 
     Returns
     -------
     blr_wfs : 2-dim np.array
         The input waveform with the baseline subtracted.
     """
-    if mau_len is None:
-        mau_len = waveforms.shape[1]
-        waveforms = waveforms[:, :mau_len]
-
-    b_mau = np.ones(mau_len)*1.0/mau_len
-    bls = np.apply_along_axis(lambda wf: find_baseline(wf, b_mau),
+    bls = np.apply_along_axis(lambda wf: find_baseline(wf, n_samples,
+                                                       check_no_signal),
                               1, waveforms)
     return waveforms - bls.reshape(waveforms.shape[0], 1)
