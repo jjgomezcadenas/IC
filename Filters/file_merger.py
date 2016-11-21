@@ -36,10 +36,10 @@ def init_filter(filtername, **options):
         Callable object taking an hdf5 file and event number and
         returning a boolean.
     """
-    filtername = "Filters." + filtername
-    module = importlib.import_module(filtername)
+    module = importlib.import_module("Filters." + filtername)
     filter_ = getattr(module, filtername)
     globals()[filtername] = module
+    print("Initializing filter {}".format(filtername))
     return filter_(**filter_options(options, filtername))
 
 

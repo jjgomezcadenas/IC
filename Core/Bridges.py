@@ -102,6 +102,9 @@ class PMap:
         self.t0 = t0
         self.peaks = list(peaks)
 
+    def get(self, type_):
+        return filter(lambda peak: peak.signal == type_, self.peaks)
+
     def __str__(self):
         header = "PMAP with {} peaks. Event t0 = {} mus".format(
                  len(self.peaks), self.t0)
