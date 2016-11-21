@@ -24,6 +24,7 @@ import tables as tb
 
 from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
+from Core.Nh5 import DECONV_PARAM
 
 import ICython.cBLR as cblr
 import Database.loadDB as DB
@@ -135,6 +136,17 @@ def ISIDORA(argv):
                                      shape=(0, NPMT, PMTWL),
                                      expectedrows=NEVENTS_DST)
 
+        if "/Deconvolution" not in h5in:
+            h5in.create_group(h5in.root, "Deconvolution")
+        if "/Deconvolution/Parameters" in h5in:
+            h5in.remove_node("/Deconvolution", "Parameters")
+        deconv_table = h5in.create_table(h5in.root.Deconvolution,
+                                         "Parameters",
+                                         DECONV_PARAM,
+                                         "Deconvolution parameters",
+                                         tbl.filters("NOCOMPR"))
+        tbl.store_deconv_table(deconv_table, CFP)
+        
         # LOOP
         first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
                                                            NEVENTS,
