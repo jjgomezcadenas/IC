@@ -42,15 +42,24 @@ ChangeLog:
 """
 
 
-def classify_signal(slices, foundS2):
-    if len(slices) > 1:
-        sig = Signal.S2
-    elif not foundS2:
-        sig = Signal.S1
-    else:
-        sig = Signal.UNKNOWN
-    return sig
-
+def classify_peaks(pmap, **options):
+    foundS1 = False
+    foundS2 = False
+    s1_min_int = options.get("MIN_S1_INTEGRAL", 0.)
+    s1_max_tot = options.get("MAX_S1_ToT", 40)
+    s2_min_wid = options.get("MIN_S2_WIDTH", 0)
+    s2_min_hei = options.get("MIN_S2_HEIGHT", 0.)
+    s2_min_int = options.get("MIN_S2_INTEGRAL", 0.)
+    for peak in pmap:
+        peak.signal = Signal.UNKNOWN
+        if (len(peak) > s2_min_wid and peak.tothrs.sum() > s2_min_int and
+            peak.peakmax[1] > s2_min_hei):
+            peak.signal = Signal.S2
+            foundS2 = True
+        elif len(peak) == 1 and peak.tothrs.sum() < s1_max_tot and not foundS2:
+            if not foundS1 or peak.cathode_integral > s1_min_int:
+                peak.signal = Signal.S1
+                foundS1 = True
 
 def build_pmap(pmtwf, sipmwfs, stride=40):
     """
@@ -86,13 +95,9 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
         # Empty slice. Everything accumulated so far is a peak.
         # It will be S1-like if it is a short peak
         elif len(ene_pmt) > 0:
-            sigtype = classify_signal(ene_pmt, foundS2)
-            if sigtype == Signal.S2:
-                foundS2 = True
             tmax = t
             peak = Peak(np.arange(tmin, tmax)*to_mus,
-                        ene_pmt, ene_sipms,
-                        time_over_thrs, sigtype)
+                        ene_pmt, ene_sipms, time_over_thrs)
             pmap.peaks.append(peak)
 
             tmin = float("inf")
@@ -120,6 +125,7 @@ def DOROTHEA(argv):
     LAST_EVT = CFP["LAST_EVT"]
     RUN_ALL = CFP["RUN_ALL"]
     COMPRESSION = CFP["COMPRESSION"]
+
     NEVENTS = LAST_EVT - FIRST_EVT
 
     logger.info("Debug level = {}".format(DEBUG_LEVEL))
@@ -194,9 +200,11 @@ def DOROTHEA(argv):
                 sipmwfs = sipmzs_[i] * sipm_to_pes
 
                 pmap = build_pmap(pmtwf, sipmwfs)
+                classify_peaks(pmap, **CFP)
                 tbl.store_pmap(pmap, pmaps_, i)
 
                 pmap_blr = build_pmap(blrwf, sipmwfs)
+                classify_peaks(pmap_blr, **CFP)
                 tbl.store_pmap(pmap_blr, pmaps_blr_, i)
 
             t1 = time()

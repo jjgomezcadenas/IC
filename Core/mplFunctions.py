@@ -319,7 +319,7 @@ def plot_best(sipmrwf, sipmtwf, sipmdf, evt=0):
     # Find SiPM with greatest peak
     maxsipm = np.unravel_index(sipmrwf[evt].argmax(), sipmrwf[evt].shape)[0]
     print("SiPM with greatest peak is "
-          "at index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].channel))
+          "at index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].sensorID))
 
     # Plot noisy waveform in red and noiseless waveform in blue
     true_times, true_amps = tbl.read_sensor_wf(sipmtwf, evt, maxsipm)

@@ -115,6 +115,21 @@ def read_FEE_table(fee_t):
     return FEE
 
 
+def store_deconv_table(table, params):
+    row = table.row
+    for param in table.colnames:
+        row[param] = params[param]
+    row.append()
+    table.flush()
+
+
+def read_deconv_table(table):
+    params = {}
+    for param in table.colnames:
+        params[param] = table[0][param]
+    return params
+
+
 def get_vectors(h5f):
     """
     Return the most relevant fields stored in a raw data file.
