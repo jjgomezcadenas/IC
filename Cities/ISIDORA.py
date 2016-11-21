@@ -25,6 +25,7 @@ import tables as tb
 from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
 from Core.Nh5 import DECONV_PARAM
+import Core.tblFunctions as tbl
 
 import ICython.cBLR as cblr
 import Database.loadDB as DB
@@ -146,7 +147,7 @@ def ISIDORA(argv):
                                          "Deconvolution parameters",
                                          tbl.filters("NOCOMPR"))
         tbl.store_deconv_table(deconv_table, CFP)
-        
+
         # LOOP
         first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
                                                            NEVENTS,
