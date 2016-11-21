@@ -22,6 +22,7 @@ from Core.Configure import configure, define_event_loop
 
 import Core.wfmFunctions as wfm
 import Database.loadDB as DB
+import Sierpe.FEE as FE
 
 from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 """
@@ -39,7 +40,7 @@ ChangeLog:
 
 10.11 Waveforms stay in adc counts. All PMTs are now stored.
 
-16.11 Using new database facility
+16.11 Using new database utility
 """
 
 
@@ -133,21 +134,22 @@ def ANASTASIA(argv):
                 logger.info("-->event number = {}".format(i))
 
             pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)
-            blrzs = wfm.noise_suppression(pmtblr[i], PMT_NOISE_CUT_BLR)
+            blrzs = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
+            blrzs = wfm.noise_suppression(blrzs, PMT_NOISE_CUT_BLR)
 
             pmt_zs_.append(pmtzs[np.newaxis])
             blr_zs_.append(blrzs[np.newaxis])
 
             sipmzs = sipmrwf[i]
             if "/MC" not in h5in:
-                sipmzs = wfm.subtract_baseline(sipmzs, None)
+                sipmzs = wfm.subtract_baseline(sipmzs, 200)
             sipmzs = wfm.noise_suppression(sipmzs, sipms_thresholds_)
             sipm_zs_.append(sipmzs[np.newaxis])
 
         t1 = time()
         dt = t1-t0
 
-        print("ANASTASIA has run over {} events in {} seconds".format(i, dt))
+        print("ANASTASIA has run over {} events in {} seconds".format(i+1, dt))
     print("Leaving ANASTASIA. Safe travels!")
 
 

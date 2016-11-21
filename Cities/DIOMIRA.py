@@ -2,6 +2,7 @@
 DIOMIRA
 JJGC August-October 2016
 GML October 2016
+New version, JJ, afer VHB, November 2016
 
 What DIOMIRA does:
 1) Reads a MCRD file containing MC waveforms for the 12 PMTs of the EP.
@@ -17,25 +18,21 @@ from __future__ import print_function
 import sys
 import numpy as np
 import tables
-from scipy import signal as SGN
 from time import time
 
 import Core.system_of_units as units
 from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
 from Core.Nh5 import FEE, SENSOR_WF
-
-import Sierpe.FEParam as FP
-import Sierpe.SPE as SP
-import Sierpe.FEE2 as FE
-
 import Core.wfmFunctions as wfm
 import Core.coreFunctions as cf
 import Core.tblFunctions as tbl
+from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 
+import Sierpe.FEE as FE
 import Database.loadDB as DB
 
-from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
+
 """
 
 DIOMIRA
@@ -81,34 +78,10 @@ Some variables, classes and functions renamed for clarity.
 20.10: GML, overwrite calibration constants in DataPMT with values
 from FEE table. PRE-RELEASE
 
-16.11: Using new database facility
+15.11, new version of FEE for PMTs
+
+16.11: Using new database utility
 """
-
-
-def FEE_param_table(fee_table):
-    """
-    Stores the parameters of the EP FEE simulation
-    """
-    row = fee_table.row
-    row["offset"] = FP.offset
-    row["ceiling"] = FP.ceiling
-    row["pmt_gain"] = FP.PMT_GAIN
-    row["V_gain"] = FP.V_GAIN
-    row["R"] = FP.R
-    row["C12"] = FP.C12
-    row["CR"], row["CB"] = calibration_constants_from_spe()
-    row["AC"] = FP.AC
-    row["time_step"] = FP.time_step
-    row["time_daq"] = FP.time_DAQ
-    row["freq_LPF"] = FP.freq_LPF
-    row["freq_HPF"] = 1./(2*np.pi*FP.R*FP.C)
-    row["LSB"] = FP.LSB
-    row["volts_to_adc"] = FP.voltsToAdc/units.volt
-    row["noise_fee_rms"] = FP.NOISE_FEE
-    row["noise_adc"] = FP.NOISE_ADC
-
-    row.append()
-    fee_table.flush()
 
 
 def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
@@ -118,81 +91,43 @@ def simulate_sipm_response(event_number, sipmrd_, sipms_noise_sampler):
     return sipmrd_[event_number] + sipms_noise_sampler.Sample()
 
 
-def simulate_pmt_response(event_number, pmtrd_, blr_mau=500):
+def simulate_pmt_response(event, pmtrd):
     """
     Input:
-     1) extensible array pmtrd_ (events, sensors, waveform)
+     1) extensible array pmtrd
      2) event_number
 
     returns:
     array of raw waveforms (RWF), obtained by convoluting pmtrd_ with the PMT
     front end electronics (LPF, HPF)
-    array of BLR waveforms (only convolution with LPF)
+    array of BLR waveforms (only decimation)
     """
 
+    spe = FE.SPE()  # spe
+    # FEE, with noise PMT
+    fee = FE.FEE(noise_FEEPMB_rms=FE.NOISE_I, noise_DAQ_rms=FE.NOISE_DAQ)
+    NPMT = pmtrd.shape[1]
     RWF = []
     BLRX = []
-
-    for j in range(pmtrd_.shape[1]):
-        logger.debug("-->PMT number ={}".format(j))
-
-        pmt = pmtrd_[event_number, j]  # waveform for event event_number, PMT j
-        fee = FE.FEE(PMTG=FP.PMT_GAIN, C=FP.C12[j], R=FP.R, f=FP.freq_LPF,
-                     RG=FP.V_GAIN)  # instantiate FEE class
-        # instantiate single photoelectron class
-        spe = SP.SPE(pmt_gain=FP.PMT_GAIN, x_slope=5*units.ns,
-                     x_flat=1*units.ns)
-
-        # waveform "pmt" is passed to spe, output is a signal current
-        signal_PMT = spe.SpePulseFromVectorPE(pmt)  # PMT response
-
-        # Front end response to PMT pulse (in volts)
-        signal_fee, signal_blr = fee.FEESignal(signal_PMT, FP.NOISE_FEE)
-
-        # daq response (decimation)
-        signal_daq = FP.offset - fee.daqSignal(signal_fee, noise_rms=0)
-
-        signal_daq_blr = (FP.ceiling - FP.offset +
-                          fee.daqSignal(signal_blr, noise_rms=0))
-        nm = blr_mau
-        MAU = np.zeros(nm, dtype=np.double)
-        B_MAU = (1./nm)*np.ones(nm, dtype=np.double)
-
-        MAU[0:nm] = SGN.lfilter(B_MAU, 1, signal_daq_blr[0:nm])
-        BASELINE = MAU[nm-1]
-
-        RWF.append(signal_daq)
-        BLRX.append(signal_daq_blr - BASELINE)
-
+    DataPMT = DB.DataPMT()
+    adc_to_pes = np.abs(DataPMT.adc_to_pes.values)
+    for pmt in range(NPMT):
+        # signal_i in current units
+        cc = adc_to_pes[pmt] / FE.ADC_TO_PES
+        signal_i = FE.spe_pulse_from_vector(spe, pmtrd[event, pmt])
+        # Decimate (DAQ decimation)
+        signal_d = FE.daq_decimator(FE.f_mc, FE.f_sample, signal_i)
+        # Effect of FEE and transform to adc counts
+        signal_fee = FE.signal_v_fee(fee, signal_d, pmt) * FE.v_to_adc()
+        # add noise daq
+        signal_daq = cc * FE.noise_adc(fee, signal_fee)
+        # signal blr is just pure MC decimated by adc in adc counts
+        signal_blr = cc * FE.signal_v_lpf(fee, signal_d)*FE.v_to_adc()
+        # raw waveform stored with negative sign and offset
+        RWF.append(FE.OFFSET - signal_daq)
+        # blr waveform stored with positive sign and no offset
+        BLRX.append(FE.OFFSET - signal_blr)
     return np.array(RWF), np.array(BLRX)
-
-
-def calibration_constants_from_spe(start_pulse=100*units.ns,
-                                   end_pulse=500*units.ns):
-    """
-    Computes calibration constants from the are of a SPE
-    """
-    spe = SP.SPE()
-    cr = []
-    cb = []
-
-    for pmt, C in enumerate(FP.C12):
-        fee = FE.FEE(PMTG=FP.PMT_GAIN, C=C, R=FP.R, f=FP.freq_LPF,
-                     RG=FP.V_GAIN)
-        # PMT response to a single photon (single pe current pulse)
-        signal_t, signal_PE = spe.SpePulse(start_pulse, tmax=end_pulse)
-        # effect of FEE
-        signal_fee, signal_blr = fee.FEESignal(signal_PE, FP.NOISE_FEE)
-        # effect of DAQ
-        signal_daq = fee.daqSignal(signal_fee, noise_rms=0)
-        signal_daq_blr = fee.daqSignal(signal_blr, noise_rms=0)
-        area = np.sum(signal_daq)
-        area_blr = np.sum(signal_daq_blr)
-        logger.debug("PMT {}: cc {}, cc blr {}".format(pmt, area, area_blr))
-        cr.append(area)
-        cb.append(area_blr)
-
-    return cr, cb
 
 
 def DIOMIRA(argv):
@@ -214,7 +149,7 @@ def DIOMIRA(argv):
         4. Add a table describing the FEE parameters used for simulation
         5. Copies the tables on geometry, detector data and MC
         """)
-        FP.print_FEE()
+        # FP.print_FEE()
 
     PATH_IN = CFP["PATH_IN"]
     PATH_OUT = CFP["PATH_OUT"]
@@ -246,7 +181,7 @@ def DIOMIRA(argv):
         NSIPM = sipmrd_.shape[1]
         PMTWL = pmtrd_.shape[2]
         # PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ) #old format
-        PMTWL_FEE = int(PMTWL/FP.time_DAQ)
+        PMTWL_FEE = int(PMTWL/FE.t_sample)
         SIPMWL = sipmrd_.shape[2]
         NEVENTS_DST = pmtrd_.shape[0]
 
@@ -294,7 +229,7 @@ def DIOMIRA(argv):
             sipm_twf_table.cols.event.create_index()
 
             # fill FEE table
-            FEE_param_table(fee_table)
+            tbl.store_FEE_table(fee_table)
 
             # create a group to store RawData
             h5out.create_group(h5out.root, "RD")
@@ -336,8 +271,8 @@ def DIOMIRA(argv):
                                       0., to_mus=int(units.ns/units.ms)))
 
                 # store in table
-                tbl.store_wf(i, pmt_twf_table, truePMT)
-                tbl.store_wf(i, sipm_twf_table, trueSiPM)
+                tbl.store_wf_table(i, pmt_twf_table, truePMT)
+                tbl.store_wf_table(i, sipm_twf_table, trueSiPM)
 
                 # simulate PMT response and return an array with RWF;BLR
                 # convert to float, append to EVector
@@ -363,6 +298,7 @@ def DIOMIRA(argv):
             print("DIOMIRA has run over {} events in {} seconds".format(i+1,
                                                                         dt))
     print("Leaving Diomira. Safe travels!")
+
 
 if __name__ == "__main__":
     from cities import diomira

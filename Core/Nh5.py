@@ -3,6 +3,7 @@ Tables defining the DM
 """
 import tables as tb
 
+
 class RunInfo(tb.IsDescription):
     run_number = tb.Int32Col(shape=(), pos=0)
 
@@ -68,23 +69,37 @@ class FEE(tb.IsDescription):
     """
     Stores the parameters used by the EP simulation as metadata
     """
-    offset = tb.Int16Col(pos=1)  # displaces the baseline (e.g, 700)
-    ceiling = tb.Int16Col(pos=2)  # adc top count (4096)
-    pmt_gain = tb.Float32Col(pos=3)  # Gain of PMT (4.5e6)
-    V_gain = tb.Float32Col(pos=4)  # FE gain (250*ohm)
-    R = tb.Float32Col(pos=5)  # resistor in Ohms (2350*ohm)
-    time_step = tb.Float32Col(pos=6)  # 1*ns input MC time bins
-    time_daq = tb.Float32Col(pos=7)  # 25*ns DAQ time
-    freq_LPF = tb.Float32Col(pos=8)  # 3E6*hertz
-    freq_HPF = tb.Float32Col(pos=9)  # 1/2piRC
-    LSB = tb.Float32Col(pos=10)  # Least Significant Bit 2*volt/2**NBITS
-    volts_to_adc = tb.Float32Col(pos=11)  # volts to adc counts
-    noise_fee_rms = tb.Float32Col(pos=12)  # noise FEE in volts
-    noise_adc = tb.Float32Col(pos=13)   # noise FEE in ADC counts
-    C12 = tb.Float32Col(shape=12, pos=14)  # 6.2*nF decoupling capacitor
-    AC = tb.Float32Col(shape=12, pos=15)  # Accumulator coefficients
-    CR = tb.Float32Col(shape=12, pos=16)  # calibration constants RAW
-    CB = tb.Float32Col(shape=12, pos=17)  # calibration constants BLR
+    OFFSET = tb.Int16Col(pos=1)  # displaces the baseline (e.g, 700)
+    CEILING = tb.Int16Col(pos=2)  # adc top count (4096)
+    PMT_GAIN = tb.Float32Col(pos=3)  # Gain of PMT (4.5e6)
+    FEE_GAIN = tb.Float32Col(pos=4)  # FE gain (250*ohm)
+    R1 = tb.Float32Col(pos=5)  # resistor in Ohms (2350*ohm)
+    C1 = tb.Float32Col(pos=6)  # Capacitor C1 in nF
+    C2 = tb.Float32Col(pos=7)  # Capacitor C2 in nF
+    ZIN = tb.Float32Col(pos=8)  # equivalent impedence
+    DAQ_GAIN = tb.Float32Col(pos=9)
+    NBITS = tb.Float32Col(pos=10)  # number of bits ADC
+    LSB = tb.Float32Col(pos=11)  # LSB (adc count)
+    NOISE_I = tb.Float32Col(pos=12)  # Noise at the input
+    NOISE_DAQ = tb.Float32Col(pos=13)  # Noise at DAQ
+    t_sample = tb.Float32Col(pos=14)  # sampling time
+    f_sample = tb.Float32Col(pos=15)  # sampling frequency
+    f_mc = tb.Float32Col(pos=16)  # sampling frequency in MC (1ns)
+    f_LPF1 = tb.Float32Col(pos=17)  # LPF
+    f_LPF2 = tb.Float32Col(pos=18)  # LPF
+    coeff_c = tb.Float64Col(shape=12, pos=19)  # cleaning coeff
+    coeff_blr = tb.Float64Col(shape=12, pos=20)  # COEFF BLR
+    adc_to_pes = tb.Float32Col(shape=12, pos=21)  # CALIB CONST
+    pmt_noise_rms = tb.Float32Col(shape=12, pos=22)  # rms noise
+
+
+class DECONV_PARAM(tb.IsDescription):
+    N_BASELINE = tb.Int16Col(pos=0)
+    THR_TRIGGER = tb.Int16Col(pos=1)
+    THR_ACUM = tb.Int16Col(pos=2)
+    ACUM_DISCHARGE_LENGTH = tb.Int16Col(pos=3)
+    ACUM_TAU = tb.Int16Col(pos=4)
+    ACUM_COMPRESS = tb.Float32Col(pos=4)
 
 
 class PMAP(tb.IsDescription):
