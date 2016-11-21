@@ -5,6 +5,8 @@ from __future__ import print_function
 
 import sys
 
+import numpy as np
+
 
 class Baseline:
     """
@@ -28,5 +30,5 @@ class Baseline:
         self.n_samples = opts.get("n_samples", 10)
 
     def __call__(self, f, i):
-        means = np.mean(f.root.RD.pmtcwf[i,:,-n_samples:], axis=1)
+        means = np.mean(f.root.RD.pmtcwf[i,:,-self.n_samples:], axis=1)
         return np.all(means < self.max_adc)
