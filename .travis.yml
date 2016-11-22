@@ -14,7 +14,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n icenv python=2.7 numpy pandas cython nose pytables mysql-python
+  - conda create -n icenv python=2.7 numpy scipy pandas cython nose pytables mysql-python
   - source activate icenv
   - pip install coveralls
 

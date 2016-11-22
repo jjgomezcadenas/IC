@@ -5,16 +5,15 @@ from __future__ import print_function
 
 import math
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 # from mpl_toolkits.mplot3d import Axes3D
 
-import coreFunctions as cf
-import system_of_units as units
-import wfmFunctions as wfm
-import tblFunctions as tbl
+import Core.coreFunctions as cf
+import Core.system_of_units as units
+import Core.wfmFunctions as wfm
+import Core.tblFunctions as tbl
 
 
 # matplotlib.style.use("ggplot")
@@ -320,10 +319,10 @@ def plot_best(sipmrwf, sipmtwf, sipmdf, evt=0):
     # Find SiPM with greatest peak
     maxsipm = np.unravel_index(sipmrwf[evt].argmax(), sipmrwf[evt].shape)[0]
     print("SiPM with greatest peak is "
-          "at index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].channel))
+          "at index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].sensorID))
 
     # Plot noisy waveform in red and noiseless waveform in blue
-    true_times, true_amps = tbl.read_wf(sipmtwf, evt, maxsipm)
+    true_times, true_amps = tbl.read_sensor_wf(sipmtwf, evt, maxsipm)
     plt.plot(sipmrwf[evt, maxsipm, :])
     plt.plot(true_times, np.array(true_amps) * sipmdf["adc_to_pes"][maxsipm])
     plt.xlabel("time ($\mu$s)")
@@ -342,7 +341,7 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
 
     nrows = int(math.ceil(nsipms * 1.0/ncols))
     for i, (sipm_index, sipm_wf) in enumerate(sipms):
-        true_times, true_amps = tbl.read_wf(sipmtwf, evt, sipm_index)
+        true_times, true_amps = tbl.read_sensor_wf(sipmtwf, evt, sipm_index)
         if len(true_amps) == 0:
             true_times = np.arange(len(sipm_wf))
             true_amps = np.zeros(len(sipm_wf))
@@ -353,6 +352,16 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
         plt.xlabel("time ($\mu$s)")
         plt.ylabel("Energy (adc)")
     plt.tight_layout()
+
+
+def plot_pmap(pmap):
+    for i, peak in enumerate(pmap.peaks):
+        plt.plot(peak.times, peak.cathode, '*-',
+                 label="peak #{} type {}".format(i, peak.signal))
+
+    plt.legend(loc="upper left")
+    plt.xlabel("time ($\mu$s)")
+    plt.ylabel("energy (pes)")
 
 
 def plot_track(geom_df, mchits_df, vox_size=10, zoom=False):

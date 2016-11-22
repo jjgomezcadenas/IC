@@ -9,7 +9,8 @@ from __future__ import print_function
 
 import numpy as np
 from scipy import signal
-import system_of_units as units
+import Core.system_of_units as units
+import Database.loadDB as DB
 
 # globals describing FEE
 PMT_GAIN = 1.7e6
@@ -29,8 +30,10 @@ f_sample = 1./t_sample
 f_mc = 1./(1*units.ns)
 f_LPF1 = 3*units.MHZ
 f_LPF2 = 10*units.MHZ
-ADC_TO_PES = 20  # nominal factor, comes out from spe area
+ADC_TO_PES_LPF = 24.1  # After LPF, comes out from spe area
+ADC_TO_PES = 23.1
 OFFSET = 2500  # offset adc
+CEILING = 4096  # ceiling of adc
 
 
 def i_to_adc():
@@ -181,7 +184,22 @@ class FEE:
         self.freq_LHPFd = self.freq_LHPF/(self.f_sample*np.pi)
         self.freq_LPF1d = self.freq_LPF1/(self.f_sample*np.pi)
         self.freq_LPF2d = self.freq_LPF2/(self.f_sample*np.pi)
+        self.coeff_blr = self.freq_LHPFd*np.pi
 
+        self.freq_zero = 1./(self.R1*self.C1)
+        self.coeff_c = self.freq_zero/(self.f_sample*np.pi)
+
+        DataPMT = DB.DataPMT()
+
+        self.coeff_blr_pmt = DataPMT.coeff_blr.values
+        self.freq_LHPFd_pmt = self.coeff_blr_pmt/np.pi
+        self.coeff_c_pmt = DataPMT.coeff_c.values
+        self.C1_pmt = (self.coeff_blr_pmt/self.coeff_c_pmt)*(self.C2/np.pi)
+        self.R1_pmt = 1./(self.coeff_c_pmt*self.C1_pmt*self.f_sample*np.pi)
+        self.A1_pmt = self.R1_pmt * self.Zin/(self.R1_pmt + self.Zin)  # ohms
+        self.A2_pmt = gain/self.A1_pmt  # ohms/ohms = []
+        self.Cr_pmt = 1. + self.C1_pmt/self.C2
+        self.ZC_pmt = self.Zin/self.Cr_pmt
         self.noise_FEEPMB_rms = noise_FEEPMB_rms
         self.LSB = lsb
         self.voltsToAdc = self.LSB/units.volt
@@ -197,34 +215,56 @@ class FEE:
          R1 = {2:7.1f} ohm,
          Zin = {3:7.1f} ohm,
          gain = {4:7.1f} ohm,
-         f_sample = {5:7.1f} MHZ,
-         freq_LHPF = {6:7.2f} kHz,
-         freq_LPF1 = {7:7.2f} MHZ,
-         freq_LPF2 = {8:7.2f} MHZ,
-         freq_LHPFd = {9:8.5f},
-         freq_LPF1d = {10:7.2f},
-         freq_LPF2d = {11:7.2f},
-         noise_FEEPMB_rms = {12:7.2f} muA,
-         LSB = {13:7.2g} mV,
-         volts to adc = {14:7.2g},
-         DAQnoise_rms = {15:7.2g}
+         A1 = {5:7.4f} ohm,
+         A2 = {6:7.4f},
+         f_sample = {7:7.1f} MHZ,
+         freq_LHPF = {8:7.2f} kHz,
+         freq_LPF1 = {9:7.2f} MHZ,
+         freq_LPF2 = {10:7.2f} MHZ,
+         freq_LHPFd = {11:8.5f},
+         coeff_blr = {12:8.5f},
+         freq_LPF1d = {13:7.2f},
+         freq_LPF2d = {14:7.2f},
+         noise_FEEPMB_rms = {15:7.2f} muA,
+         LSB = {16:7.2g} mV,
+         volts to adc = {17:7.2g},
+         DAQnoise_rms = {18:7.2g},
+         freq_LHPFd (PMTs) = {19:s},
+         coef_blr (PMTs)= {20:s},
+         freq_zero = {21:7.5g},
+         coeff_c = {22:7.5g},
+         coeff_c (PMTs)= {23:s},
+         R1 (PMTs)= {24:s} ohm,
+         A1 (PMTs)= {25:s} ohm,
+         A2 (PMTs)= {26:s}
         )
         """.format(self.C1/units.nF,
                    self.C2/units.nF,
                    self.R1/units.ohm,
                    self.Zin/units.ohm,
                    self.GAIN/units.ohm,
+                   self.A1/units.ohm,
+                   self.A2,
                    self.f_sample/units.MHZ,
                    self.freq_LHPF/(units.kHz*2*np.pi),
                    self.freq_LPF1/(units.MHZ*2*np.pi),
                    self.freq_LPF2/(units.MHZ*2*np.pi),
                    self.freq_LHPFd,
+                   self.coeff_blr,
                    self.freq_LPF1d,
                    self.freq_LPF2d,
                    self.noise_FEEPMB_rms/units.muA,
                    self.LSB/units.mV,
                    self.voltsToAdc,
-                   self.DAQnoise_rms/units.mV)
+                   self.DAQnoise_rms/units.mV,
+                   self.freq_LHPFd_pmt,
+                   self.coeff_blr_pmt,
+                   self.freq_zero,
+                   self.coeff_c,
+                   self.coeff_c_pmt,
+                   self.R1_pmt/units.ohm,
+                   self.A1_pmt/units.ohm,
+                   self.A2_pmt)
         return s
 
     def __repr__(self):
@@ -248,21 +288,46 @@ def noise_adc(fee, signal_in_adc):
                                             len(signal_in_adc))
 
 
-def filter_fee(feep):
+def filter_sfee_lpf(sfe):
+    """
+    input: an instance of class Fee
+    output: buttersworth parameters of the equivalent LPT FEE filter
+    """
+    # LPF order 1
+    b1, a1 = signal.butter(1, sfe.freq_LPF1d, 'low', analog=False)
+    # LPF order 4
+    b2, a2 = signal.butter(4, sfe.freq_LPF2d, 'low', analog=False)
+    # convolve LPF1, LPF2
+    a = np.convolve(a1, a2, mode='full')
+    b_aux = np.convolve(b1, b2, mode='full')
+    b = sfe.GAIN*b_aux
+    return b, a
+
+
+def filter_fee(feep, ipmt):
     """
     input: an instance of class FEE
+           ipmt = pmt number
     output: buttersworth parameters of the equivalent FEE filter
     """
 
+    # print(feep.freq_LHPFd_pmt)
+    # print('ipmt = {}, freq_LHPFd_pmt = {}'.format(ipmt,
+    #                                              feep.freq_LHPFd_pmt[ipmt]))
     # high pass butterswoth filter ~1/RC
-    b1, a1 = signal.butter(1,
-                           feep.freq_LHPFd,
-                           'high', analog=False)
-    b2, a2 = signal.butter(1,
-                           feep.freq_LHPFd,
-                           'low', analog=False)
+    coef = feep.freq_LHPFd_pmt[ipmt]
+    A1 = feep.A1_pmt[ipmt]
+    A2 = feep.A2_pmt[ipmt]
+    ZC = feep.ZC_pmt[ipmt]
+    if ipmt == -1:
+        coef = feep.freq_LHPFd
+        A1 = feep.A1
+        A2 = feep.A2
+        ZC = feep.ZC
+    b1, a1 = signal.butter(1, coef, 'high', analog=False)
+    b2, a2 = signal.butter(1, coef, 'low', analog=False)
 
-    b0 = b2*feep.ZC + b1*feep.A1  # in ohms
+    b0 = b2*ZC + b1*A1  # in ohms
     a0 = a1
 
     # LPF order 1
@@ -279,26 +344,30 @@ def filter_fee(feep):
     # convolve HPF+LPF1, LPF2
     a = np.convolve(a_aux, a2l, mode='full')
     b_aux2 = np.convolve(b_aux, b2l, mode='full')
-    b = feep.A2*b_aux2  # in ohms
+    b = A2*b_aux2  # in ohms
 
     return b, a
 
 
-def filter_cleaner(feep):
+def filter_cleaner(feep, ipmt):
     """
     cleans the input signal
     """
-    freq_zero = 1./(feep.R1*feep.C1)
-    freq_zerod = freq_zero/(feep.f_sample*np.pi)
-    b, a = signal.butter(1, freq_zerod, 'high', analog=False)
+    coef = feep.coeff_c_pmt[ipmt]
+    if ipmt == -1:
+        coef = feep.coeff_c
+    #  freq_zero = 1./(feep.R1*feep.C1)
+    #  freq_zerod = freq_zero/(feep.f_sample*np.pi)
+    b, a = signal.butter(1, coef, 'high', analog=False)
 
     return b, a
 
 
-def signal_v_fee(feep, signal_i):
+def signal_v_fee(feep, signal_i, ipmt):
     """
     input: signal_i = signal current (i = A)
            instance of class FEE
+           pmt number
     output: signal_v (in volts) with effect FEE
 
     ++++++++++++++++++++++++++++++++++++++++++++++++
@@ -316,12 +385,21 @@ def signal_v_fee(feep, signal_i):
     # Equivalent Noise of the FEE + PMT BASE added at the input
     # of the system to get the noise filtering effect
 
-    b, a = filter_fee(feep)  # b in ohms
+    b, a = filter_fee(feep, ipmt)  # b in ohms
     # filtered signal in I*R = V
     return signal.lfilter(b, a, signal_i + noise_FEEin)
 
 
-def signal_clean(feep, signal_fee):
+def signal_v_lpf(feep, signal_in):
+    """
+    input: instance of class sfe and a current signal
+    outputs: signal convolved with LPF in voltage
+    """
+    b, a = filter_sfee_lpf(feep)
+    return signal.lfilter(b, a, signal_in)
+
+
+def signal_clean(feep, signal_fee, ipmt):
     """
     input: signal_fee = adc, convoluted
            instance of class FEE
@@ -332,7 +410,7 @@ def signal_clean(feep, signal_fee):
     ++++++++++++++++++++++++++++++++++++++++++++++++
 
     """
-    b, a = filter_cleaner(feep)
+    b, a = filter_cleaner(feep, ipmt)
     return signal.lfilter(b, a, signal_fee)
 
 
