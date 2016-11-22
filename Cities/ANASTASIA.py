@@ -95,17 +95,20 @@ def ANASTASIA(argv=sys.argv):
         pmt_zs_ = h5in.create_earray(h5in.root.ZS, "PMT",
                                      atom=tb.Int16Atom(),
                                      shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVT)
+                                     expectedrows=NEVT,
+                                     filters=tbl.filters(COMPRESSION))
 
         blr_zs_ = h5in.create_earray(h5in.root.ZS, "BLR",
                                      atom=tb.Int16Atom(),
                                      shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVT)
+                                     expectedrows=NEVT,
+                                     filters=tbl.filters(COMPRESSION))
 
         sipm_zs_ = h5in.create_earray(h5in.root.ZS, "SiPM",
                                       atom=tb.Int16Atom(),
                                       shape=(0, NSIPM, SIPMWL),
-                                      expectedrows=NEVT)
+                                      expectedrows=NEVT,
+                                      filters=tbl.filters(COMPRESSION))
 
         t0 = time()
         for i in define_event_loop(CFP, NEVT):

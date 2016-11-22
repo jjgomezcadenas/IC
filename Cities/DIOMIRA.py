@@ -213,17 +213,20 @@ def DIOMIRA(argv=sys.argv):
             pmtrwf = h5out.create_earray(h5out.root.RD, "pmtrwf",
                                          atom=tables.Int16Atom(),
                                          shape=(0, NPMT, PMTWL_FEE),
-                                         expectedrows=NEVENTS_DST)
+                                         expectedrows=NEVENTS_DST,
+                                         filters=tbl.filters(COMPRESSION))
 
             pmtblr = h5out.create_earray(h5out.root.RD, "pmtblr",
                                          atom=tables.Int16Atom(),
                                          shape=(0, NPMT, PMTWL_FEE),
-                                         expectedrows=NEVENTS_DST)
+                                         expectedrows=NEVENTS_DST,
+                                         filters=tbl.filters(COMPRESSION))
 
             sipmrwf = h5out.create_earray(h5out.root.RD, "sipmrwf",
                                           atom=tables.Int16Atom(),
                                           shape=(0, NSIPM, SIPMWL),
-                                          expectedrows=NEVENTS_DST)
+                                          expectedrows=NEVENTS_DST,
+                                          filters=tbl.filters(COMPRESSION))
             # LOOP
             t0 = time()
             for i in define_event_loop(CFP, NEVENTS_DST):

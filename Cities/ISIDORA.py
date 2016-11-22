@@ -121,7 +121,8 @@ def ISIDORA(argv=sys.argv):
         pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf",
                                     atom=tb.Int16Atom(),
                                     shape=(0, NPMT, PMTWL),
-                                    expectedrows=NEVENTS_DST)
+                                    expectedrows=NEVENTS_DST,
+                                    filters=tbl.filters(COMPRESSION))
         # if "/RD/pmtacum" in h5in:
         #     h5in.remove_node("/RD", "pmtacum")
         #
@@ -147,7 +148,8 @@ def ISIDORA(argv=sys.argv):
         bl_array = h5in.create_earray(h5in.root.Deconvolution, "BL",
                                       atom=tb.Int16Atom(),
                                       shape=(0, NPMT, 3),
-                                      expectedrows=NEVENTS_DST)
+                                      expectedrows=NEVENTS_DST,
+                                      filters=tbl.filters(COMPRESSION))
         # LOOP
         t0 = time()
         for i in define_event_loop(CFP, NEVENTS_DST):

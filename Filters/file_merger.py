@@ -100,13 +100,15 @@ def create_new_file(outputfilename, inputfilename, **options):
             h5out.create_earray(h5out.root, "pmtrd",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             _, NSIPM, SIPMWL = h5in.root.sipmrd.shape
             h5out.create_earray(h5out.root, "sipmrd",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
         if "/RD" in h5in:
             rdgroup = h5out.create_group(h5out.root, "RD")
@@ -114,23 +116,29 @@ def create_new_file(outputfilename, inputfilename, **options):
             h5out.create_earray(rdgroup, "pmtrwf",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(rdgroup, "pmtblr",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             _, NSIPM, SIPMWL = h5in.root.RD.sipmrwf.shape
             h5out.create_earray(rdgroup, "sipmrwf",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
+
             if "/RD/pmtcwf" in h5in:
                 h5out.create_earray(rdgroup, "pmtcwf",
                                     atom=tb.Int16Atom(),
                                     shape=(0, NPMT, PMTWL),
-                                    expectedrows=NEVT)
+                                    expectedrows=NEVT,
+                                    filters=tbl.filters(COMPRESSION))
+
 
         if "/TWF" in h5in:
             twfgroup = h5out.create_group(h5out.root, "TWF")
@@ -150,34 +158,39 @@ def create_new_file(outputfilename, inputfilename, **options):
             h5out.create_earray(h5out.root.BLR, "mau",
                                 atom=tb.Int16Atom(),
                                 shape=(0, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(h5out.root.BLR, "pulse_on",
                                 atom=tb.Int16Atom(),
                                 shape=(0, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(h5out.root.BLR, "wait_over",
                                 atom=tb.Int16Atom(),
                                 shape=(0, PMTWL),
-                                expectedrows=NEVT)
+                                filters=tbl.filters(COMPRESSION))
 
         if "/ZS" in h5in:
             zsgroup = h5out.create_group(h5out.root, "ZS")
             h5out.create_earray(zsgroup, "PMT",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(zsgroup, "BLR",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(zsgroup, "SiPM",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
         if "/PMAPS" in h5in:
             pmapgroup = h5out.create_group(h5out.root, "PMAPS")
