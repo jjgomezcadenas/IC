@@ -38,7 +38,6 @@ pos.MinRun <= {0} and (pos.MaxRun >= {0} or pos.MaxRun is NULL) and
 msk.MinRun <= {0} and (msk.MaxRun >= {0} or msk.MaxRun is NULL) and
 gain.MinRun <= {0} and (gain.MaxRun >= {0} or gain.MaxRun is NULL)
 order by map.SensorID;'''.format(run_number)
-    print sql
     data = pd.read_sql_query(sql, conn)
     conn.close()
     return data
