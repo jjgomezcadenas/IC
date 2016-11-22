@@ -1,5 +1,7 @@
 import MySQLdb
 
+#This should also take PmtSigma
+
 dbArt = MySQLdb.connect(host="neutrinos1.ific.uv.es", user='USER',passwd='PASS',db="NEWDB")
 cursorArt = dbArt.cursor()
 

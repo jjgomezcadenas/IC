@@ -45,6 +45,13 @@ def loadDB():
 ,  `adc_to_pes` float NOT NULL
 );''')
 
+    cursorSql3.execute('''CREATE TABLE IF NOT EXISTS `PmtSigma` (
+  `MinRun` integer NOT NULL
+,  `MaxRun` integer DEFAULT NULL
+,  `SensorID` integer NOT NULL
+,  `sigma` float NOT NULL
+);''')
+
     cursorSql3.execute('''CREATE TABLE IF NOT EXISTS `PmtMapping` (
   `MinRun` integer NOT NULL
 ,  `MaxRun` integer DEFAULT NULL
@@ -425,7 +432,7 @@ def loadDB():
 );''')
 
     tables = ['DetectorGeo','PmtBlr','PmtGain','PmtMapping','PmtMask',
-          'PmtNoiseRms','PmtPosition','SipmBaseline','SipmGain',
+          'PmtNoiseRms','PmtPosition','PmtSigma','SipmBaseline','SipmGain',
           'SipmMapping','SipmMask','SipmNoise','SipmNoiseBins','SipmPosition']
 
 
