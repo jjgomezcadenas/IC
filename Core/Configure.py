@@ -70,7 +70,8 @@ def configure(input_options = sys.argv):
         options["SKIP"] = flags.s
     if flags.p is not None:
         options["PRINT_MOD"] = flags.p
-    options["RUN_ALL"] = flags.runall
+    if flags.runall:
+        options["RUN_ALL"] = flags.runall
     options["INFO"] = flags.I
     if flags.v is not None:
         options["VERBOSITY"] = 50 - min(flags.v, 4)*10
@@ -153,7 +154,7 @@ def read_config_file(cfile):
     d : dictionary
         Contains the parameters specified in cfile.
     """
-    d = {"VERBOSITY": 20}  # INFO
+    d = {"VERBOSITY": 20, "RUN_ALL": False}  # INFO
     for line in open(cfile, "r"):
         if line == "\n" or line[0] == "#":
             continue
