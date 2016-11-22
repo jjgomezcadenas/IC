@@ -70,7 +70,15 @@ CREATE TABLE IF NOT EXISTS `PmtGain` (
   `MinRun` int(11) NOT NULL,
   `MaxRun` int(11),
   `SensorID` int(11) NOT NULL,
-  `adc_to_pes` float NOT NULL,
+  `adc_to_pes` float NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+
+CREATE TABLE IF NOT EXISTS `PmtSigma` (
+  `MinRun` int(11) NOT NULL,
+  `MaxRun` int(11),
+  `SensorID` int(11) NOT NULL,
+  `sigma` float NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 
