@@ -432,7 +432,7 @@ def cal_fit_(ps0, xs, ys, fun, bounds=None):
     cov = []
     if (result.success):
         chi2 = np.sum(result.fun**2)/(1.*(len(ys)-len(ps0)))
-        cov = (np.linalg.inv(np.dot(result.jac.T,result.jac)))*chi2
+        cov = (np.linalg.inv(np.dot(result.jac.T, result.jac)))*chi2
     result.chi2 = chi2
     result.cov = cov
 
@@ -468,7 +468,7 @@ def cal_fit_poissongauss(cal, indexes=None, ngauss=5,
     if (not indexes):
         indexes = cal.indexes
     fun = ffun_poissongauss
-    chi2, pss, cov = [], [], []
+    chi2, pss, covs = [], [], []
     for index in indexes:
         xs, ys = cal.values_in_range(index, xrange)
         if (index % 200 == 0):
@@ -478,8 +478,8 @@ def cal_fit_poissongauss(cal, indexes=None, ngauss=5,
             print(' fit {} success {}'.format(index, result.success))
         chi2.append(result.chi2)
         pss.append(result.x)
-        cov = result.cov
-    return chi2, pss, cov
+        covs.append(result.cov)
+    return chi2, pss, covs
 
 
 # initial parameters and bounds to fit SiPMs to poisson+n-gauss
@@ -544,19 +544,25 @@ def cal_fit_ngauss_panda(indexes, chi2, pss):
     return pan
 
 
-def cal_fit_poissongauss_panda(indexes, chi2, pss):
+def cal_fit_poissongauss_panda(indexes, chi2, pss, covs):
     """ create a panda table with the result of the poisson + n-gaussian fit
     """
-    dpan = {'indexes': indexes,
-            'chi2': chi2,
-            'ntot': map(lambda ps: ps[0], pss),
-            'pedestal': map(lambda ps: ps[1], pss),
-            'gain': map(lambda ps: ps[2], pss),
-            'pes': map(lambda ps: ps[3], pss),
-            'noise': map(lambda ps: ps[4], pss),
-            'noise-pe': map(lambda ps: ps[5], pss)}
-    pan = pd.DataFrame(dpan)
-    return pan
+    dpan = pd.DataFrame()
+    dpan['indexes'] = indexes
+    dpan['chi2'] = chi2
+    dpan['ntot'] = map(lambda ps: ps[0], pss)
+    dpan['sntot'] = map(lambda cov: math.sqrt(abs(cov[0][0])), covs)
+    dpan['pedestal'] = map(lambda ps: ps[1], pss)
+    dpan['spedestal'] = map(lambda cov: math.sqrt(abs(cov[1][1])), covs)
+    dpan['gain'] = map(lambda ps: ps[2], pss)
+    dpan['sgain'] = map(lambda cov: math.sqrt(abs(cov[2][2])), covs)
+    dpan['pes'] = map(lambda ps: ps[3], pss)
+    dpan['spes'] = map(lambda cov: math.sqrt(abs(cov[3][3])), covs)
+    dpan['noise'] = map(lambda ps: ps[4], pss)
+    dpan['snoise'] = map(lambda cov: math.sqrt(abs(cov[4][4])), covs)
+    dpan['noise-pe'] = map(lambda ps: ps[5], pss)
+    dpan['snoise-pe'] = map(lambda cov: math.sqrt(abs(cov[5][5])), covs)
+    return dpan
 
 
 # Estimation of the sensor calibration using peack searching
