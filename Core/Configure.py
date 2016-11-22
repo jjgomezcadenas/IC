@@ -109,7 +109,7 @@ def define_event_loop(options, n_evt):
 
     for i in range(start, max_evt):
         if not i % print_mod:
-            logger.info("Event #{}".format(i))
+            logger.info("Event # {}".format(i))
         yield i
 
 

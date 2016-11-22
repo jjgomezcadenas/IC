@@ -264,8 +264,7 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     for i, filename in enumerate(inputfilenames):
         print("Opening", filename, end="... ")
         sys.stdout.flush()
-        #try:
-        for i in range(1):
+        try:
             with tb.open_file(filename, "r") as h5in:
                 run = h5in.root.Run.events.cols
                 NEVT = run.evt_number[:].size
@@ -377,8 +376,8 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
                 if dump_unselected:
                     h5dis.root.Run.events.flush()
             print("OK")
-        # except:
-        #     print("Error")
+        except:
+            print("Error")
     ratio_out = n_events_out * 100. / n_events_in
     ratio_dis = n_events_dis * 100. / n_events_in
     print("# events in = {}".format(n_events_in))
