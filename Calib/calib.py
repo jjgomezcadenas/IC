@@ -310,25 +310,38 @@ def polo_cals(cals, indexes, xrange=None, figsize=None, ylog=True):
     return fig
 
 
-def polo_pars(indexes, pars, pos, bins=100, label=''):
+def polo_pars(indexes, pars, pos, bins=100, label='', parlim=(0, 0)):
     """ plot the variable pars distribution, its value vs index
     and the x,y plot.
     Pos is a list with the (x,y) positions of the SiPMs.
     """
+    if (parlim[0] == parlim[1]):
+        parlim = (np.min(pars), np.max(pars))
+    zz = zip(pars, indexes)
+    zf = filter(lambda zi: zi[0] >= parlim[0] and zi[0] <= parlim[1], zz)
+    inds = [zi[1] for zi in zf]
+    cpars = [zi[0] for zi in zf]
     fig = plt.figure(figsize=(4*3, 3*3))
     gs = gridspec.GridSpec(4, 5)
     ax1 = plt.subplot(gs[0:2, 0:2])
-    ax1.hist(pars, bins)
+    ax1.hist(cpars, bins)
     ax1.set_xlabel(label)
     ax1.set_ylabel('# events')
+    ax1.set_xlim(parlim)
     ax2 = plt.subplot(gs[2:, 0:2])
-    ax2.scatter(indexes, pars)
+    ax2.scatter(inds, cpars)
     ax2.set_xlabel('index')
     ax2.set_ylabel(label)
+    ax2.set_ylim(parlim)
     ax3 = plt.subplot(gs[:, 2:])
     cxs = map(lambda x: x[0], pos)
     cys = map(lambda x: x[1], pos)
-    cc = ax3.scatter(cxs, cys, c=pars)
+    zz = zip(pars, cxs, cys)
+    zzf = filter(lambda zi: zi[0] >= parlim[0] and zi[0] <= parlim[1], zz)
+    zxs = [zzi[1] for zzi in zzf]
+    zys = [zzi[2] for zzi in zzf]
+    zps = [zzi[0] for zzi in zzf]
+    cc = ax3.scatter(zxs, zys, c=zps)
     ax3.set_title(label)
     ax3.set_xlabel('x (mm)')
     ax3.set_ylabel('y (mm)')
@@ -539,7 +552,7 @@ def cal_fit_ngauss_panda(indexes, chi2, pss):
             'gain': map(lambda ps: ps[1], pss),
             'pes': pes,
             'noise': map(lambda ps: ps[2], pss),
-            'noise-pe': map(lambda ps: ps[3], pss)}
+            'noisepe': map(lambda ps: ps[3], pss)}
     pan = pd.DataFrame(dpan)
     return pan
 
@@ -549,6 +562,7 @@ def cal_fit_poissongauss_panda(indexes, chi2, pss, covs):
     """
     dpan = pd.DataFrame()
     dpan['indexes'] = indexes
+    dpan['sensorID'] = map(sipm_sensorid_of_index, indexes)
     dpan['chi2'] = chi2
     dpan['ntot'] = map(lambda ps: ps[0], pss)
     dpan['sntot'] = map(lambda cov: math.sqrt(abs(cov[0][0])), covs)
@@ -560,8 +574,9 @@ def cal_fit_poissongauss_panda(indexes, chi2, pss, covs):
     dpan['spes'] = map(lambda cov: math.sqrt(abs(cov[3][3])), covs)
     dpan['noise'] = map(lambda ps: ps[4], pss)
     dpan['snoise'] = map(lambda cov: math.sqrt(abs(cov[4][4])), covs)
-    dpan['noise-pe'] = map(lambda ps: ps[5], pss)
-    dpan['snoise-pe'] = map(lambda cov: math.sqrt(abs(cov[5][5])), covs)
+    dpan['noisepe'] = map(lambda ps: ps[5], pss)
+    dpan['snoisepe'] = map(lambda cov: math.sqrt(abs(cov[5][5])), covs)
+#    dpan = dpan.sort_values(by='sensorID')
     return dpan
 
 
