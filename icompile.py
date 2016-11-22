@@ -10,7 +10,7 @@ np_path = '/'.join(np.__file__.split('/')[:-1]) + '/core/include'
 #       ext_modules=cythonize('ICython/*/*.pyx'),
 #       include_dirs=[np_path])
 
-setup(ext_modules=cythonize('ICython/*.pyx'),
+setup(packages=['Core,Sierpe'], ext_modules=cythonize('ICython**/*.pyx'),
       include_dirs=[np_path])
 
 #to run: python icompile.py build_ext --inplace

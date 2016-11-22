@@ -41,22 +41,40 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
     NPMT, PMTWL = pmtrwf.shape
     CWF = np.empty(pmtrwf.shape)
     ACUM = np.empty(pmtrwf.shape)
+    BSL = np.empty(pmtrwf.shape)
+    BSLE = np.empty(pmtrwf.shape)
+    BSLN = np.empty(pmtrwf.shape)
 
     for pmt in range(NPMT):
         thr_acum = thr_trigger/DataPMT.coeff_blr[pmt]
-        signal_r, acum = cblr.deconvolve_signal_acum(
-                         pmtrwf[pmt],
-                         n_baseline=n_baseline,
-                         coef_clean=DataPMT.coeff_c[pmt],
-                         coef_blr=DataPMT.coeff_blr[pmt],
-                         thr_trigger=thr_trigger,
-                         thr_acum=thr_acum,
-                         acum_discharge_length=acum_discharge_length,
-                         acum_tau=acum_tau,
-                         acum_compress=acum_compress)
+
+        signal_r, acum, baseline, baseline_end, noise_rms =\
+          deconvolve_signal_acum(pmtrwf[pmt],
+                                 n_baseline=500,
+                                 coef_clean=DataPMT.coeff_c[pmt],
+                                 coef_blr=DataPMT.coeff_blr[pmt],
+                                 thr_trigger=thr_trigger,
+                                 acum_discharge_length = acum_discharge_length,
+                                 acum_tau=acum_tau,
+                                 acum_compress=acum_compress)
+
+        # signal_r, acum = cblr.deconvolve_signal_acum(
+        #                  pmtrwf[pmt],
+        #                  n_baseline=n_baseline,
+        #                  coef_clean=DataPMT.coeff_c[pmt],
+        #                  coef_blr=DataPMT.coeff_blr[pmt],
+        #                  thr_trigger=thr_trigger,
+        #                  thr_acum=thr_acum,
+        #                  acum_discharge_length=acum_discharge_length,
+        #                  acum_tau=acum_tau,
+        #                  acum_compress=acum_compress)
         CWF[pmt] = signal_r
         ACUM[pmt] = acum
-    return CWF, ACUM
+        BSL[pmt] = baseline
+        BSLE[pmt] = baseline_end
+        BSLN[pmt] = noise_rms
+
+    return CWF, ACUM, BSL, BSLE, BSLN
 
 
 def ISIDORA(argv=sys.argv):
@@ -103,13 +121,13 @@ def ISIDORA(argv=sys.argv):
                                     atom=tb.Int16Atom(),
                                     shape=(0, NPMT, PMTWL),
                                     expectedrows=NEVENTS_DST)
-        if "/RD/pmtacum" in h5in:
-            h5in.remove_node("/RD", "pmtacum")
-
-        pmtacum = h5in.create_earray(h5in.root.RD, "pmtacum",
-                                     atom=tb.Int16Atom(),
-                                     shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVENTS_DST)
+        # if "/RD/pmtacum" in h5in:
+        #     h5in.remove_node("/RD", "pmtacum")
+        #
+        # pmtacum = h5in.create_earray(h5in.root.RD, "pmtacum",
+        #                              atom=tb.Int16Atom(),
+        #                              shape=(0, NPMT, PMTWL),
+        #                              expectedrows=NEVENTS_DST)
 
         if "/Deconvolution" not in h5in:
             h5in.create_group(h5in.root, "Deconvolution")
@@ -125,22 +143,23 @@ def ISIDORA(argv=sys.argv):
         # LOOP
         t0 = time()
         for i in define_event_loop(CFP, NEVENTS_DST):
-            signal_r, acum = DBLR(pmtrd_[i],
-                                  n_baseline=N_BASELINE,
-                                  thr_trigger=THR_TRIGGER,
-                                  acum_discharge_length=ACUM_DISCHARGE_LENGTH,
-                                  acum_tau=ACUM_TAU,
-                                  acum_compress=ACUM_COMPRESS)
+            signal_r, acum, baseline, baseline_end, \
+              noise_rms = DBLR(pmtrd_[i],
+                               n_baseline=N_BASELINE,
+                               thr_trigger=THR_TRIGGER,
+                               acum_discharge_length=ACUM_DISCHARGE_LENGTH,
+                               acum_tau=ACUM_TAU,
+                               acum_compress=ACUM_COMPRESS)
 
             # append to pmtcwf
             pmtcwf.append(signal_r.reshape(1, NPMT, PMTWL))
             # append to pmtacum
-            pmtacum.append(acum.reshape(1, NPMT, PMTWL))
+            #pmtacum.append(acum.reshape(1, NPMT, PMTWL))
 
         t1 = time()
         dt = t1 - t0
         pmtcwf.flush()
-        pmtacum.flush()
+        #pmtacum.flush()
 
         print("ISIDORA has run over {} events in {} seconds".format(i+1, dt))
     print("Leaving ISIDORA. Safe travels!")
