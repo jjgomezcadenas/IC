@@ -126,6 +126,11 @@ def create_new_file(outputfilename, inputfilename, **options):
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
                                 expectedrows=NEVT)
+            if "/RD/pmtcwf" in h5in:
+                h5out.create_earray(rdgroup, "pmtcwf",
+                                    atom=tb.Int16Atom(),
+                                    shape=(0, NPMT, PMTWL),
+                                    expectedrows=NEVT)
 
         if "/TWF" in h5in:
             twfgroup = h5out.create_group(h5out.root, "TWF")
@@ -205,6 +210,8 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
         pmtrwf_out = h5out.root.RD.pmtrwf
         pmtblr_out = h5out.root.RD.pmtblr
         sipmrwf_out = h5out.root.RD.sipmrwf
+        if "/RD/pmtcwf" in h5out:
+            pmtcwf_out = h5out.root.RD.pmtcwf
 
     if "/TWF" in h5out:
         pmttwf_out = h5out.root.TWF.PMT
@@ -238,6 +245,8 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
             pmtrwf_dis = h5dis.root.RD.pmtrwf
             pmtblr_dis = h5dis.root.RD.pmtblr
             sipmrwf_dis = h5dis.root.RD.sipmrwf
+            if "/RD/pmtcwf" in h5dis:
+                pmtcwf_dis = h5dis.root.RD.pmtcwf
 
         if "/TWF" in h5dis:
             pmttwf_dis = h5dis.root.TWF.PMT
@@ -277,6 +286,8 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
                     pmtrwf_in = h5in.root.RD.pmtrwf
                     pmtblr_in = h5in.root.RD.pmtblr
                     sipmrwf_in = h5in.root.RD.sipmrwf
+                    if "/RD/pmtcwf" in h5in:
+                        pmtcwf_in = h5in.root.RD.pmtcwf
 
                 if "/TWF" in h5in:
                     pmttwf_in = h5in.root.TWF.PMT
@@ -310,6 +321,8 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
                             pmtrwf_out.append(pmtrwf_in[evt][np.newaxis])
                             pmtblr_out.append(pmtblr_in[evt][np.newaxis])
                             sipmrwf_out.append(sipmrwf_in[evt][np.newaxis])
+                            if "/RD/pmtcwf" in h5out:
+                                pmtcwf_out.append(pmtcwf_in[evt][np.newaxis])
 
                         if "/TWF" in h5out:
                             wf = tbl.read_wf_table(pmttwf_in, evt)
@@ -347,6 +360,8 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
                             pmtrwf_dis.append(pmtrwf_in[evt][np.newaxis])
                             pmtblr_dis.append(pmtblr_in[evt][np.newaxis])
                             sipmrwf_dis.append(sipmrwf_in[evt][np.newaxis])
+                            if "/RD/pmtcwf" in h5dis:
+                                pmtcwf_dis.append(pmtcwf_in[evt][np.newaxis])
 
                         if "/TWF" in h5dis:
                             wf = tbl.read_wf_table(pmttwf_in, evt)
