@@ -54,9 +54,7 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
                                  coef_clean=DataPMT.coeff_c[pmt],
                                  coef_blr=DataPMT.coeff_blr[pmt],
                                  thr_trigger=thr_trigger,
-                                 acum_discharge_length = acum_discharge_length,
-                                 acum_tau=acum_tau,
-                                 acum_compress=acum_compress)
+                                 acum_discharge_length = acum_discharge_length)
 
         # signal_r, acum = cblr.deconvolve_signal_acum(
         #                  pmtrwf[pmt],

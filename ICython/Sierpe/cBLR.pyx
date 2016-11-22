@@ -226,7 +226,7 @@ cpdef deconvolve_signal_acum_simple(np.ndarray[np.int16_t, ndim=1] signal_i,
     return signal_r.astype(int), acum
 
 
-cpdef deconvolve_signal_acum_old(np.ndarray[np.int16_t, ndim=1] signal_i,
+cpdef deconvolve_signal_acum_v1(np.ndarray[np.int16_t, ndim=1] signal_i,
                             int n_baseline=500,
                             float coef_clean=2.905447E-06,
                             float coef_blr=1.632411E-03,
@@ -332,7 +332,7 @@ cpdef deconvolve_signal_acum_old(np.ndarray[np.int16_t, ndim=1] signal_i,
     return signal_r.astype(int), acum.astype(int)
 
 
-cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
+cpdef deconvolve_signal_acum_v2(np.ndarray[np.int16_t, ndim=1] signal_i,
                             int n_baseline=500,
                             float coef_clean=2.905447E-06,
                             float coef_blr=1.632411E-03,
@@ -435,6 +435,97 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
             # discharge acumulator
             if acum[k-1]>1:
                 acum[k] = acum[k-1] * discharge_curve[j]
+                if j < acum_discharge_length - 1:
+                    j = j + 1
+                else:
+                    j = acum_discharge_length - 1
+            else:
+                acum[k]=0
+                j=0
+    # return signal and friends
+    return signal_r.astype(int), acum.astype(int), baseline, baseline_end, noise_rms
+
+cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
+                            int n_baseline=500,
+                            float coef_clean=2.905447E-06,
+                            float coef_blr=1.632411E-03,
+                            float thr_trigger=5,
+                            int acum_discharge_length = 5000):
+
+    """
+    The accumulator approach by Master VHB
+    decorated and cythonized  by JJGC
+    22.11 Compute baseline using all the waveforms
+          computes accumulator threshold from thr_trigger
+          simplify discharge wrt previous versions:
+    In this verison the recovered signal and the accumulator are
+    always being charged. At the same time, the accumulator is being
+    discharged when there is no signal. This avoids runoffs
+    """
+
+    cdef float coef = coef_blr
+    cdef int nm = n_baseline
+    cdef float thr_acum = thr_trigger/coef
+    cdef int len_signal_daq = len(signal_i)
+
+    cdef np.ndarray[np.float64_t, ndim=1] signal_r = np.zeros(len_signal_daq,
+                                                              dtype=np.double)
+    cdef np.ndarray[np.float64_t, ndim=1] acum = np.zeros(len_signal_daq,
+                                                          dtype=np.double)
+    # signal_daq in floats
+    cdef np.ndarray[np.float64_t, ndim=1] signal_daq = signal_i.astype(float)
+
+    # compute baseline and noise
+
+    cdef int j
+    cdef float baseline = 0.
+    cdef float baseline_end = 0.
+
+    for j in range(0,len_signal_daq):
+        baseline += signal_daq[j]
+    baseline /= len_signal_daq
+
+    for j in range(len_signal_daq-nm, len_signal_daq):
+        baseline_end += signal_daq[j]
+    baseline_end /= nm
+
+    # reverse sign of signal and subtract baseline
+    signal_daq =  baseline - signal_daq
+
+    # compute noise
+    cdef float noise =  0.
+    for j in range(0,nm):
+        noise += signal_daq[j]*signal_daq[j]
+    noise /= nm
+    cdef float noise_rms = np.sqrt(noise)
+
+    # trigger line
+
+    cdef float trigger_line
+    trigger_line = thr_trigger*noise_rms
+
+    # cleaning signal
+    cdef np.ndarray[np.float64_t, ndim=1] b_cf
+    cdef np.ndarray[np.float64_t, ndim=1] a_cf
+
+    b_cf, a_cf = SGN.butter(1, coef_clean, 'high', analog=False);
+    signal_daq = SGN.lfilter(b_cf,a_cf,signal_daq)
+
+    cdef int k
+    j=0
+    for k in range(0,len_signal_daq):
+
+        # always update signal and accumulator
+        signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) +\
+                      coef_blr * acum[k-1]
+
+        acum[k] = acum[k-1] + signal_daq[k]
+
+        if (signal_daq[k] < trigger_line) and (acum[k-1] < thr_acum):
+            # discharge accumulator
+
+            if acum[k-1]>1:
+                acum[k] = acum[k-1] * (1. - coef)
                 if j < acum_discharge_length - 1:
                     j = j + 1
                 else:
