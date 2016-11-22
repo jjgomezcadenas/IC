@@ -105,7 +105,7 @@ def define_event_loop(options, n_evt):
     nevt = options.get("NEVENTS", 0)
     max_evt = n_evt if options["RUN_ALL"] or nevt > n_evt else nevt
     start = options["SKIP"]
-    print_mod = options.get("PRINT_MOD", min(1, (max_evt-start)//20))
+    print_mod = options.get("PRINT_MOD", max(1, (max_evt-start)//20))
 
     for i in range(start, max_evt):
         if not i % print_mod:
