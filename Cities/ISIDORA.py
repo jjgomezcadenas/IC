@@ -26,7 +26,7 @@ from Core.Configure import configure, define_event_loop
 from Core.Nh5 import DECONV_PARAM
 import Core.tblFunctions as tbl
 
-import ICython.cBLR as cblr
+import ICython.Sierpe.cBLR as cblr
 import Database.loadDB as DB
 
 
@@ -41,14 +41,14 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
     NPMT, PMTWL = pmtrwf.shape
     CWF = np.empty(pmtrwf.shape)
     ACUM = np.empty(pmtrwf.shape)
-    BSL = np.empty(pmtrwf.shape)
-    BSLE = np.empty(pmtrwf.shape)
-    BSLN = np.empty(pmtrwf.shape)
+    BSL = np.empty(pmtrwf.shape[0])
+    BSLE = np.empty(pmtrwf.shape[0])
+    BSLN = np.empty(pmtrwf.shape[0])
 
     for pmt in range(NPMT):
         thr_acum = thr_trigger/DataPMT.coeff_blr[pmt]
 
-        signal_r, acum, baseline, baseline_end, noise_rms =\
+        signal_r, acum, baseline, baseline_end, noise_rms =cblr.\
           deconvolve_signal_acum(pmtrwf[pmt],
                                  n_baseline=500,
                                  coef_clean=DataPMT.coeff_c[pmt],
@@ -133,6 +133,9 @@ def ISIDORA(argv=sys.argv):
             h5in.create_group(h5in.root, "Deconvolution")
         if "/Deconvolution/Parameters" in h5in:
             h5in.remove_node("/Deconvolution", "Parameters")
+        if "/Deconvolution/BL" in h5in:
+            h5in.remove_node("/Deconvolution", "BL")
+
         deconv_table = h5in.create_table(h5in.root.Deconvolution,
                                          "Parameters",
                                          DECONV_PARAM,
@@ -140,25 +143,31 @@ def ISIDORA(argv=sys.argv):
                                          tbl.filters("NOCOMPR"))
         tbl.store_deconv_table(deconv_table, CFP)
 
+        bl_array = h5in.create_earray(h5in.root.Deconvolution, "BL",
+                                      atom=tb.Int16Atom(),
+                                      shape=(0, NPMT, 3),
+                                      expectedrows=NEVENTS_DST)
         # LOOP
         t0 = time()
         for i in define_event_loop(CFP, NEVENTS_DST):
-            signal_r, acum, baseline, baseline_end, \
-              noise_rms = DBLR(pmtrd_[i],
-                               n_baseline=N_BASELINE,
-                               thr_trigger=THR_TRIGGER,
-                               acum_discharge_length=ACUM_DISCHARGE_LENGTH,
-                               acum_tau=ACUM_TAU,
-                               acum_compress=ACUM_COMPRESS)
+            data = DBLR(pmtrd_[i],
+                        n_baseline=N_BASELINE,
+                        thr_trigger=THR_TRIGGER,
+                        acum_discharge_length=ACUM_DISCHARGE_LENGTH,
+                        acum_tau=ACUM_TAU,
+                        acum_compress=ACUM_COMPRESS)
+            signal_r, acum, bl_data = data[0], data[1], data[2:]
 
             # append to pmtcwf
             pmtcwf.append(signal_r.reshape(1, NPMT, PMTWL))
+            bl_array.append(np.array(bl_data).T[np.newaxis])
             # append to pmtacum
             #pmtacum.append(acum.reshape(1, NPMT, PMTWL))
 
         t1 = time()
         dt = t1 - t0
         pmtcwf.flush()
+        bl_array.flush()
         #pmtacum.flush()
 
         print("ISIDORA has run over {} events in {} seconds".format(i+1, dt))
