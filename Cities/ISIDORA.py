@@ -18,7 +18,6 @@ from __future__ import print_function
 
 import sys
 from time import time
-import textwrap
 import numpy as np
 import tables as tb
 
@@ -45,25 +44,25 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
 
     for pmt in range(NPMT):
         thr_acum = thr_trigger/DataPMT.coeff_blr[pmt]
-        signal_r, acum = cblr.\
-          deconvolve_signal_acum(pmtrwf[pmt],
-                                 n_baseline=n_baseline,
-                                 coef_clean=DataPMT.coeff_c[pmt],
-                                 coef_blr=DataPMT.coeff_blr[pmt],
-                                 thr_trigger=thr_trigger,
-                                 thr_acum=thr_acum,
-                                 acum_discharge_length=acum_discharge_length,
-                                 acum_tau=acum_tau,
-                                 acum_compress=acum_compress)
+        signal_r, acum = cblr.deconvolve_signal_acum(
+                         pmtrwf[pmt],
+                         n_baseline=n_baseline,
+                         coef_clean=DataPMT.coeff_c[pmt],
+                         coef_blr=DataPMT.coeff_blr[pmt],
+                         thr_trigger=thr_trigger,
+                         thr_acum=thr_acum,
+                         acum_discharge_length=acum_discharge_length,
+                         acum_tau=acum_tau,
+                         acum_compress=acum_compress)
         CWF[pmt] = signal_r
         ACUM[pmt] = acum
     return CWF, ACUM
 
 
-def ISIDORA(argv):
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0], argv[1:])
+def ISIDORA(argv=sys.argv):
+    CFP = configure(argv)
 
-    if INFO:
+    if CFP["INFO"]:
 
         print("""
         ISIDORA:
@@ -80,39 +79,16 @@ def ISIDORA(argv):
 
         """)
 
-    PATH_IN = CFP["PATH_IN"]
-    FILE_IN = CFP["FILE_IN"]
-    FIRST_EVT = CFP["FIRST_EVT"]
-    LAST_EVT = CFP["LAST_EVT"]
-    RUN_ALL = CFP["RUN_ALL"]
     N_BASELINE = CFP["N_BASELINE"]
     THR_TRIGGER = CFP["THR_TRIGGER"]
     ACUM_DISCHARGE_LENGTH = CFP["ACUM_DISCHARGE_LENGTH"]
     ACUM_TAU = CFP["ACUM_TAU"]
     ACUM_COMPRESS = CFP["ACUM_COMPRESS"]
-    NEVENTS = LAST_EVT - FIRST_EVT
-
-    logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("Input path ={}; file_in ={} ".format(PATH_IN, FILE_IN))
-    logger.info("First event = {} last event = {} "
-                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
-    logger.info("Baseline calculation length = {}"
-                "n_sigma for trigger = {}".format(N_BASELINE, THR_TRIGGER))
-
-    logger.info(textwrap.dedent("""\
-                Accumulator Parameters:
-                length for discharge = {}
-                tau for discharge = {}
-                compression factor = {}
-                """.format(ACUM_DISCHARGE_LENGTH,
-                           ACUM_TAU, ACUM_COMPRESS)))
 
     # open the input file in mode append
-    with tb.open_file("{}/{}".format(PATH_IN, FILE_IN), "a") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "a") as h5in:
         # access the PMT raw data in file
-        pmtrd_ = h5in.root.RD.pmtrwf     # PMT raw data must exist
-
-        # pmtrd_.shape = (nof_events, nof_sensors, wf_length)
+        pmtrd_ = h5in.root.RD.pmtrwf  # PMT raw data must exist
         NEVENTS_DST, NPMT, PMTWL = pmtrd_.shape
 
         logger.info("nof PMTs = {} WF side = {} ".format(NPMT, PMTWL))
@@ -147,16 +123,8 @@ def ISIDORA(argv):
         tbl.store_deconv_table(deconv_table, CFP)
 
         # LOOP
-        first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                           NEVENTS,
-                                                           NEVENTS_DST,
-                                                           RUN_ALL)
-
         t0 = time()
-        for i in range(first_evt, last_evt):
-            if not i % print_mod:
-                logger.info("-->event number = {}".format(i))
-
+        for i in define_event_loop(CFP, NEVENTS_DST):
             signal_r, acum = DBLR(pmtrd_[i],
                                   n_baseline=N_BASELINE,
                                   thr_trigger=THR_TRIGGER,

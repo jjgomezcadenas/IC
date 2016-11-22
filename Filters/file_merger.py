@@ -186,7 +186,7 @@ def create_new_file(outputfilename, inputfilename, **options):
     return h5out
 
 
-def file_merger(outputfilename, *inputfilenames, **options):
+def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     options["nfiles"] = len(inputfilenames)
 
     filters = options.get("FILTERS", [])
@@ -195,8 +195,7 @@ def file_merger(outputfilename, *inputfilenames, **options):
     filters = map(lambda f: init_filter(f, **options), filters)
 
     h5out = create_new_file(outputfilename, inputfilenames[0], **options)
-
-    evtrow = h5out.root.Run.events.row
+    evtrow_out = h5out.root.Run.events.row
 
     if "/pmtrd" in h5out:
         pmtrd_out = h5out.root.pmtrd
@@ -225,12 +224,48 @@ def file_merger(outputfilename, *inputfilenames, **options):
         pmaps_out = h5out.root.PMAPS.PMaps
         pmaps_blr_out = h5out.root.PMAPS.PMapsBLR
 
+    dump_unselected = discardedfilename is not None
+    if dump_unselected:
+        h5dis = create_new_file(discardedfilename, inputfilenames[0],
+                                **options)
+        evtrow_dis = h5dis.root.Run.events.row
+
+        if "/pmtrd" in h5dis:
+            pmtrd_dis = h5dis.root.pmtrd
+            sipmrd_dis = h5dis.root.sipmrd
+
+        if "/RD" in h5dis:
+            pmtrwf_dis = h5dis.root.RD.pmtrwf
+            pmtblr_dis = h5dis.root.RD.pmtblr
+            sipmrwf_dis = h5dis.root.RD.sipmrwf
+
+        if "/TWF" in h5dis:
+            pmttwf_dis = h5dis.root.TWF.PMT
+            sipmtwf_dis = h5dis.root.TWF.SiPM
+
+        if "/BLR" in h5dis:
+            mau_dis = h5dis.root.BLR.mau
+            pulse_on_dis = h5dis.root.BLR.pulse_on
+            wait_over_dis = h5dis.root.BLR.wait_over
+
+        if "/ZS" in h5dis:
+            pmtzs_dis = h5dis.root.ZS.PMT
+            blrzs_dis = h5dis.root.ZS.BLR
+            sipmzs_dis = h5dis.root.ZS.SiPM
+
+        if "/PMAPS" in h5dis:
+            pmaps_dis = h5dis.root.PMAPS.PMaps
+            pmaps_blr_dis = h5dis.root.PMAPS.PMapsBLR
+
+
     n_events_in = 0
     n_events_out = 0
+    n_events_dis = 0
     for i, filename in enumerate(inputfilenames):
         print("Opening", filename, end="... ")
         sys.stdout.flush()
-        try:
+        #try:
+        for i in range(1):
             with tb.open_file(filename, "r") as h5in:
                 run = h5in.root.Run.events.cols
                 NEVT = run.evt_number[:].size
@@ -264,50 +299,94 @@ def file_merger(outputfilename, *inputfilenames, **options):
                     pmaps_blr_in = h5in.root.PMAPS.PMapsBLR
 
                 for evt in range(NEVT):
-                    if not all([filter_(h5in, evt) for filter_ in filters]):
-                        continue
-                    evtrow["evt_number"] = run.evt_number[evt]
-                    evtrow["timestamp"] = run.timestamp[evt]
-                    evtrow.append()
+                    if all([filter_(h5in, evt) for filter_ in filters]):
+                        evtrow_out["evt_number"] = run.evt_number[evt]
+                        evtrow_out["timestamp"] = run.timestamp[evt]
+                        evtrow_out.append()
 
-                    if "/pmtrd" in h5out:
-                        pmtrd_out.append(pmtrd_in[evt][np.newaxis])
-                        sipmrd_out.append(sipmrd_in[evt][np.newaxis])
+                        if "/pmtrd" in h5out:
+                            pmtrd_out.append(pmtrd_in[evt][np.newaxis])
+                            sipmrd_out.append(sipmrd_in[evt][np.newaxis])
 
-                    if "/RD" in h5out:
-                        pmtrwf_out.append(pmtrwf_in[evt][np.newaxis])
-                        pmtblr_out.append(pmtblr_in[evt][np.newaxis])
-                        sipmrwf_out.append(sipmrwf_in[evt][np.newaxis])
+                        if "/RD" in h5out:
+                            pmtrwf_out.append(pmtrwf_in[evt][np.newaxis])
+                            pmtblr_out.append(pmtblr_in[evt][np.newaxis])
+                            sipmrwf_out.append(sipmrwf_in[evt][np.newaxis])
 
-                    if "/TWF" in h5out:
-                        wf = tbl.read_wf_table(pmttwf_in, evt)
-                        tbl.store_wf(pmttwf_out, evt, wf)
-                        wf = tbl.read_wf_table(sipmtwf_in, evt)
-                        tbl.store_wf(sipmtwf_out, evt, wf)
+                        if "/TWF" in h5out:
+                            wf = tbl.read_wf_table(pmttwf_in, evt)
+                            tbl.store_wf(pmttwf_out, evt, wf)
+                            wf = tbl.read_wf_table(sipmtwf_in, evt)
+                            tbl.store_wf(sipmtwf_out, evt, wf)
 
-                    if "/BLR" in h5out:
-                        mau_out.append(mau_in[evt][np.newaxis])
-                        pulse_on_out.append(pulse_on_in[evt][np.newaxis])
-                        wait_over_out.append(wait_over_in[evt][np.newaxis])
+                        if "/BLR" in h5out:
+                            mau_out.append(mau_in[evt][np.newaxis])
+                            pulse_on_out.append(pulse_on_in[evt][np.newaxis])
+                            wait_over_out.append(wait_over_in[evt][np.newaxis])
 
-                    if "/ZS" in h5out:
-                        pmtzs_out.append(pmtzs_in[evt][np.newaxis])
-                        blrzs_out.append(blrzs_in[evt][np.newaxis])
-                        sipmzs_out.append(sipmzs_in[evt][np.newaxis])
+                        if "/ZS" in h5out:
+                            pmtzs_out.append(pmtzs_in[evt][np.newaxis])
+                            blrzs_out.append(blrzs_in[evt][np.newaxis])
+                            sipmzs_out.append(sipmzs_in[evt][np.newaxis])
 
-                    if "/PMAPS" in h5in:
-                        pmap = tbl.read_pmap(pmaps_in, evt)
-                        tbl.store_pmap(pmap, pmaps_out, evt)
-                        pmap = tbl.read_pmap(pmaps_blr_in, evt)
-                        tbl.store_pmap(pmap, pmaps_blr_out, evt)
+                        if "/PMAPS" in h5in:
+                            pmap = tbl.read_pmap(pmaps_in, evt)
+                            tbl.store_pmap(pmap, pmaps_out, evt)
+                            pmap = tbl.read_pmap(pmaps_blr_in, evt)
+                            tbl.store_pmap(pmap, pmaps_blr_out, evt)
 
-                    n_events_out += 1
+                        n_events_out += 1
+                    else:
+                        evtrow_dis["evt_number"] = run.evt_number[evt]
+                        evtrow_dis["timestamp"] = run.timestamp[evt]
+                        evtrow_dis.append()
+
+                        if "/pmtrd" in h5dis:
+                            pmtrd_dis.append(pmtrd_in[evt][np.newaxis])
+                            sipmrd_dis.append(sipmrd_in[evt][np.newaxis])
+
+                        if "/RD" in h5dis:
+                            pmtrwf_dis.append(pmtrwf_in[evt][np.newaxis])
+                            pmtblr_dis.append(pmtblr_in[evt][np.newaxis])
+                            sipmrwf_dis.append(sipmrwf_in[evt][np.newaxis])
+
+                        if "/TWF" in h5dis:
+                            wf = tbl.read_wf_table(pmttwf_in, evt)
+                            tbl.store_wf(pmttwf_dis, evt, wf)
+                            wf = tbl.read_wf_table(sipmtwf_in, evt)
+                            tbl.store_wf(sipmtwf_dis, evt, wf)
+
+                        if "/BLR" in h5dis:
+                            mau_dis.append(mau_in[evt][np.newaxis])
+                            pulse_on_dis.append(pulse_on_in[evt][np.newaxis])
+                            wait_over_dis.append(wait_over_in[evt][np.newaxis])
+
+                        if "/ZS" in h5dis:
+                            pmtzs_dis.append(pmtzs_in[evt][np.newaxis])
+                            blrzs_dis.append(blrzs_in[evt][np.newaxis])
+                            sipmzs_dis.append(sipmzs_in[evt][np.newaxis])
+
+                        if "/PMAPS" in h5in:
+                            pmap = tbl.read_pmap(pmaps_in, evt)
+                            tbl.store_pmap(pmap, pmaps_dis, evt)
+                            pmap = tbl.read_pmap(pmaps_blr_in, evt)
+                            tbl.store_pmap(pmap, pmaps_blr_dis, evt)
+
+                        n_events_dis += 1
                 h5out.root.Run.events.flush()
+                if dump_unselected:
+                    h5dis.root.Run.events.flush()
             print("OK")
-        except:
-            print("Error")
-    print("# events out/in = {}/{} = {}".format(n_events_out, n_events_in,
-                                                n_events_out*1.0/n_events_in))
+        # except:
+        #     print("Error")
+    ratio_out = n_events_out * 100. / n_events_in
+    ratio_dis = n_events_dis * 100. / n_events_in
+    print("# events in = {}".format(n_events_in))
+    print("# events accepted = {} ({:.2f}%)".format(n_events_out, ratio_out))
+    print("# events discarded = {} ({:.2f}%)".format(n_events_dis, ratio_dis))
+    h5out.close()
+    if dump_unselected:
+        h5dis.close()
 
 
 if __name__ == "__main__":
@@ -316,9 +395,11 @@ if __name__ == "__main__":
                         help="input files to be merged", required=True)
     parser.add_argument("-o", metavar="ofile", type=str,
                         help="output file", required=True)
+    parser.add_argument("-d", metavar="dfile", type=str,
+                        help="output file with discarded events")
     parser.add_argument("-c", metavar="cfile", type=str,
                         help="configuration file")
 
     args = parser.parse_args()
     options = read_config_file(args.c) if args.c else {}
-    file_merger(args.o, *args.i, **options)
+    file_merger(args.o, args.d, *args.i, **options)
