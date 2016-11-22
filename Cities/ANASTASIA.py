@@ -59,7 +59,8 @@ def ANASTASIA(argv=sys.argv):
     SIPM_ZS_METHOD = CFP["SIPM_ZS_METHOD"]
     SIPM_NOISE_CUT = CFP["SIPM_NOISE_CUT"]
 
-    with tb.open_file(CFP["FILE_IN"], "r+") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "r+",
+                      filters=tbl.filters(CFP["COMPRESSION"])) as h5in:
         pmtblr = h5in.root.RD.pmtblr
         pmtcwf = h5in.root.RD.pmtcwf
         sipmrwf = h5in.root.RD.sipmrwf
