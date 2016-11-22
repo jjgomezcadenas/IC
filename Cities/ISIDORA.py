@@ -102,10 +102,11 @@ def ISIDORA(argv=sys.argv):
     ACUM_DISCHARGE_LENGTH = CFP["ACUM_DISCHARGE_LENGTH"]
     ACUM_TAU = CFP["ACUM_TAU"]
     ACUM_COMPRESS = CFP["ACUM_COMPRESS"]
-
+    COMPRESSION = CFP["COMPRESSION"]
+    
     # open the input file in mode append
     with tb.open_file(CFP["FILE_IN"], "a",
-                      filters=tbl.filters(CFP["COMPRESSION"])) as h5in:
+                      filters=tbl.filters(COMPRESSION)) as h5in:
         # access the PMT raw data in file
         pmtrd_ = h5in.root.RD.pmtrwf  # PMT raw data must exist
         NEVENTS_DST, NPMT, PMTWL = pmtrd_.shape
