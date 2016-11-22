@@ -2,95 +2,129 @@
 Configure running options for the cities
 JJGC August 2016
 """
-import getopt
+import argparse
 import sys
 import os
 
 from Core.LogConfig import logger
 
 
-def usage(program_name):
+def print_configuration(options):
     """
-    Usage of program
+    Print configuration.
+
+    Parameters
+    ----------
+    options : dictionary
+        Contains key-value pairs of options.
     """
-    print("""
-        Usage: python (run) {} [args]
+
+    for key, value in sorted(options.items()):
+        print("{0: <22} => {1}".format(key,value))
 
 
-        where args are:
-         -h (--help) : this text
-         -i (--info) : print a text describing the invisible city of DIOMIRA
-         -d (--debug) : can be set to 'DEBUG','INFO','WARNING','ERROR'
-         -c (--cfile) : full path to a configuration file
-
-        """.format(program_name))
-
-
-def configure(pname, argv):
+def configure(input_options = sys.argv):
     """
-    reads arguments from the command line and configures job
+    Translate command line options to a meaningfull dictionary.
+
+    Parameters
+    ----------
+    input_options : sequence of strings, optional
+        Input flags and parameters. Default are command line options from
+        sys.argv.
+
+    Returns
+    -------
+    output_options : dictionary
+        Options as key-value pairs.
     """
-    DEBUG = 'INFO'
-    INFO = False
-    cfile = ''
+    program, args = input_options[0], input_options[1:]
+    parser = argparse.ArgumentParser(program)
+    parser.add_argument("-c", metavar="cfile", type=str,
+                        help="configuration file", required=True)
+    parser.add_argument("-i", metavar="ifile", type=str,
+                        help="input file")
+    parser.add_argument("-o", metavar="ofile", type=str,
+                        help="output file")
+    parser.add_argument("-n", metavar="nevt", type=int,
+                        help="number of events to be processed")
+    parser.add_argument("-s", metavar="skip", type=int, default=0,
+                        help="number of events to be skipped")
+    parser.add_argument("-p", metavar="print_mod", type=int,
+                        help="print every this number of events")
+    parser.add_argument("--runall", action="store_true",
+                        help="number of events to be skipped")
+    parser.add_argument("-I", action="store_true", help="print info")
+    parser.add_argument("-v", action="count", help="verbosity level")
 
-    try:
-        opts, args = getopt.getopt(argv,
-                                   "hid:c:",
-                                   ["help", "info", "debug", "cfile"])
-    except getopt.GetoptError:
-        usage(pname)
-        sys.exit(2)
+    flags, extras = parser.parse_known_args(args)
+    options = read_config_file(flags.c) if flags.c else {}
 
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            usage(pname)
-            sys.exit()
-        elif opt in ("-d", "--debug"):
-            DEBUG = arg
-        elif opt in ("-i", "--info"):
-            INFO = True
-        elif opt in ("-c", "--cfile"):
-            cfile = arg
+    if flags.i is not None:
+        options["FILE_IN"] = flags.i
+    if flags.o is not None:
+        options["FILE_OUT"] = flags.o
+    if flags.n is not None:
+        options["NEVENTS"] = flags.n
+    if flags.s is not None:
+        options["SKIP"] = flags.s
+    if flags.p is not None:
+        options["PRINT_MOD"] = flags.p
+    options["RUNALL"] = flags.runall
+    options["INFO"] = flags.I
+    if flags.v is not None:
+        options["VERBOSITY"] = 50 - min(flags.v, 4)*10
 
-    logger.setLevel(DEBUG)
+    if extras:
+        logger.warning("WARNING: the following parameters have not been "
+                       "identified!\n{}".format(" ".join(map(str, extras))))
 
-    if cfile == '':
-        print("Path to configuration file not given")
-        usage(pname)
-        sys.exit()
+    logger.setLevel(options.get("VERBOSITY", "INFO"))
 
-    CFP = read_config_file(cfile)
-    return DEBUG, INFO, CFP
+    print_configuration(options)
+    return options
 
 
-def define_event_loop(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST, RUN_ALL):
+def define_event_loop(options, n_evt):
     """
-    defines the number of events to run in the loop
-    """
-    if RUN_ALL:
-        return 0, NEVENTS_DST, NEVENTS_DST//20
-    first = FIRST_EVT
-    last = LAST_EVT
-    if NEVENTS > NEVENTS_DST:
-        print("""
-                Refusing to run: you have requested
-                FIRST_EVT = {}
-                LAST_EVT  = {}
-                Thus you want to run over {} events
-                but the size of the DST is {} events.
-                Please change your choice or select RUN_ALL = TRUE
-                to run over the whole DST when this happens
-                """.format(FIRST_EVT, LAST_EVT, NEVENTS, NEVENTS_DST))
-        sys.exit(0)
+    Produce an iterator over the event numbers.
 
-    print_mod = (last-first)//20 if last-first >= 20 else 1
-    return first, last, print_mod
+    Parameters
+    ----------
+    options : dictionary
+        Contains the job parameters.
+    n_evt : int
+        Number of events in the input file.
+
+    Returns
+    ------
+    gen : generator
+        A generator producing the event numbers as configured in the job.
+    """
+    nevt = options.get("NEVENTS", 0)
+    max_evt = n_evt if options["RUNALL"] or nevt > n_evt else nevt
+    start = options["SKIP"]
+    print_mod = options.get("PRINT_MOD", min(1, (max_evt-start)//20))
+
+    for i in range(start, max_evt):
+        if not i % print_mod:
+            logger.info("Event #{}".format(i))
+        yield i
 
 
 def cast(value):
     """
     Cast value from string to a python type.
+
+    Parameters
+    ----------
+    value : string
+        Token to be casted.
+
+    Returns
+    -------
+    casted_value : variable
+        Python variable of the guessed type.
     """
     if value == "True":
         return True
@@ -107,10 +141,19 @@ def cast(value):
 
 def read_config_file(cfile):
     """
-    Read a configuration file of the form
-    PARAMETER VALUE
+    Read a configuration file of the form PARAMETER VALUE.
+
+    Parameters
+    ----------
+    cfile : string
+        Configuration file name (path included).
+
+    Returns
+    -------
+    d : dictionary
+        Contains the parameters specified in cfile.
     """
-    d = {}
+    d = {"VERBOSITY": 20}  # INFO
     for line in open(cfile, "r"):
         if line == "\n" or line[0] == "#":
             continue
@@ -119,6 +162,13 @@ def read_config_file(cfile):
 
         value = map(cast, tokens[1:])
         d[key] = value[0] if len(value) == 1 else value
+
+    if "PATH_IN" in d and "FILE_IN" in d:
+        d["FILE_IN"] = d["PATH_IN"] + "/" + d["FILE_IN"]
+        del d["PATH_IN"]
+    if "PATH_OUT" in d and "FILE_OUT" in d:
+        d["FILE_OUT"] = d["PATH_OUT"] + "/" + d["FILE_OUT"]
+        del d["PATH_OUT"]
     return d
 
 

@@ -130,14 +130,13 @@ def simulate_pmt_response(event, pmtrd):
     return np.array(RWF), np.array(BLRX)
 
 
-def DIOMIRA(argv):
+def DIOMIRA(argv=sys.argv):
     """
     Diomira driver
     """
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0], argv[1:])
+    CFP = configure(argv)
 
-    if INFO:
-
+    if CFP["INFO"]:
         print("""
         DIOMIRA:
          1. Reads a MCRD file produced by art/centella, which stores MCRD
@@ -149,41 +148,16 @@ def DIOMIRA(argv):
         4. Add a table describing the FEE parameters used for simulation
         5. Copies the tables on geometry, detector data and MC
         """)
-        # FP.print_FEE()
-
-    PATH_IN = CFP["PATH_IN"]
-    PATH_OUT = CFP["PATH_OUT"]
-    FILE_IN = CFP["FILE_IN"]
-    FILE_OUT = CFP["FILE_OUT"]
-    FIRST_EVT = CFP["FIRST_EVT"]
-    LAST_EVT = CFP["LAST_EVT"]
-    RUN_ALL = CFP["RUN_ALL"]
-    COMPRESSION = CFP["COMPRESSION"]
-    NOISE_CUT = CFP["NOISE_CUT"]
-    NEVENTS = LAST_EVT - FIRST_EVT
-
-    logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("Input path = {}; output path = {}".format(PATH_IN, PATH_OUT))
-    logger.info("File_in = {} file_out = {}".format(FILE_IN, FILE_OUT))
-    logger.info("First event = {} last event = {} "
-                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
-    logger.info("Compression library/level = {}".format(COMPRESSION))
-    logger.info("Noise cut = {} pes ".format(NOISE_CUT))
 
     # open the input file
-    with tables.open_file("{}/{}".format(PATH_IN, FILE_IN), "r") as h5in:
+    with tables.open_file(CFP["FILE_IN"], "r") as h5in:
         # access the PMT raw data in file
         pmtrd_ = h5in.root.pmtrd
         sipmrd_ = h5in.root.sipmrd
-        # pmtrd_.shape = (nof_events, nof_sensors, wf_length)
 
-        NPMT = pmtrd_.shape[1]
-        NSIPM = sipmrd_.shape[1]
-        PMTWL = pmtrd_.shape[2]
-        # PMTWL_FEE = int((PMTWL+1)/FP.time_DAQ) #old format
+        NEVENTS_DST, NPMT, PMTWL = pmtrd_.shape
         PMTWL_FEE = int(PMTWL/FE.t_sample)
-        SIPMWL = sipmrd_.shape[2]
-        NEVENTS_DST = pmtrd_.shape[0]
+        NEVENTS_DST, NSIPM, SIPMWL = sipmrd_.shape
 
         logger.info("nof PMTs = {} nof  SiPMs = {} "
                     "nof events in input DST = {} ".format(NPMT, NSIPM,
@@ -197,10 +171,11 @@ def DIOMIRA(argv):
 
         # Create instance of the noise sampler
         noise_sampler_ = SiPMsNoiseSampler(SIPMWL, True)
-        sipms_thresholds_ = NOISE_CUT * np.array(sipmdf["adc_to_pes"])
+        sipms_thresholds_ = CFP["NOISE_CUT"] * np.array(sipmdf["adc_to_pes"])
 
+        COMPRESSION = CFP["COMPRESSION"]
         # open the output file
-        with tables.open_file("{}/{}".format(PATH_OUT, FILE_OUT), "w",
+        with tables.open_file(CFP["FILE_OUT"], "w",
                               filters=tbl.filters(COMPRESSION)) as h5out:
 
             # create a group to store MC data
@@ -250,16 +225,8 @@ def DIOMIRA(argv):
                                           shape=(0, NSIPM, SIPMWL),
                                           expectedrows=NEVENTS_DST)
             # LOOP
-            first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT,
-                                                               LAST_EVT,
-                                                               NEVENTS,
-                                                               NEVENTS_DST,
-                                                               RUN_ALL)
             t0 = time()
-            for i in range(first_evt, last_evt):
-                if not i % print_mod:
-                    logger.info("-->event number = {}".format(i))
-
+            for i in define_event_loop(CFP, NEVENTS_DST):
                 # supress zeros in MCRD and rebin the ZS function in 1 mus bins
                 rebin = int(units.mus/units.ns)
 
