@@ -7,6 +7,8 @@ import sys
 
 import numpy as np
 
+import wfmFunctions as wfm
+
 
 class Baseline:
     """
@@ -19,6 +21,8 @@ class Baseline:
     n_samples : int, optional
         Number of samples at the end of the waveform to measure waveform
         lifting. Default is 10.
+    apply_on : string, optional
+        Apply filter on different data types: CWF (defult), BLR
     """
 
     def __init__(self, **opts):
@@ -28,7 +32,15 @@ class Baseline:
 
         self.max_adc = opts["max_adc"]
         self.n_samples = opts.get("n_samples", 10)
+        self.wftype = opts.get("apply_on", "CWF")
+        if self.wftype not in ["CWF", "BLR"]:
+            raise ValueError("Wrong value for argument apply_on: {}\n"
+                             "Available options are 'CWF' and 'BLR'")
 
     def __call__(self, f, i):
-        means = np.mean(f.root.RD.pmtcwf[i,:,-self.n_samples:], axis=1)
+        if self.wftype == "CWF":
+            data = f.root.RD.pmtcwf[i]
+        else:
+            data = wfm.subtract_baseline(f.root.RD.pmtblr[i])
+        means = np.mean(data[:,-self.n_samples:], axis=1)
         return np.all(means < self.max_adc)
