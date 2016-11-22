@@ -442,5 +442,5 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
             else:
                 acum[k]=0
                 j=0
-
+    # return signal and friends
     return signal_r.astype(int), acum.astype(int), baseline, baseline_end, noise_rms
