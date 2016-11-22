@@ -20,10 +20,10 @@ def print_configuration(options):
     """
 
     for key, value in sorted(options.items()):
-        print("{0: <22} => {1}".format(key,value))
+        print("{0: <22} => {1}".format(key, value))
 
 
-def configure(input_options = sys.argv):
+def configure(input_options=sys.argv):
     """
     Translate command line options to a meaningfull dictionary.
 

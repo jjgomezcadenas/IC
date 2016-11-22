@@ -46,7 +46,7 @@ def get_from_name(name, glob=globals(), loc={}):
         Object pointed by variable *name*. Raises an error if not found.
     """
     if name not in glob and name not in loc:
-        raise KeyError("Function {} is not defined".format(func))
+        raise KeyError("Function {} is not defined".format(name))
     return glob[name] if name in glob else loc[name]
 
 

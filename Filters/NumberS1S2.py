@@ -5,7 +5,7 @@ from __future__ import print_function
 
 import sys
 
-import Core.Bridges as bdg
+from Core.Bridges import Signal
 import Core.tblFunctions as tbl
 
 
