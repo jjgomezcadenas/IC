@@ -42,5 +42,5 @@ class Baseline:
             data = f.root.RD.pmtcwf[i]
         else:
             data = wfm.subtract_baseline(f.root.RD.pmtblr[i])
-        means = np.mean(data[:,-self.n_samples:], axis=1)
+        means = np.mean(data[:, -self.n_samples:], axis=1)
         return np.all(means < self.max_adc)

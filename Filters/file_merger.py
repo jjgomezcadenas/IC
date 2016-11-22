@@ -257,7 +257,6 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
             pmaps_dis = h5dis.root.PMAPS.PMaps
             pmaps_blr_dis = h5dis.root.PMAPS.PMapsBLR
 
-
     n_events_in = 0
     n_events_out = 0
     n_events_dis = 0
