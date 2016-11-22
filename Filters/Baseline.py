@@ -7,7 +7,7 @@ import sys
 
 import numpy as np
 
-import wfmFunctions as wfm
+import Core.wfmFunctions as wfm
 
 
 class Baseline:
