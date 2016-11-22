@@ -22,6 +22,7 @@ from Core.Configure import configure, define_event_loop
 
 import Core.wfmFunctions as wfm
 import Database.loadDB as DB
+import Sierpe.FEE as FE
 
 from Core.RandomSampling import NoiseSampler as SiPMsNoiseSampler
 """
@@ -39,25 +40,18 @@ ChangeLog:
 
 10.11 Waveforms stay in adc counts. All PMTs are now stored.
 
-16.11 Using new database facility
+16.11 Using new database utility
 """
 
 
-def ANASTASIA(argv):
+def ANASTASIA(argv=sys.argv):
     """
     ANASTASIA driver
     """
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0], argv[1:])
+    CFP = configure(argv)
 
-    if INFO:
+    if CFP["INFO"]:
         print(__doc__)
-
-    PATH_IN = CFP["PATH_IN"]
-    FILE_IN = CFP["FILE_IN"]
-    FIRST_EVT = CFP["FIRST_EVT"]
-    LAST_EVT = CFP["LAST_EVT"]
-    RUN_ALL = CFP["RUN_ALL"]
-    NEVENTS = LAST_EVT - FIRST_EVT
 
     # Increate thresholds by 1% for safety
     PMT_NOISE_CUT_RAW = CFP["PMT_NOISE_CUT_RAW"] * 1.01
@@ -65,18 +59,7 @@ def ANASTASIA(argv):
     SIPM_ZS_METHOD = CFP["SIPM_ZS_METHOD"]
     SIPM_NOISE_CUT = CFP["SIPM_NOISE_CUT"]
 
-    logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("input file = {}/{}".format(PATH_IN, FILE_IN))
-    logger.info("First event = {} last event = {} "
-                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
-    logger.info("ZS method PMTS RAW = {}. "
-                "Cut value = {}".format("RMS_CUT", PMT_NOISE_CUT_RAW))
-    logger.info("ZS method PMTS BLR = {}. "
-                "Cut value = {}".format("ABSOLUTE", PMT_NOISE_CUT_BLR))
-    logger.info("ZS method SIPMS = {}. "
-                "Cut value = {}".format(SIPM_ZS_METHOD, SIPM_NOISE_CUT))
-
-    with tb.open_file("{}/{}".format(PATH_IN, FILE_IN), "r+") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "r+") as h5in:
         pmtblr = h5in.root.RD.pmtblr
         pmtcwf = h5in.root.RD.pmtcwf
         sipmrwf = h5in.root.RD.sipmrwf
@@ -123,31 +106,25 @@ def ANASTASIA(argv):
                                       shape=(0, NSIPM, SIPMWL),
                                       expectedrows=NEVT)
 
-        first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                           NEVENTS,
-                                                           NEVT, RUN_ALL)
-
         t0 = time()
-        for i in range(first_evt, last_evt):
-            if not i % print_mod:
-                logger.info("-->event number = {}".format(i))
-
+        for i in define_event_loop(CFP, NEVT):
             pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)
-            blrzs = wfm.noise_suppression(pmtblr[i], PMT_NOISE_CUT_BLR)
+            blrzs = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
+            blrzs = wfm.noise_suppression(blrzs, PMT_NOISE_CUT_BLR)
 
             pmt_zs_.append(pmtzs[np.newaxis])
             blr_zs_.append(blrzs[np.newaxis])
 
             sipmzs = sipmrwf[i]
             if "/MC" not in h5in:
-                sipmzs = wfm.subtract_baseline(sipmzs, None)
+                sipmzs = wfm.subtract_baseline(sipmzs, 200)
             sipmzs = wfm.noise_suppression(sipmzs, sipms_thresholds_)
             sipm_zs_.append(sipmzs[np.newaxis])
 
         t1 = time()
         dt = t1-t0
 
-        print("ANASTASIA has run over {} events in {} seconds".format(i, dt))
+        print("ANASTASIA has run over {} events in {} seconds".format(i+1, dt))
     print("Leaving ANASTASIA. Safe travels!")
 
 

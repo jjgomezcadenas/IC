@@ -298,8 +298,8 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
     # for the first nm samples
     signal_r[0:nm] = signal_daq[0:nm]
 
-    print ("baseline = {}, noise (LSB_rms) = {} ".format(
-            baseline, noise_rms,))
+    # print ("baseline = {}, noise (LSB_rms) = {} ".format(
+    #        baseline, noise_rms,))
 
     cdef int k
     j=0
@@ -329,4 +329,4 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
                 acum[k]=0
                 j=0
 
-    return signal_r, acum
+    return signal_r.astype(int), acum.astype(int)

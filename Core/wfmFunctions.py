@@ -9,15 +9,23 @@ ChangeLog
 import math
 import pandas as pd
 import numpy as np
-import scipy.signal as signal
-
-from Core.coreFunctions import dict_map
-import Sierpe.FEParam as FP
 
 
 def to_adc(wfs, sensdf):
     """
     Convert waveform in pes to adc.
+
+    Parameters
+    ----------
+    wfs : 2-dim np.ndarray
+        The waveform (axis 1) for each sensor (axis 0).
+    sensdf : pd.DataFrame
+        Contains the sensor-related information.
+
+    Returns
+    -------
+    adc_wfs : 2-dim np.ndarray
+        The input wfs scaled to adc.
     """
     return wfs * sensdf["adc_to_pes"].reshape(wfs.shape[0], 1)
 
@@ -25,41 +33,37 @@ def to_adc(wfs, sensdf):
 def to_pes(wfs, sensdf):
     """
     Convert waveform in adc to pes.
+
+    Parameters
+    ----------
+    wfs : 2-dim np.ndarray
+        The waveform (axis 1) for each sensor (axis 0).
+    sensdf : pd.DataFrame
+        Contains the sensor-related information.
+
+    Returns
+    -------
+    pes_wfs : 2-dim np.ndarray
+        The input wfs scaled to pes.
     """
     return wfs / sensdf["adc_to_pes"].reshape(wfs.shape[0], 1)
 
 
-def rebin_twf(t, e, stride=40):
-    """
-    Rebins the a waveform according to stride
-    The input waveform is a vector such that the index expresses
-    time bin and the contents expresses energy (e.g, in pes)
-    The function returns the ned times and energies.
-    """
-    n = int(math.ceil(len(t) / float(stride)))
-
-    T = np.zeros(n, dtype=np.float32)
-    E = np.zeros(n, dtype=np.float32)
-
-    j = 0
-    for i in range(n):
-        E[i] = np.sum(e[j:j+stride])
-        T[i] = np.mean(t[j:j+stride])
-        j += stride
-
-    return T, E
-
-
-def rebin_df(df, stride=40):
-    """
-    Applies the rebin_wf function to a dataframe.
-    """
-    return wf2df(*rebin_twf(*df2wf(df), stride=stride))
-
-
 def get_waveforms(pmtea, event_number=0):
     """
-    Takes the earray pmtea and returns a DF for event_number
+    Produce a DataFrame with the waveforms in an array.
+
+    Parameters
+    ----------
+    pmtea : tb.EArray
+        The waveform (axis 2) for each sensor (axis 1) and event (axis 0).
+    event_number : int
+        Event number.
+
+    Returns
+    -------
+    wfdf : pd.DataFrame
+        Contains the waveform for each sensor indexed by ID.
     """
     NPMT = pmtea.shape[1]
     dic = {j: pmtea[event_number, j] for j in range(NPMT)}
@@ -68,8 +72,21 @@ def get_waveforms(pmtea, event_number=0):
 
 def get_waveforms_and_energy(pmtea, event_number=0):
     """
-    Takes the earray pmtea and returns a DF for the wf
-    and a Series with the sum of the energies for event_number
+    Produce a DataFrame with the waveforms in an array and their energy.
+
+    Parameters
+    ----------
+    pmtea : tb.EArray
+        The waveform (axis 2) for each sensor (axis 1) and event (axis 0).
+    event_number : int
+        Event number.
+
+    Returns
+    -------
+    wfdf : pd.DataFrame
+        Contains the waveform for each sensor indexed by ID.
+    wfe : pd.Series
+        Contains the sum of the waveform for each sensor.
     """
     PMTWF = {}
     EPMT = []
@@ -85,8 +102,19 @@ def get_waveforms_and_energy(pmtea, event_number=0):
 
 def get_energy(pmtea, event_list=[0]):
     """
-    Takes the earray pmtea and a list of events and returns a DF
-    with the sum of the energies for event_number
+    Compute the sum of the waveforms for some events.
+
+    Parameters
+    ----------
+    pmtea : tb.EArray
+        The waveform (axis 2) for each sensor (axis 1) and event (axis 0).
+    event_list : sequence of ints
+        Event numbers.
+
+    Returns
+    -------
+    wfes : pd.DataFrame
+        Contains the sum of the waveform for each sensor indexed by ID.
     """
     NPMT = pmtea.shape[1]
     EPMT = []
@@ -102,8 +130,22 @@ def get_energy(pmtea, event_list=[0]):
 
 def wfdf(time_mus, energy_pes, indx):
     """
-    Takes three vectors (time, energy and indx) and returns a data frame
-    representing a waveform
+    Produce a DataFrame from input values.
+
+    Parameters
+    ----------
+    time_mus : 1-dim np.ndarray
+        Waveform time values.
+    energy_pes : 1-dim np.ndarray
+        Waveform amplitudes.
+    indx : 1-dim np.ndarray
+        Samples indices.
+
+    Returns
+    -------
+    df : pd.DataFrame
+        A data frame with three fields (time_mus, ene_pes and indx) and one
+        entry per sample.
     """
     return pd.DataFrame({"time_mus": time_mus,
                          "ene_pes": energy_pes,
@@ -112,8 +154,22 @@ def wfdf(time_mus, energy_pes, indx):
 
 def wf2df(time_mus, energy_pes, dropnan=False):
     """
-    Takes two vectors (time, energy) and returns a data frame
-    representing a waveform
+    Produce a DataFrame from input values.
+
+    Parameters
+    ----------
+    time_mus : 1-dim np.ndarray
+        Waveform time values.
+    energy_pes : 1-dim np.ndarray
+        Waveform amplitudes.
+    dropnan : bool, optional
+        Flag to decide whether to drop nan values. Defaults to False.
+
+    Returns
+    -------
+    df : pd.DataFrame
+        A data frame with two fields (time_mus and ene_pes) and one entry
+        per sample. Nan are dropped if dropnan is True.
     """
     df = pd.DataFrame({"time_mus": time_mus, "ene_pes": energy_pes})
     return df.dropna() if dropnan else df
@@ -121,50 +177,134 @@ def wf2df(time_mus, energy_pes, dropnan=False):
 
 def df2wf(df):
     """
-    Takes a data frame and returns the array of times and the array of energies
+    Retrieves the np arrays contained in the data frame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Waveform data frame.
+
+    Returns
+    -------
+    time_mus : 1-dim np.ndarray
+        Waveform times.
+    ene_pes : 1-dim np.ndarray
+        Waveform amplitudes.
     """
     return df["time_mus"], df["ene_pes"]
 
 
-def add_cwf(cwfdf, pmtDF):
+def add_cwf(cwfdf, pmtdf):
     """
-    Sums all PMTs for each time sample.
+    Sums all PMTs for each time sample in pes.
 
     Parameters
     ----------
-    cwfdf : pandas DataFrame
-        Each colum is the wf of a PMT.
-    pmtDF : pandas DataFrame
+    cwfdf : pd.DataFrame
+        A NPMT-column data frame holding the waveforms.
+    pmtdf : pd.DataFrame
         Contains the sensors information.
 
     Returns
     -------
-    swf : pandas DataFrame
-        A data frame with two columns:
-        - time_mus = counts the time in ns
-        - ene_pes = conths the energy in pes
+    swf : pd.DataFrame
+        A data frame with the summed waveform.
     """
-    wf = 0
-    NPMT = len(pmtDF)
-    for i in range(NPMT):
-        adc_to_pes = pmtDF["adc_to_pes"][i]
-        wf += cwfdf[i].values/adc_to_pes
-
-    return (wfdf(np.array(range(len(wf))) * FP.time_DAQ,
-            wf, np.array(range(len(wf)))))
+    summed = np.sum(to_pes(cwfdf.values.T, pmtdf), axis=1)
+    idxs = np.arange(summed.size)
+    return wf2df(idxs * 1.0, summed, idxs)
 
 
-def wf_thr(wf, threshold=1):
+def rebin_wf(t, e, stride=40):
     """
-    Return a zero supressed waveform (more generally,
-    the vaules of wf above threshold)
+    Rebin arrays according to some stride.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Array of times.
+    e : np.ndarray
+        Array of amplitudes.
+    stride : int
+        Integration step.
+
+    Returns
+    -------
+    rebinned_t : np.ndarray
+        Rebinned array of times.
+    rebinned_e : np.ndarray
+        Rebinned array of amplitudes.
     """
-    return wf.loc[lambda df: df.ene_pes.values > threshold, :]
+    n = int(math.ceil(len(t) / float(stride)))
+    T = np.empty(n, dtype=np.float32)
+    E = np.empty(n, dtype=np.float32)
+
+    for i in range(n):
+        low = i * stride
+        upp = low + stride
+        E[i] = np.sum(e[low:upp])
+        T[i] = np.mean(t[low:upp])
+
+    return T, E
+
+
+def rebin_df(df, stride=40):
+    """
+    Applies rebin_wf to a dataframe.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Data frame holding the waveform data.
+    stride : int
+        Integration step.
+
+    Returns
+    -------
+    rebinned_df : pd.DataFrame
+        Rebinned data frame.
+    """
+    return wf2df(*rebin_wf(*df2wf(df), stride=stride))
+
+
+def wf_thr(df, threshold=1):
+    """
+    Get the values of a waveform above threshold.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Data frame holding the waveform.
+    threshold : int or float
+        Value from which values are ignored.
+
+    Returns
+    -------
+    cutdf : pd.DataFrame
+        Data frame holding the values surviving the cut.
+    """
+    return df[df.ene_pes > threshold]
 
 
 def zs_wf(waveform, threshold, to_mus=None):
     """
-    Get a zero-supressed wf.
+    Remove waveform values below threshold.
+
+    Parameters
+    ----------
+    waveform : 1-dim np.ndarray
+        Waveform amplitudes.
+    threshold : int or float
+        Cut value.
+    to_mus : int or float, optional
+        Scale factor for converting times to microseconds. Default is None,
+        meaning no conversion.
+
+    Returns
+    -------
+    df : pd.DataFrame
+        A two-field (time_mus and ene_pes) data frame holding the data
+        surviving the cut.
     """
     t = np.argwhere(waveform > threshold).flatten()
     if not t.size:
@@ -172,349 +312,127 @@ def zs_wf(waveform, threshold, to_mus=None):
     return wf2df(t if to_mus is None else t * to_mus, waveform[t])
 
 
-def zero_suppression(data, thresholds, to_mus=None):
+def zero_suppression(waveforms, thresholds, to_mus=None):
     """
-    Takes an array of waveforms, applies the corresponding threshold to
-    each row and returns a dictionary with the data frames of the survivors.
+    Remove waveforms values below threshold.
+
+    Parameters
+    ----------
+    waveforms : 2-dim np.ndarray
+        Waveform amplitudes (axis 1) for each sensor (axis 0).
+    thresholds : int, float or sequence of ints or floats
+        Cut value for each sensors (sequence) or for all (single number).
+    to_mus : int or float, optional
+        Scale factor for converting times to microseconds. Default is None,
+        meaning no conversion.
+
+    Returns
+    -------
+    dfs : dictionary
+        A dictionary holding two-field (time_mus and ene_pes) data frames
+        containing the data surviving the cut. Keys are sensor IDs.
     """
     # If threshold is a single value, transform it into an array
     if not hasattr(thresholds, "__iter__"):
-        thresholds = np.ones(data.shape[0]) * thresholds
-    zsdata = map(zs_wf, data, thresholds)
+        thresholds = np.ones(waveforms.shape[0]) * thresholds
+    zsdata = map(zs_wf, waveforms, thresholds)
     return {i: df for i, df in enumerate(zsdata) if df is not None}
 
 
-def suppress_wf(wf, th):
+def suppress_wf(waveform, threshold):
     """
-    Put zeros where *wf* is below *th*.
+    Put zeros where the waveform is below some threshold.
+
+    Parameters
+    ----------
+    waveform : 1-dim np.ndarray
+        Waveform amplitudes.
+    threshold : int or float
+        Cut value.
+
+    Returns
+    -------
+    wf : 1-dim np.ndarray
+        A copy of the input waveform with values below threshold set to zero.
     """
-    wf = np.copy(wf)
-    wf[wf <= th] = 0
+    wf = np.copy(waveform)
+    wf[wf <= threshold] = 0
     return wf
 
 
-def noise_suppression(data, thresholds):
+def noise_suppression(waveforms, thresholds):
     """
-    Takes an array of waveforms, applies the corresponding threshold to
-    each row and returns a dictionary with the data frames of the survivors.
+    Put zeros where the waveform is below some threshold.
+
+    Parameters
+    ----------
+    waveforms : 2-dim np.ndarray
+        Waveform amplitudes (axis 1) for each sensor (axis 0).
+    thresholds : int or float or sequence of ints or floats
+        Cut value for each waveform (sequence) or for all (single number).
+
+    Returns
+    -------
+    suppressed_wfs : 2-dim np.ndarray
+        A copy of the input waveform with values below threshold set to zero.
     """
     if not hasattr(thresholds, "__iter__"):
-        thresholds = np.ones(data.shape[0]) * thresholds
-    suppressed_data = map(suppress_wf, data, thresholds)
-    return np.array(suppressed_data)
+        thresholds = np.ones(waveforms.shape[0]) * thresholds
+    suppressed_wfs = map(suppress_wf, waveforms, thresholds)
+    return np.array(suppressed_wfs)
 
 
-def subtract_baseline(wfs, mau_len=None):
+def find_baseline(waveform, n_samples=500, check_no_signal=True):
     """
-    Computes the baseline for each SiPM in the event and subtracts it.
-    For doing so, the first mau_len samples in the waveform are taken.
+    Finds baseline in waveform.
+
+    Parameters
+    ----------
+    waveform : 1-dim np.ndarray
+        Any sensor's waveform.
+
+    n_samples : int, optional
+        Number of samples to measure baseline. Default is 500.
+
+    check_no_signal : bool, optional
+        Check RMS in waveform subsample to ensure there is no signal present
+        in it. Default is True.
+
+    Returns
+    -------
+    baseline : int or float
+        Waveform's baseline.
     """
-    if mau_len is None:
-        mau_len = wfs.shape[1]
-    b_mau = np.ones(mau_len)*1.0/mau_len
+    if check_no_signal:
+        for i in range(waveform.size//n_samples):
+            low = i * n_samples
+            upp = low + n_samples
+            subsample = waveform[low:upp]
+            if np.std(subsample) < 3:
+                return np.mean(subsample)
+    return np.mean(waveform[:n_samples])
 
-    def find_baseline(wf):
-        return signal.lfilter(b_mau, 1, wf)[-1]
 
-    bls = np.apply_along_axis(find_baseline, 1, wfs[:, :mau_len])
-    return wfs - bls.reshape(wfs.shape[0], 1)
-
-
-def in_window(data, tmin, tmax):
+def subtract_baseline(waveforms, n_samples=500, check_no_signal=True):
     """
-    Filters out data outside specified window.
+    Computes the baseline for each sensor in the event and subtracts it.
+
+    Parameters
+    ----------
+    waveforms : 2-dim np.ndarray
+        The waveform amplitudes (axis 1) for each sensor (axis 0)
+    n_samples : int
+        Number of samples to measure baseline. Default is 500.
+    check_no_signal : bool, optional
+        Check RMS in waveform subsample to ensure there is no signal present
+        in it. Default is True.
+
+    Returns
+    -------
+    blr_wfs : 2-dim np.array
+        The input waveform with the baseline subtracted.
     """
-    def filter_df(df):
-        return df[(df.time_mus >= tmin) & (df.time_mus <= tmax)]
-    return dict_map(filter_df, data)
-
-
-def find_S12(swf, stride=40):
-    """
-    Find S1 or S2 signals. The input is a zero-supressed WF. The stride
-    defines the contiguity criterium. The stride is applied to the indexes
-    which keep the ordering of the original (non-zs) WF. For example, with a
-    stride of 40 (corresponding to steps of 1 mus for a DAQ timing of 25 ns)
-    index 1 and index 39 are in the same S12.
-    """
-    T = swf["time_mus"].values
-    P = swf["ene_pes"].values
-    I = swf["indx"].values
-
-    S12 = {}
-    j = 0
-
-    S12[0] = []
-    S12[0].append([T[0], P[0], I[0]])
-
-    for i in range(1, len(swf)):
-        if swf.index[i] - stride > swf.index[i-1]:  # new s12
-            j += 1
-            S12[j] = []
-            S12[j].append([T[i], P[i], I[i]])
-        else:
-            S12[j].append([T[i], P[i], I[i]])
-
-    S12L = []
-    for i in S12.keys():
-        S12L.append(pd.DataFrame(S12[i],
-                    columns=["time_mus", "ene_pes", "indx"]))
-    return S12L
-
-
-def rebin_waveform(swf, stride=40):
-    """
-    Rebins the a waveform according to stride
-    The input waveform is a vector such that the index expresses time bin and
-    the contents expresses energy (e.g, in pes)
-    The function returns a DataFrame. The time bins and energy are
-    rebinned according to stride
-    """
-
-    t = swf["time_mus"].values
-    e = swf["ene_pes"].values
-    I = swf["indx"].values
-    n = int(math.ceil(len(swf) / float(stride)))
-
-    T = np.zeros(n)
-    E = np.zeros(n)
-    II = np.zeros(n, dtype=int)
-
-    j = 0
-    for i in range(n):
-        E[i] = np.sum(e[j:j+stride])
-        T[i] = np.mean(t[j:j+stride])
-        II[i] = I[(j+stride)/2] if i+1 < n else I[len(I)-stride/2]
-        j += stride
-
-    rbw = {}
-    rbw["ene_pes"] = E
-    rbw["time_mus"] = T
-    rbw["indx"] = II
-    return pd.DataFrame(rbw)
-
-
-def find_t0(s1):
-    """
-    Returns t0 as the peak of the S1 signal
-    """
-    emax = np.amax(s1.ene_pes.values)
-    return s1.loc[lambda df: df.ene_pes.values == emax, :]
-
-
-def s2_energy(s2):
-    """
-    Total energy in pes
-    """
-    return np.sum(s2.ene_pes.values)
-
-
-def s2_length(s2):
-    """
-    S2 length in ns
-    """
-    t = s2.time_mus.values
-    return t[-1] - t[0]
-
-
-def pmt_wf(cwfdf, pmtDF):
-    """
-    input: cwfdf: each colum is the wf for one PMT.
-    output: wf is a list of waveform data frames
-    time_mus = counts the time in ns
-    ene_pes = conths the energy in pes
-    returns a data frame with one data frame per PMT
-    each pmt DF expresses the waveform in the PMT
-    """
-
-    NPMT = len(pmtDF)
-    PMTWF = []
-    for i in range(NPMT):
-        adc_to_pes = pmtDF["adc_to_pes"][i]
-        wf = cwfdf[i].values/adc_to_pes
-        PMTWF.append(wfdf(np.array(range(len(wf))) * FP.time_DAQ,
-                     wf, np.array(range(len(wf)))))
-
-    return PMTWF
-
-
-def pmaps_EP(pmtcwf, pmtDF, list_of_events=[0], thr=1., stride=40):
-    """
-    Computes pmaps in the EP plane
-    Returns a list of S2PMAPS (one entry per event) and a t0 DataFrame
-    S2PMAPS is a list of PMAPS of one entry per S2 found in the sum of PMTs
-    Each EP PMAP is the collection of 12+1 S2s
-    """
-    NPMT = len(pmtDF)
-    S2PMAP = []
-    for event in list_of_events:
-        # compute the sum function (swf), supress zeros (swf_zs)
-        # and finds s12 for swf_zs
-        cwfdf = get_waveforms(pmtcwf, event_number=event)
-        swf = add_cwf(cwfdf, pmtDF)
-        swf_zs = wf_thr(swf, threshold=thr)
-        s12 = find_S12(swf_zs, stride=stride)
-
-        is2 = 0
-        t0 = -999
-        if len(s12) > 1:  # if s1 exists is s12[0]
-            is2 = 1  # s2 starts in index 1 if s1 exists in 0 otherwise
-            s1 = s12[0]
-            t0 = find_t0(s1)
-
-        S2L = []
-        for s2 in s12[is2:]:  # loop over s2 found is swf_zs
-            PMTWF = pmt_wf(cwfdf, pmtDF)  # wf for each of the PMTs
-
-            # scan_pmtwf_s2(PMTWF, s2)
-            PMAP = []
-            s2rb = rebin_waveform(s2, stride=stride)
-            PMAP.append(s2rb)
-            for i in range(NPMT):
-                pmtwf = PMTWF[i]
-                s2i = s2.indx.values
-                pmtdf = wfdf(pmtwf.time_mus.values[s2i[0]:s2i[-1]+1],
-                             pmtwf.ene_pes.values[s2i[0]:s2i[-1]+1],
-                             pmtwf.indx.values[s2i[0]:s2i[-1]+1])
-
-                pmtrb = rebin_waveform(pmtdf, stride=stride)
-                PMAP.append(pmtrb)
-            S2L.append(PMAP)
-        S2PMAP.append(S2L)
-    return t0, S2PMAP
-
-
-class PMAP:
-    """
-    A simple class to hold the EP and TP pmap info
-    """
-    def __init__(self, t0):
-        """
-        Inits the class with t0
-        """
-
-        self.t0 = t0
-        self.s2PMAP = []
-        self.epPMAP = []
-        self.sipmS2P = []
-
-    def add_pmap(self, s2pmap, sipms2p, epmap):
-        self.s2PMAP.append(s2pmap)
-        self.sipmS2P.append(sipms2p)
-        self.epPMAP.append(epmap)
-
-    def nof_s2(self):
-        return len(self.s2PMAP)
-
-
-def sipm_panel(sipmrwf, SIPMDF, event_number=0):
-    """
-    Organize the SiPM as a PD panel, that is a collection of PD DataFrames
-
-    1. items = number of sipm
-    2. One DataFrame per SiPM
-    """
-    sipmwf = sipmrwf[event_number]
-    SIPM = {}
-    NSIPM = sipmwf.shape[0]
-    sipmwl = sipmwf.shape[1]
-    for i in range(NSIPM):
-        adc_to_pes = SIPMDF.adc_to_pes[i]
-        energy_pes = sipmwf[i]/adc_to_pes
-        time_mus = np.array(range(sipmwl)) * 1e+3  # steps are mus
-        indx = np.ones(sipmwl) * i
-        # SIPM[i] = wf_mus(wfdf(time_mus, energy_pes, indx))
-        SIPM[i] = wfdf(time_mus, energy_pes, indx)
-    return pd.Panel(SIPM)
-
-
-def sipm_s2(sipmdf, s2df):
-    """
-    Takes a sipm DF and an s2df
-    Returns a DF with the sipm values in the range specified by s2
-    """
-    s2ti = s2df.time_mus.values[0]
-    s2tf = s2df.time_mus.values[-1]
-    dfl = sipmdf.loc[lambda df: df.time_mus.values >= s2ti, :]
-    dfu = dfl.loc[lambda df: df.time_mus.values < s2tf, :]
-    return dfu
-
-
-def sipmp_s2(sipmp, s2df, thr=0.5):
-    """
-    Takes a sipm panel and a s2df
-    Returns a sipm panel with a collection of sipm DF such that:
-    1. the range of the sipm is specified by s2
-    2. the sipm energy are above threshold.
-    """
-    SIPM = {}
-    j = 0
-    for i in sipmp.items:
-        sipm = sipmp[i]
-        sipms2 = sipm_s2(sipm, s2df)
-        if np.sum(sipms2).ene_pes > thr:
-            SIPM[j] = sipms2
-            j += 1
-    return pd.Panel(SIPM)
-
-
-def sipm_hit_index(sipmp):
-    """
-    Store the indexes of the (sipm number)
-    """
-    hi = []
-    for i in sipmp.items:
-        sipm = sipmp[i]
-        hi.append(sipm.indx.values[0])
-    return pd.Series(hi)
-
-
-def sipmps2p_energy(sipms2p):
-    """
-    Takes a sipms2p as input
-    Returns a DataFrame with the index and the energy in the SiPM as columns:
-    """
-
-    SIPM = []
-    for i in sipms2p.items:
-        swf = {}
-        swf["ene_pes"] = np.sum(sipms2p[i].ene_pes.values)
-        swf["indx"] = sipms2p[i].indx.values[0]
-        SIPM.append(swf)
-
-    return pd.DataFrame(SIPM)
-
-
-def sipm_s2_panel(sipmrwf, SIPMDF, s2df, thr_min=0.5, thr_s2=1,
-                  event_number=0):
-    """
-    Takes the sipmrwf and a s2df
-    Returns a sipm panel with a collection of sipm DF such that:
-    1. the range of the sipm is specified by s2
-    2. the sipm energy are above threshold.
-    """
-
-    sipmwf = sipmrwf[event_number]
-    SIPM = {}
-    NSIPM = sipmwf.shape[0]
-    sipmwl = sipmwf.shape[1]
-
-    j = 0
-
-    for i in range(NSIPM):
-        adc_to_pes = SIPMDF.adc_to_pes[i]
-        energy_pes = sipmwf[i]/adc_to_pes
-
-        # only worry about SiPM with energy above threshold
-        if np.sum(energy_pes) < thr_min:
-            continue
-
-        time_mus = np.array(range(sipmwl)) * 1e+3  # steps are mus
-        indx = np.ones(sipmwl) * i
-        # sipm = wf_mus(wfdf(time_mus, energy_pes, indx))
-        sipm = wfdf(time_mus, energy_pes, indx)
-        sipms2 = sipm_s2(sipm, s2df)
-        if np.sum(sipms2).ene_pes > thr_s2:
-            SIPM[j] = sipms2
-            j += 1
-    return pd.Panel(SIPM)
+    bls = np.apply_along_axis(lambda wf: find_baseline(wf, n_samples,
+                                                       check_no_signal),
+                              1, waveforms)
+    return waveforms - bls.reshape(waveforms.shape[0], 1)

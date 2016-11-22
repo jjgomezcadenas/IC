@@ -318,11 +318,11 @@ def plot_best(sipmrwf, sipmtwf, sipmdf, evt=0):
     plt.figure(figsize=(10, 8))
     # Find SiPM with greatest peak
     maxsipm = np.unravel_index(sipmrwf[evt].argmax(), sipmrwf[evt].shape)[0]
-    print("SiPM with greatest peak is "
-          "at index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].channel))
+    print("SiPM with greatest peak is at "
+          "index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].sensorID))
 
     # Plot noisy waveform in red and noiseless waveform in blue
-    true_times, true_amps = tbl.read_wf(sipmtwf, evt, maxsipm)
+    true_times, true_amps = tbl.read_sensor_wf(sipmtwf, evt, maxsipm)
     plt.plot(sipmrwf[evt, maxsipm, :])
     plt.plot(true_times, np.array(true_amps) * sipmdf["adc_to_pes"][maxsipm])
     plt.xlabel("time ($\mu$s)")
@@ -341,7 +341,7 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
 
     nrows = int(math.ceil(nsipms * 1.0/ncols))
     for i, (sipm_index, sipm_wf) in enumerate(sipms):
-        true_times, true_amps = tbl.read_wf(sipmtwf, evt, sipm_index)
+        true_times, true_amps = tbl.read_sensor_wf(sipmtwf, evt, sipm_index)
         if len(true_amps) == 0:
             true_times = np.arange(len(sipm_wf))
             true_amps = np.zeros(len(sipm_wf))

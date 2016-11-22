@@ -3,6 +3,7 @@ Tables defining the DM
 """
 import tables as tb
 
+
 class RunInfo(tb.IsDescription):
     run_number = tb.Int32Col(shape=(), pos=0)
 
@@ -80,16 +81,24 @@ class FEE(tb.IsDescription):
     NBITS = tb.Float32Col(pos=10)  # number of bits ADC
     LSB = tb.Float32Col(pos=11)  # LSB (adc count)
     NOISE_I = tb.Float32Col(pos=12)  # Noise at the input
-    NOISE_DAQ = tb.Float32Col(pos=13) # Noise at DAQ
-    t_sample = tb.Float32Col(pos=14) # sampling time
-    f_sample = tb.Float32Col(pos=15) # sampling frequency
-    f_mc = tb.Float32Col(pos=16) # sampling frequency in MC (1ns)
+    NOISE_DAQ = tb.Float32Col(pos=13)  # Noise at DAQ
+    t_sample = tb.Float32Col(pos=14)  # sampling time
+    f_sample = tb.Float32Col(pos=15)  # sampling frequency
+    f_mc = tb.Float32Col(pos=16)  # sampling frequency in MC (1ns)
     f_LPF1 = tb.Float32Col(pos=17)  # LPF
     f_LPF2 = tb.Float32Col(pos=18)  # LPF
     coeff_c = tb.Float64Col(shape=12, pos=19)  # cleaning coeff
     coeff_blr = tb.Float64Col(shape=12, pos=20)  # COEFF BLR
     adc_to_pes = tb.Float32Col(shape=12, pos=21)  # CALIB CONST
     pmt_noise_rms = tb.Float32Col(shape=12, pos=22)  # rms noise
+
+
+class DECONV_PARAM(tb.IsDescription):
+    N_BASELINE = tb.Int16Col(pos=0)
+    THR_TRIGGER = tb.Int16Col(pos=1)
+    ACUM_DISCHARGE_LENGTH = tb.Int16Col(pos=2)
+    ACUM_TAU = tb.Int16Col(pos=3)
+    ACUM_COMPRESS = tb.Float32Col(pos=4)
 
 
 class PMAP(tb.IsDescription):

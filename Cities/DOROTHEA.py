@@ -16,7 +16,7 @@ from __future__ import print_function
 import sys
 import math
 import numpy as np
-import tables
+import tables as tb
 from time import time
 
 import Core.system_of_units as units
@@ -37,17 +37,29 @@ ChangeLog:
 24.10 First version
 
 10.11 Conversion to pes and creation of the summed PMT.
+
+16.11 Using new database utility.
 """
 
 
-def classify_signal(slices, foundS2):
-    if len(slices) > 1:
-        sig = Signal.S2
-    elif not foundS2:
-        sig = Signal.S1
-    else:
-        sig = Signal.UNKNOWN
-    return sig
+def classify_peaks(pmap, **options):
+    foundS1 = False
+    foundS2 = False
+    s1_min_int = options.get("MIN_S1_INTEGRAL", 0.)
+    s1_max_tot = options.get("MAX_S1_ToT", 40)
+    s2_min_wid = options.get("MIN_S2_WIDTH", 0)
+    s2_min_hei = options.get("MIN_S2_HEIGHT", 0.)
+    s2_min_int = options.get("MIN_S2_INTEGRAL", 0.)
+    for peak in pmap:
+        peak.signal = Signal.UNKNOWN
+        if (len(peak) > s2_min_wid and peak.tothrs.sum() > s2_min_int and
+           peak.peakmax[1] > s2_min_hei):
+            peak.signal = Signal.S2
+            foundS2 = True
+        elif len(peak) == 1 and peak.tothrs.sum() < s1_max_tot and not foundS2:
+            if not foundS1 or peak.cathode_integral > s1_min_int:
+                peak.signal = Signal.S1
+                foundS1 = True
 
 
 def build_pmap(pmtwf, sipmwfs, stride=40):
@@ -62,7 +74,6 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
     ene_sipms = []
     time_over_thrs = []
     tmin = float("inf")
-    foundS2 = False
 
     for i in range(nbins):
         low = i * stride
@@ -84,13 +95,9 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
         # Empty slice. Everything accumulated so far is a peak.
         # It will be S1-like if it is a short peak
         elif len(ene_pmt) > 0:
-            sigtype = classify_signal(ene_pmt, foundS2)
-            if sigtype == Signal.S2:
-                foundS2 = True
             tmax = t
             peak = Peak(np.arange(tmin, tmax)*to_mus,
-                        ene_pmt, ene_sipms,
-                        time_over_thrs, sigtype)
+                        ene_pmt, ene_sipms, time_over_thrs)
             pmap.peaks.append(peak)
 
             tmin = float("inf")
@@ -101,35 +108,28 @@ def build_pmap(pmtwf, sipmwfs, stride=40):
     return pmap
 
 
-def DOROTHEA(argv):
+def DOROTHEA(argv=sys.argv):
     """
     DOROTHEA driver
     """
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0], argv[1:])
+    CFP = configure(argv)
 
-    if INFO:
+    if CFP["INFO"]:
         print(__doc__)
 
-    PATH_IN = CFP["PATH_IN"]
-    PATH_OUT = CFP["PATH_OUT"]
     FILE_IN = CFP["FILE_IN"]
     FILE_OUT = CFP["FILE_OUT"]
-    FIRST_EVT = CFP["FIRST_EVT"]
-    LAST_EVT = CFP["LAST_EVT"]
-    RUN_ALL = CFP["RUN_ALL"]
     COMPRESSION = CFP["COMPRESSION"]
-    NEVENTS = LAST_EVT - FIRST_EVT
+    NEVENTS = CFP["NEVENTS"]
 
-    logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("Input path = {}; output path = {}".format(PATH_IN, PATH_OUT))
-    logger.info("File_in = {} file_out = {}".format(FILE_IN, FILE_OUT))
-    logger.info("First event = {} last event = {} "
-                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
+    logger.info("Debug level = {}".format(CFP["VERBOSITY"]))
+    logger.info("Input file = {}".format(FILE_IN))
+    logger.info("Output file = {}".format(FILE_OUT))
+    logger.info("# events requested = {}".format(NEVENTS))
     logger.info("Compression library/level = {}".format(COMPRESSION))
 
     # open the input file
-    with tables.open_file("{}/{}".format(PATH_IN, FILE_IN), "r") as h5in:
-
+    with tb.open_file(FILE_IN, "r") as h5in:
         # access the PMT ZS data in file
         pmtzs_ = h5in.root.ZS.PMT
         blrzs_ = h5in.root.ZS.BLR
@@ -149,8 +149,8 @@ def DOROTHEA(argv):
         sipm_to_pes = abs(1.0 / sipmdf.adc_to_pes.reshape(NSIPM, 1))
 
         # open the output file
-        with tables.open_file("{}/{}".format(PATH_OUT, FILE_OUT), "w",
-                              filters=tbl.filters(COMPRESSION)) as h5out:
+        with tb.open_file(FILE_OUT, "w",
+                          filters=tbl.filters(COMPRESSION)) as h5out:
 
             # create groups and copy MC data to the new file
             if "/MC" in h5in:
@@ -178,23 +178,18 @@ def DOROTHEA(argv):
             pmaps_blr_.cols.event.create_index()
 
             # LOOP
-            first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT,
-                                                               LAST_EVT,
-                                                               NEVENTS, NEVT,
-                                                               RUN_ALL)
             t0 = time()
-            for i in range(first_evt, last_evt):
-                if not i % print_mod:
-                    logger.info("-->event number = {}".format(i))
-
+            for i in define_event_loop(CFP, NEVT):
                 pmtwf = np.sum(pmtzs_[i] * pmt_to_pes, axis=0)
                 blrwf = np.sum(blrzs_[i] * pmt_to_pes, axis=0)
                 sipmwfs = sipmzs_[i] * sipm_to_pes
 
                 pmap = build_pmap(pmtwf, sipmwfs)
+                classify_peaks(pmap, **CFP)
                 tbl.store_pmap(pmap, pmaps_, i)
 
                 pmap_blr = build_pmap(blrwf, sipmwfs)
+                classify_peaks(pmap_blr, **CFP)
                 tbl.store_pmap(pmap_blr, pmaps_blr_, i)
 
             t1 = time()
@@ -202,6 +197,7 @@ def DOROTHEA(argv):
             print("DOROTHEA has run over {} events in {} seconds".format(i+1,
                                                                          dt))
     print("Leaving DOROTHEA. Safe travels!")
+
 
 if __name__ == "__main__":
     from cities import dorothea

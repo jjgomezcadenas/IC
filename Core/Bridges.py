@@ -1,5 +1,11 @@
 """
 Definition of high level objects.
+
+Bridges is meant to be a connecting structure between two different worlds:
+the one of the computers (pure numbers) and the one of the humans (abstract
+data).
+
+GML November 2016
 """
 import numpy as np
 
@@ -84,10 +90,20 @@ class Peak:
 class PMap:
     """
     A PMap is a collection of peaks found in the same event.
+
+    Parameters
+    ----------
+    t0 : float, optional
+        Starting time of the event. Default is -1.
+    peaks : sequence
+        List of peaks in the event.
     """
     def __init__(self, t0=-1., peaks=[]):
         self.t0 = t0
         self.peaks = list(peaks)
+
+    def get(self, type_):
+        return filter(lambda peak: peak.signal == type_, self.peaks)
 
     def __str__(self):
         header = "PMAP with {} peaks. Event t0 = {} mus".format(
