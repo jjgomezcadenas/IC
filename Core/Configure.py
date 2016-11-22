@@ -70,7 +70,7 @@ def configure(input_options = sys.argv):
         options["SKIP"] = flags.s
     if flags.p is not None:
         options["PRINT_MOD"] = flags.p
-    options["RUNALL"] = flags.runall
+    options["RUN_ALL"] = flags.runall
     options["INFO"] = flags.I
     if flags.v is not None:
         options["VERBOSITY"] = 50 - min(flags.v, 4)*10
@@ -102,7 +102,7 @@ def define_event_loop(options, n_evt):
         A generator producing the event numbers as configured in the job.
     """
     nevt = options.get("NEVENTS", 0)
-    max_evt = n_evt if options["RUNALL"] or nevt > n_evt else nevt
+    max_evt = n_evt if options["RUN_ALL"] or nevt > n_evt else nevt
     start = options["SKIP"]
     print_mod = options.get("PRINT_MOD", min(1, (max_evt-start)//20))
 
