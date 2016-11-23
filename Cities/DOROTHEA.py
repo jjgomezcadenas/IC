@@ -162,6 +162,10 @@ def DOROTHEA(argv=sys.argv):
                 h5in.root.TWF.PMT.copy(newparent=twfgroup)
                 h5in.root.TWF.SiPM.copy(newparent=twfgroup)
 
+            rungroup = h5out.create_group(h5out.root, "Run")
+            h5in.root.Run.runInfo.copy(newparent=rungroup)
+            h5in.root.Run.events.copy(newparent=rungroup)
+
             pmapsgroup = h5out.create_group(h5out.root, "PMAPS")
 
             # create a table to store pmaps (rebined, linked, zs wfs)
