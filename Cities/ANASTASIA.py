@@ -21,6 +21,7 @@ from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
 
 import Core.wfmFunctions as wfm
+import Core.tblFunctions as tbl
 import Database.loadDB as DB
 import Sierpe.FEE as FE
 
@@ -58,11 +59,14 @@ def ANASTASIA(argv=sys.argv):
     PMT_NOISE_CUT_BLR = CFP["PMT_NOISE_CUT_BLR"] * 1.01
     SIPM_ZS_METHOD = CFP["SIPM_ZS_METHOD"]
     SIPM_NOISE_CUT = CFP["SIPM_NOISE_CUT"]
+    COMPRESSION = CFP["COMPRESSION"]
 
-    with tb.open_file(CFP["FILE_IN"], "r+") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "r+",
+                      filters=tbl.filters(CFP["COMPRESSION"])) as h5in:
         pmtblr = h5in.root.RD.pmtblr
         pmtcwf = h5in.root.RD.pmtcwf
         sipmrwf = h5in.root.RD.sipmrwf
+        pmtdf = DB.DataPMT()
         sipmdf = DB.DataSiPM()
 
         NEVT, NPMT, PMTWL = pmtcwf.shape
@@ -94,23 +98,32 @@ def ANASTASIA(argv=sys.argv):
         pmt_zs_ = h5in.create_earray(h5in.root.ZS, "PMT",
                                      atom=tb.Int16Atom(),
                                      shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVT)
+                                     expectedrows=NEVT,
+                                     filters=tbl.filters(COMPRESSION))
 
         blr_zs_ = h5in.create_earray(h5in.root.ZS, "BLR",
                                      atom=tb.Int16Atom(),
                                      shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVT)
+                                     expectedrows=NEVT,
+                                     filters=tbl.filters(COMPRESSION))
 
         sipm_zs_ = h5in.create_earray(h5in.root.ZS, "SiPM",
                                       atom=tb.Int16Atom(),
                                       shape=(0, NSIPM, SIPMWL),
-                                      expectedrows=NEVT)
+                                      expectedrows=NEVT,
+                                      filters=tbl.filters(COMPRESSION))
 
+        adc_to_pes = abs(1.0/pmtdf["adc_to_pes"].reshape(NPMT, 1))
         t0 = time()
         for i in define_event_loop(CFP, NEVT):
-            pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)
-            blrzs = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
-            blrzs = wfm.noise_suppression(blrzs, PMT_NOISE_CUT_BLR)
+            sumpmt = np.sum(pmtcwf[i] * adc_to_pes, axis=0)
+            selection = np.tile(sumpmt > PMT_NOISE_CUT_RAW, (NPMT, 1))
+            pmtzs = np.where(selection, pmtcwf[i], 0)
+
+            blr = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
+            sumpmt = np.sum(blr * adc_to_pes, axis=0)
+            selection = np.tile(sumpmt > PMT_NOISE_CUT_BLR, (NPMT, 1))
+            blrzs = np.where(selection, blr, 0)
 
             pmt_zs_.append(pmtzs[np.newaxis])
             blr_zs_.append(blrzs[np.newaxis])

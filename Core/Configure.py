@@ -154,11 +154,11 @@ def read_config_file(cfile):
     d : dictionary
         Contains the parameters specified in cfile.
     """
-    d = {"VERBOSITY": 20, "RUN_ALL": False}  # INFO
+    d = {"VERBOSITY": 20, "RUN_ALL": False, "COMPRESSION": "ZLIB4"}
     for line in open(cfile, "r"):
         if line == "\n" or line[0] == "#":
             continue
-        tokens = line.rstrip().split(" ")
+        tokens = filter(lambda x: x != "", line.rstrip().split(" "))
         key = tokens[0]
 
         value = map(cast, tokens[1:])
