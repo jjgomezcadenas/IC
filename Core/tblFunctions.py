@@ -160,6 +160,30 @@ def get_vectors(h5f):
     return pmttwf, sipmtwf, pmtrwf, pmtblr, sipmrwf
 
 
+def get_pmt_vectors(h5f):
+    """
+    Return the most relevant fields stored in a raw data file.
+
+    Parameters
+    ----------
+    h5f : tb.File
+        (Open) hdf5 file.
+
+    Returns
+    -------
+    pmttwf : tb.Table
+        TWF table for PMTs
+    pmtrwf : tb.EArray
+        RWF array for PMTs
+    pmtblr : tb.EArray
+        BLR array for PMTs
+    """
+    pmttwf = h5f.root.TWF.PMT
+    pmtrwf = h5f.root.RD.pmtrwf
+    pmtblr = h5f.root.RD.pmtblr
+    return pmttwf, pmtrwf, pmtblr
+
+
 def store_wf_table(event, table, wfdic):
     """
     Stores a set of waveforms in a table.
