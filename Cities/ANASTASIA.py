@@ -66,6 +66,7 @@ def ANASTASIA(argv=sys.argv):
         pmtblr = h5in.root.RD.pmtblr
         pmtcwf = h5in.root.RD.pmtcwf
         sipmrwf = h5in.root.RD.sipmrwf
+        pmtdf = DB.DataPMT()
         sipmdf = DB.DataSiPM()
 
         NEVT, NPMT, PMTWL = pmtcwf.shape
@@ -112,11 +113,17 @@ def ANASTASIA(argv=sys.argv):
                                       expectedrows=NEVT,
                                       filters=tbl.filters(COMPRESSION))
 
+        adc_to_pes = abs(1.0/pmtdf["adc_to_pes"].reshape(NPMT, 1))
         t0 = time()
         for i in define_event_loop(CFP, NEVT):
-            pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)
-            blrzs = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
-            blrzs = wfm.noise_suppression(blrzs, PMT_NOISE_CUT_BLR)
+            sumpmt = np.sum(pmtcwf[i] * adc_to_pes, axis=0)
+            selection = np.tile(sumpmt > PMT_NOISE_CUT_RAW, (NPMT, 1))
+            pmtzs = np.where(selection, pmtcwf[i], 0)
+
+            blr = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
+            sumpmt = np.sum(blr * adc_to_pes, axis=0)
+            selection = np.tile(sumpmt > PMT_NOISE_CUT_BLR, (NPMT, 1))
+            blrzs = np.where(selection, blr, 0)
 
             pmt_zs_.append(pmtzs[np.newaxis])
             blr_zs_.append(blrzs[np.newaxis])
