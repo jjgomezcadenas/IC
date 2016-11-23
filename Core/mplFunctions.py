@@ -361,8 +361,8 @@ def plot_pmap(pmap, legend=True):
 
     if legend:
         plt.legend(loc="upper left")
-    plt.xlabel("time ($\mu$s)")
-    plt.ylabel("energy (pes)")
+    plt.xlabel("Time ($\mu$s)")
+    plt.ylabel("Energy (pes)")
 
 
 def plot_track(geom_df, mchits_df, vox_size=10, zoom=False):
