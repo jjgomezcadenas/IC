@@ -21,6 +21,7 @@ from Core.LogConfig import logger
 from Core.Configure import configure, define_event_loop
 
 import Core.wfmFunctions as wfm
+import Core.tblFunctions as tbl
 import Database.loadDB as DB
 import Sierpe.FEE as FE
 
@@ -59,7 +60,7 @@ def ANASTASIA(argv=sys.argv):
     SIPM_ZS_METHOD = CFP["SIPM_ZS_METHOD"]
     SIPM_NOISE_CUT = CFP["SIPM_NOISE_CUT"]
     COMPRESSION = CFP["COMPRESSION"]
-    
+
     with tb.open_file(CFP["FILE_IN"], "r+",
                       filters=tbl.filters(CFP["COMPRESSION"])) as h5in:
         pmtblr = h5in.root.RD.pmtblr
