@@ -64,12 +64,15 @@ def classify_peaks(pmap, **options):
                 peak.signal = Signal.S1
                 foundS1 = True
 
+    if options.get("FILTER_OUTPUT", False):
+        filter_peaks(pmap)
+
 
 def filter_peaks(pmap):
     """
     Remove unknowns.
     """
-    for i in reversed(range(len(pmap))):
+    for i in reversed(range(len(pmap.peaks))):
         if pmap.peaks[i].signal == Signal.UNKNOWN:
             pmap.peaks.pop(i)
 
@@ -130,7 +133,6 @@ def DOROTHEA(argv=sys.argv):
         print(__doc__)
 
     COMPRESSION = CFP["COMPRESSION"]
-    FILTER_OUTPUT = CFP.get("FILTER_OUTPUT", False)
 
     # open the input file
     with tb.open_file(CFP["FILE_IN"], "r") as h5in:
@@ -153,7 +155,7 @@ def DOROTHEA(argv=sys.argv):
         sipm_to_pes = abs(1.0 / sipmdf.adc_to_pes.reshape(NSIPM, 1))
 
         # open the output file
-        with tb.open_file(FILE_OUT, "w",
+        with tb.open_file(CFP["FILE_OUT"], "w",
                           filters=tbl.filters(COMPRESSION)) as h5out:
 
             # create groups and copy MC data to the new file
@@ -194,14 +196,10 @@ def DOROTHEA(argv=sys.argv):
 
                 pmap = build_pmap(pmtwf, sipmwfs)
                 classify_peaks(pmap, **CFP)
-                if FILTER_OUTPUT:
-                    filter_peaks(pmap)
                 tbl.store_pmap(pmap, pmaps_, i)
 
                 pmap_blr = build_pmap(blrwf, sipmwfs)
                 classify_peaks(pmap_blr, **CFP)
-                if FILTER_OUTPUT:
-                    filter_peaks(pmap_blr)
                 tbl.store_pmap(pmap_blr, pmaps_blr_, i)
 
             t1 = time()
