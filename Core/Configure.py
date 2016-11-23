@@ -158,7 +158,7 @@ def read_config_file(cfile):
     for line in open(cfile, "r"):
         if line == "\n" or line[0] == "#":
             continue
-        tokens = line.rstrip().split(" ")
+        tokens = filter(lambda x: x != "", line.rstrip().split(" "))
         key = tokens[0]
 
         value = map(cast, tokens[1:])
