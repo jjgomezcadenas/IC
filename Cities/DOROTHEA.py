@@ -55,7 +55,7 @@ def classify_peaks(pmap, **options):
     s2_min_int = options.get("MIN_S2_INTEGRAL", 0.)
     for peak in pmap:
         peak.signal = Signal.UNKNOWN
-        if (len(peak) >= s2_min_wid and peak.tothrs.sum() > s2_min_int and
+        if (len(peak) >= s2_min_wid and peak.cathode_integral > s2_min_int and
            peak.peakmax[1] > s2_min_hei):
             peak.signal = Signal.S2
             foundS2 = True
