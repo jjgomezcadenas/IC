@@ -46,15 +46,16 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
     BSLN = np.empty(pmtrwf.shape[0])
 
     for pmt in range(NPMT):
-        thr_acum = thr_trigger/DataPMT.coeff_blr[pmt]
-
-        signal_r, acum, baseline, baseline_end, noise_rms =cblr.\
+        signal_r, acum, baseline, baseline_end, noise_rms = cblr.\
+#          deconvolve_signal_acum_v2(pmtrwf[pmt],
           deconvolve_signal_acum(pmtrwf[pmt],
                                  n_baseline=500,
                                  coef_clean=DataPMT.coeff_c[pmt],
                                  coef_blr=DataPMT.coeff_blr[pmt],
                                  thr_trigger=thr_trigger,
-                                 acum_discharge_length = acum_discharge_length)
+#                                 acum_tau=acum_tau,
+#                                 acum_compress = acum_compress,
+                                 acum_discharge_length=acum_discharge_length)
 
         # signal_r, acum = cblr.deconvolve_signal_acum(
         #                  pmtrwf[pmt],
@@ -101,7 +102,7 @@ def ISIDORA(argv=sys.argv):
     ACUM_TAU = CFP["ACUM_TAU"]
     ACUM_COMPRESS = CFP["ACUM_COMPRESS"]
     COMPRESSION = CFP["COMPRESSION"]
-    
+
     # open the input file in mode append
     with tb.open_file(CFP["FILE_IN"], "a",
                       filters=tbl.filters(COMPRESSION)) as h5in:
@@ -158,19 +159,19 @@ def ISIDORA(argv=sys.argv):
                         acum_discharge_length=ACUM_DISCHARGE_LENGTH,
                         acum_tau=ACUM_TAU,
                         acum_compress=ACUM_COMPRESS)
-            signal_r, acum, bl_data = data[0], data[1], data[2:]
+            signal_r, bl_data = data[0], data[2:]
 
             # append to pmtcwf
             pmtcwf.append(signal_r.reshape(1, NPMT, PMTWL))
             bl_array.append(np.array(bl_data).T[np.newaxis])
             # append to pmtacum
-            #pmtacum.append(acum.reshape(1, NPMT, PMTWL))
+            # pmtacum.append(acum.reshape(1, NPMT, PMTWL))
 
         t1 = time()
         dt = t1 - t0
         pmtcwf.flush()
         bl_array.flush()
-        #pmtacum.flush()
+        # pmtacum.flush()
 
         print("ISIDORA has run over {} events in {} seconds".format(i+1, dt))
     print("Leaving ISIDORA. Safe travels!")
