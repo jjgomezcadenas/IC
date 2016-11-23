@@ -31,7 +31,7 @@ import Database.loadDB as DB
 
 
 def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
-         acum_discharge_length=5000,
+         discharge_length=5000,
          acum_tau=2500,
          acum_compress=0.01):
     """
@@ -46,16 +46,25 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
     BSLN = np.empty(pmtrwf.shape[0])
 
     for pmt in range(NPMT):
+        # VH
         signal_r, acum, baseline, baseline_end, noise_rms = cblr.\
-#          deconvolve_signal_acum_v2(pmtrwf[pmt],
           deconvolve_signal_acum(pmtrwf[pmt],
                                  n_baseline=500,
                                  coef_clean=DataPMT.coeff_c[pmt],
                                  coef_blr=DataPMT.coeff_blr[pmt],
                                  thr_trigger=thr_trigger,
-#                                 acum_tau=acum_tau,
-#                                 acum_compress = acum_compress,
-                                 acum_discharge_length=acum_discharge_length)
+                                 acum_discharge_length=discharge_length)
+
+        # JJ
+        # signal_r, acum, baseline, baseline_end, noise_rms = cblr.\
+        #   deconvolve_signal_acum_v2(pmtrwf[pmt],
+        #                             n_baseline=500,
+        #                             coef_clean=DataPMT.coeff_c[pmt],
+        #                             coef_blr=DataPMT.coeff_blr[pmt],
+        #                             thr_trigger=thr_trigger,
+        #                             acum_tau=acum_tau,
+        #                             acum_compress=acum_compress,
+        #                             acum_discharge_length=discharge_length)
 
         # signal_r, acum = cblr.deconvolve_signal_acum(
         #                  pmtrwf[pmt],
@@ -156,7 +165,7 @@ def ISIDORA(argv=sys.argv):
             data = DBLR(pmtrd_[i],
                         n_baseline=N_BASELINE,
                         thr_trigger=THR_TRIGGER,
-                        acum_discharge_length=ACUM_DISCHARGE_LENGTH,
+                        discharge_length=ACUM_DISCHARGE_LENGTH,
                         acum_tau=ACUM_TAU,
                         acum_compress=ACUM_COMPRESS)
             signal_r, bl_data = data[0], data[2:]
