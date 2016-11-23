@@ -446,7 +446,7 @@ cpdef deconvolve_signal_acum_v2(np.ndarray[np.int16_t, ndim=1] signal_i,
     return signal_r.astype(int), acum.astype(int), baseline, baseline_end, noise_rms
 
 cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
-                            int n_baseline=500,
+                            int n_baseline=2800,
                             float coef_clean=2.905447E-06,
                             float coef_blr=1.632411E-03,
                             float thr_trigger=5,
@@ -461,6 +461,8 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
     In this verison the recovered signal and the accumulator are
     always being charged. At the same time, the accumulator is being
     discharged when there is no signal. This avoids runoffs
+    The baseline is computed using a window of 700 mus (by default)
+    which should be good for Na and Kr
     """
 
     cdef float coef = coef_blr
@@ -481,22 +483,23 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
     cdef float baseline = 0.
     cdef float baseline_end = 0.
 
-    for j in range(0,len_signal_daq):
+    for j in range(0,nm):
         baseline += signal_daq[j]
-    baseline /= len_signal_daq
-
-    for j in range(len_signal_daq-nm, len_signal_daq):
+    baseline /= nm
+    cdef nf = len_signal_daq - nm
+    for j in range(nm, len_signal_daq):
         baseline_end += signal_daq[j]
-    baseline_end /= nm
+    baseline_end /= nf
 
     # reverse sign of signal and subtract baseline
     signal_daq =  baseline - signal_daq
 
     # compute noise
     cdef float noise =  0.
-    for j in range(0,nm):
+    cdef nn = 400 # fixed at 100 mud
+    for j in range(0,nn):
         noise += signal_daq[j]*signal_daq[j]
-    noise /= nm
+    noise /= nn
     cdef float noise_rms = np.sqrt(noise)
 
     # trigger line
