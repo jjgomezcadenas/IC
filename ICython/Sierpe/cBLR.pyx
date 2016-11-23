@@ -446,7 +446,7 @@ cpdef deconvolve_signal_acum_v2(np.ndarray[np.int16_t, ndim=1] signal_i,
     return signal_r.astype(int), acum.astype(int), baseline, baseline_end, noise_rms
 
 cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
-                            int n_baseline=2800,
+                            int n_baseline=28000,
                             float coef_clean=2.905447E-06,
                             float coef_blr=1.632411E-03,
                             float thr_trigger=5,
