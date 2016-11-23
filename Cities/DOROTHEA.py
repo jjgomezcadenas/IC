@@ -62,6 +62,15 @@ def classify_peaks(pmap, **options):
                 foundS1 = True
 
 
+def filter_peaks(pmap):
+    """
+    Remove unknowns.
+    """
+    for i in reversed(range(len(pmap))):
+        if pmap.peaks[i].signal == Signal.UNKNOWN:
+            pmap.peaks.pop(i)
+
+
 def build_pmap(pmtwf, sipmwfs, stride=40):
     """
     Finds any peak in the waveform and rebins it.
@@ -117,19 +126,11 @@ def DOROTHEA(argv=sys.argv):
     if CFP["INFO"]:
         print(__doc__)
 
-    FILE_IN = CFP["FILE_IN"]
-    FILE_OUT = CFP["FILE_OUT"]
     COMPRESSION = CFP["COMPRESSION"]
-    NEVENTS = CFP["NEVENTS"]
-
-    logger.info("Debug level = {}".format(CFP["VERBOSITY"]))
-    logger.info("Input file = {}".format(FILE_IN))
-    logger.info("Output file = {}".format(FILE_OUT))
-    logger.info("# events requested = {}".format(NEVENTS))
-    logger.info("Compression library/level = {}".format(COMPRESSION))
+    FILTER_OUTPUT = CFP.get("FILTER_OUTPUT", False)
 
     # open the input file
-    with tb.open_file(FILE_IN, "r") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "r") as h5in:
         # access the PMT ZS data in file
         pmtzs_ = h5in.root.ZS.PMT
         blrzs_ = h5in.root.ZS.BLR
@@ -190,10 +191,14 @@ def DOROTHEA(argv=sys.argv):
 
                 pmap = build_pmap(pmtwf, sipmwfs)
                 classify_peaks(pmap, **CFP)
+                if FILTER_OUTPUT:
+                    filter_peaks(pmap)
                 tbl.store_pmap(pmap, pmaps_, i)
 
                 pmap_blr = build_pmap(blrwf, sipmwfs)
                 classify_peaks(pmap_blr, **CFP)
+                if FILTER_OUTPUT:
+                    filter_peaks(pmap_blr)
                 tbl.store_pmap(pmap_blr, pmaps_blr_, i)
 
             t1 = time()
