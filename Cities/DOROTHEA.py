@@ -43,6 +43,9 @@ ChangeLog:
 
 
 def classify_peaks(pmap, **options):
+    """
+    Classify peaks according to given criteria.
+    """
     foundS1 = False
     foundS2 = False
     s1_min_int = options.get("MIN_S1_INTEGRAL", 0.)
