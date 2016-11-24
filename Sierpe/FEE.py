@@ -102,7 +102,7 @@ class SPE:
         return self.__str__()
 
 
-def spe_pulse(spe, t0=100*units.ns, tmax=1e+6*units.ns,
+def spe_pulse(spe, t0=100*units.ns, tmax=200*units.ns,
               time_step=1*units.ns):
     """
     input: an instance of class SPE
