@@ -43,6 +43,9 @@ ChangeLog:
 
 
 def classify_peaks(pmap, **options):
+    """
+    Classify peaks according to given criteria.
+    """
     foundS1 = False
     foundS2 = False
     s1_min_int = options.get("MIN_S1_INTEGRAL", 0.)
@@ -52,7 +55,7 @@ def classify_peaks(pmap, **options):
     s2_min_int = options.get("MIN_S2_INTEGRAL", 0.)
     for peak in pmap:
         peak.signal = Signal.UNKNOWN
-        if (len(peak) >= s2_min_wid and peak.tothrs.sum() > s2_min_int and
+        if (len(peak) >= s2_min_wid and peak.cathode_integral > s2_min_int and
            peak.peakmax[1] > s2_min_hei):
             peak.signal = Signal.S2
             foundS2 = True
@@ -60,6 +63,18 @@ def classify_peaks(pmap, **options):
             if not foundS1 or peak.cathode_integral > s1_min_int:
                 peak.signal = Signal.S1
                 foundS1 = True
+
+    if options.get("FILTER_OUTPUT", False):
+        filter_peaks(pmap)
+
+
+def filter_peaks(pmap):
+    """
+    Remove unknowns.
+    """
+    for i in reversed(range(len(pmap.peaks))):
+        if pmap.peaks[i].signal == Signal.UNKNOWN:
+            pmap.peaks.pop(i)
 
 
 def build_pmap(pmtwf, sipmwfs, stride=40):
@@ -117,19 +132,10 @@ def DOROTHEA(argv=sys.argv):
     if CFP["INFO"]:
         print(__doc__)
 
-    FILE_IN = CFP["FILE_IN"]
-    FILE_OUT = CFP["FILE_OUT"]
     COMPRESSION = CFP["COMPRESSION"]
-    NEVENTS = CFP["NEVENTS"]
-
-    logger.info("Debug level = {}".format(CFP["VERBOSITY"]))
-    logger.info("Input file = {}".format(FILE_IN))
-    logger.info("Output file = {}".format(FILE_OUT))
-    logger.info("# events requested = {}".format(NEVENTS))
-    logger.info("Compression library/level = {}".format(COMPRESSION))
 
     # open the input file
-    with tb.open_file(FILE_IN, "r") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "r") as h5in:
         # access the PMT ZS data in file
         pmtzs_ = h5in.root.ZS.PMT
         blrzs_ = h5in.root.ZS.BLR
@@ -149,7 +155,7 @@ def DOROTHEA(argv=sys.argv):
         sipm_to_pes = abs(1.0 / sipmdf.adc_to_pes.reshape(NSIPM, 1))
 
         # open the output file
-        with tb.open_file(FILE_OUT, "w",
+        with tb.open_file(CFP["FILE_OUT"], "w",
                           filters=tbl.filters(COMPRESSION)) as h5out:
 
             # create groups and copy MC data to the new file
@@ -161,6 +167,10 @@ def DOROTHEA(argv=sys.argv):
                 h5in.root.MC.FEE.copy(newparent=mcgroup)
                 h5in.root.TWF.PMT.copy(newparent=twfgroup)
                 h5in.root.TWF.SiPM.copy(newparent=twfgroup)
+
+            rungroup = h5out.create_group(h5out.root, "Run")
+            h5in.root.Run.runInfo.copy(newparent=rungroup)
+            h5in.root.Run.events.copy(newparent=rungroup)
 
             pmapsgroup = h5out.create_group(h5out.root, "PMAPS")
 

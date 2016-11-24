@@ -314,3 +314,23 @@ def read_pmap(table, evt):
         anode = table.read_coordinates(coords, "anode")
         pmap.peaks.append(bdg.Peak(times, cathode, anode, ToT, signal))
     return pmap
+
+
+def get_nofevents(table, column_name="evt_number"):
+    """
+    Find number of events in table by asking number of different values in
+    column.
+
+    Parameters
+    ----------
+    table : tb.Table
+        Table to be read.
+    column_name : string
+        Name of the column with a unique value for each event.
+
+    Returns
+    -------
+    nevt : int
+        Number of events in table.
+    """
+    return len(set(table.read(field=column_name)))

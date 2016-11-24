@@ -354,14 +354,15 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
     plt.tight_layout()
 
 
-def plot_pmap(pmap):
+def plot_pmap(pmap, legend=True):
     for i, peak in enumerate(pmap.peaks):
         plt.plot(peak.times, peak.cathode, '*-',
                  label="peak #{} type {}".format(i, peak.signal))
 
-    plt.legend(loc="upper left")
-    plt.xlabel("time ($\mu$s)")
-    plt.ylabel("energy (pes)")
+    if legend:
+        plt.legend(loc="upper left")
+    plt.xlabel("Time ($\mu$s)")
+    plt.ylabel("Energy (pes)")
 
 
 def plot_track(geom_df, mchits_df, vox_size=10, zoom=False):
