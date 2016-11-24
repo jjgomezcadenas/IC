@@ -18,7 +18,7 @@ import numpy as np
 import tables as tb
 
 from Core.LogConfig import logger
-from Core.Configure import configure, define_event_loop
+from Core.Configure import configure, define_event_loop, print_configuration
 
 import Core.wfmFunctions as wfm
 import Core.tblFunctions as tbl
@@ -72,9 +72,9 @@ def ANASTASIA(argv=sys.argv):
         NEVT, NPMT, PMTWL = pmtcwf.shape
         NEVT, NSIPM, SIPMWL = sipmrwf.shape
 
-        logger.info("# events in DST = {}".format(NEVT))
-        logger.info("#PMTs = {} #SiPMs = {}".format(NPMT, NSIPM))
-        logger.info("PMT WFL = {} SiPM WFL = {}".format(PMTWL, SIPMWL))
+        print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
+                             "# SiPM": NSIPM, "SIPM WL": SIPMWL,
+                             "# events in DST": NEVT})
 
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_ = SiPMsNoiseSampler(SIPMWL)

@@ -21,7 +21,7 @@ from time import time
 
 import Core.system_of_units as units
 from Core.LogConfig import logger
-from Core.Configure import configure, define_event_loop
+from Core.Configure import configure, define_event_loop, print_configuration
 from Core.Bridges import Signal, Peak, PMap
 from Core.Nh5 import PMAP
 
@@ -144,9 +144,9 @@ def DOROTHEA(argv=sys.argv):
         NEVT, NPMT, PMTWL = pmtzs_.shape
         NEVT, NSIPM, SIPMWL = sipmzs_.shape
 
-        logger.info("# events in DST: {}".format(NEVT))
-        logger.info("# PMTs = {}, # SiPMs = {} ".format(NPMT, NSIPM))
-        logger.info("PMT WFL = {}, SiPM WFL = {}".format(PMTWL, SIPMWL))
+        print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
+                             "# SiPM": NSIPM, "SIPM WL": SIPMWL,
+                             "# events in DST": NEVT})
 
         pmtdf = DB.DataPMT()
         sipmdf = DB.DataSiPM()
