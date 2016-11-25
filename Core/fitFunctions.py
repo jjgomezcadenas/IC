@@ -179,3 +179,24 @@ def fit(func, x, y, seed=(), **kwargs):
     fit_fun = local["fit_fun"]
     vals, cov = optim.curve_fit(fit_fun, x, y, seed, **kwargs)
     return lambda x: fit_fun(x, *vals), vals, get_errors(cov)
+
+
+def profile(xdata, ydata, nbins, range=None, drop_nan=True):
+    xmin, xmax = range if range is not None else (np.min(xdata), np.max(xdata))
+    x_out = np.linspace(xmin, xmax, nbins+1)
+    y_out = np.empty(nbins)
+    y_err = np.empty(nbins)
+    dx = np.diff(x_out)[0]
+
+    for i in xrange(nbins):
+        bin_data = np.extract((x_out[i] < xdata) & (xdata < x_out[i+1]), ydata)
+        y_out[i] = np.mean(bin_data)
+        y_err[i] = np.std(bin_data) / bin_data.size**0.5
+    x_out += dx / 2.
+    x_out = x_out[:-1]
+    if drop_nan:
+        selection = ~(np.isnan(y_out) | np.isnan(y_err))
+        x_out = x_out[selection]
+        y_out = y_out[selection]
+        y_err = y_err[selection]
+    return x_out, y_out, y_err
