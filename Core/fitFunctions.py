@@ -136,7 +136,7 @@ def fit_simple(func, x, y, seed=()):
     return f, vals, get_errors(cov)
 
 
-def fit(func, x, y, seed=()):
+def fit(func, x, y, seed=(), **kwargs):
     """
     Fit x, y data to a generic relation of already defined python functions.
 
@@ -177,5 +177,5 @@ def fit(func, x, y, seed=()):
         start = end
     exec("local['fit_fun'] = {}".format(str_fun)) in globals(), locals()
     fit_fun = local["fit_fun"]
-    vals, cov = optim.curve_fit(fit_fun, x, y, seed)
+    vals, cov = optim.curve_fit(fit_fun, x, y, seed, **kwargs)
     return lambda x: fit_fun(x, *vals), vals, get_errors(cov)
