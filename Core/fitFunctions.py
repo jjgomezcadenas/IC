@@ -51,6 +51,8 @@ def get_from_name(name, glob=globals(), loc={}):
 
 
 def gauss(x, amp, mu, sigma):
+    if sigma<0:
+        return np.inf
     return amp/(2*np.pi)**.5/sigma * np.exp(-0.5*(x-mu)**2./sigma**2.)
 
 
@@ -168,9 +170,9 @@ def fit(func, x, y, seed=()):
             str_fun += " {} ".format(token)
         else:
             f = get_from_name(token, globals(), locals())
-            end = len(inspect.getargspec(f).args) - 1
-            if not end:
-                end = -1
+            end = start + len(inspect.getargspec(f).args) - 1
+            if start == end:
+                end = ""
             str_fun += token + "(x, *args[{}:{}])".format(start, end)
         start = end
     exec("local['fit_fun'] = {}".format(str_fun)) in globals(), locals()
