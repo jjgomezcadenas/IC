@@ -486,7 +486,9 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
     for j in range(0,nm):
         baseline += signal_daq[j]
     baseline /= nm
+
     cdef nf = len_signal_daq - nm
+
     for j in range(nm, len_signal_daq):
         baseline_end += signal_daq[j]
     baseline_end /= nf
@@ -516,11 +518,12 @@ cpdef deconvolve_signal_acum(np.ndarray[np.int16_t, ndim=1] signal_i,
 
     cdef int k
     j=0
-    for k in range(0,len_signal_daq):
+    signal_r[0] = signal_daq[0]
+    for k in range(1,len_signal_daq):
 
         # always update signal and accumulator
         signal_r[k] = signal_daq[k] + signal_daq[k]*(coef/2.0) +\
-                      coef_blr * acum[k-1]
+                      coef * acum[k-1]
 
         acum[k] = acum[k-1] + signal_daq[k]
 
