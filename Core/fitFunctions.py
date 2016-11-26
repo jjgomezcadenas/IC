@@ -51,6 +51,8 @@ def get_from_name(name, glob=globals(), loc={}):
 
 
 def gauss(x, amp, mu, sigma):
+    if sigma<0:
+        return np.inf
     return amp/(2*np.pi)**.5/sigma * np.exp(-0.5*(x-mu)**2./sigma**2.)
 
 
@@ -134,7 +136,7 @@ def fit_simple(func, x, y, seed=()):
     return f, vals, get_errors(cov)
 
 
-def fit(func, x, y, seed=()):
+def fit(func, x, y, seed=(), **kwargs):
     """
     Fit x, y data to a generic relation of already defined python functions.
 
@@ -168,12 +170,33 @@ def fit(func, x, y, seed=()):
             str_fun += " {} ".format(token)
         else:
             f = get_from_name(token, globals(), locals())
-            end = len(inspect.getargspec(f).args) - 1
-            if not end:
-                end = -1
+            end = start + len(inspect.getargspec(f).args) - 1
+            if start == end:
+                end = ""
             str_fun += token + "(x, *args[{}:{}])".format(start, end)
         start = end
     exec("local['fit_fun'] = {}".format(str_fun)) in globals(), locals()
     fit_fun = local["fit_fun"]
-    vals, cov = optim.curve_fit(fit_fun, x, y, seed)
+    vals, cov = optim.curve_fit(fit_fun, x, y, seed, **kwargs)
     return lambda x: fit_fun(x, *vals), vals, get_errors(cov)
+
+
+def profile(xdata, ydata, nbins, range=None, drop_nan=True):
+    xmin, xmax = range if range is not None else (np.min(xdata), np.max(xdata))
+    x_out = np.linspace(xmin, xmax, nbins+1)
+    y_out = np.empty(nbins)
+    y_err = np.empty(nbins)
+    dx = np.diff(x_out)[0]
+
+    for i in xrange(nbins):
+        bin_data = np.extract((x_out[i] < xdata) & (xdata < x_out[i+1]), ydata)
+        y_out[i] = np.mean(bin_data)
+        y_err[i] = np.std(bin_data) / bin_data.size**0.5
+    x_out += dx / 2.
+    x_out = x_out[:-1]
+    if drop_nan:
+        selection = ~(np.isnan(y_out) | np.isnan(y_err))
+        x_out = x_out[selection]
+        y_out = y_out[selection]
+        y_err = y_err[selection]
+    return x_out, y_out, y_err

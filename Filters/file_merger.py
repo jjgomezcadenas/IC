@@ -194,12 +194,15 @@ def create_new_file(outputfilename, inputfilename, **options):
 
         if "/PMAPS" in h5in:
             pmapgroup = h5out.create_group(h5out.root, "PMAPS")
-            h5out.create_table(pmapgroup, "PMaps", PMAP,
-                               "Store for PMaps", tbl.filters(COMPRESSION))
+            pmaps_table = h5out.create_table(pmapgroup, "PMaps", PMAP,
+                                             "Store for PMaps",
+                                             tbl.filters(COMPRESSION))
 
-            h5out.create_table(pmapgroup, "PMapsBLR", PMAP,
-                               "Store for PMaps made with BLR",
-                               tbl.filters(COMPRESSION))
+            pmaps_blr_table = h5out.create_table(pmapgroup, "PMapsBLR", PMAP,
+                                                 "Store for BLR PMaps",
+                                                 tbl.filters(COMPRESSION))
+            pmaps_table.cols.event.create_index()
+            pmaps_blr_table.cols.event.create_index()
 
     return h5out
 
@@ -282,6 +285,7 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     n_events_in = 0
     n_events_out = 0
     n_events_dis = 0
+
     for i, filename in enumerate(inputfilenames):
         print("Opening", filename, end="... ")
         sys.stdout.flush()
@@ -339,9 +343,9 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         if "/TWF" in h5out:
                             wf = tbl.read_wf_table(pmttwf_in, evt)
-                            tbl.store_wf(pmttwf_out, evt, wf)
+                            tbl.store_wf(pmttwf_out, n_events_out, wf)
                             wf = tbl.read_wf_table(sipmtwf_in, evt)
-                            tbl.store_wf(sipmtwf_out, evt, wf)
+                            tbl.store_wf(sipmtwf_out, n_events_out, wf)
 
                         if "/BLR" in h5out:
                             mau_out.append(mau_in[evt][np.newaxis])
@@ -355,12 +359,17 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         if "/PMAPS" in h5in:
                             pmap = tbl.read_pmap(pmaps_in, evt)
-                            tbl.store_pmap(pmap, pmaps_out, evt)
-                            pmap = tbl.read_pmap(pmaps_blr_in, evt)
-                            tbl.store_pmap(pmap, pmaps_blr_out, evt)
+                            tbl.store_pmap(pmap, pmaps_out,
+                                           n_events_out, False)
+                            pmap = tbl.read_pmap(pmaps_blr_in, n_events_out)
+                            tbl.store_pmap(pmap, pmaps_blr_out,
+                                           n_events_out, False)
+                            if not evt % 20:
+                                pmaps_out.flush()
+                                pmaps_blr_out.flush()
 
                         n_events_out += 1
-                    else:
+                    elif dump_unselected:
                         evtrow_dis["evt_number"] = run.evt_number[evt]
                         evtrow_dis["timestamp"] = run.timestamp[evt]
                         evtrow_dis.append()
@@ -378,9 +387,9 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         if "/TWF" in h5dis:
                             wf = tbl.read_wf_table(pmttwf_in, evt)
-                            tbl.store_wf(pmttwf_dis, evt, wf)
+                            tbl.store_wf(pmttwf_dis, n_events_dis, wf)
                             wf = tbl.read_wf_table(sipmtwf_in, evt)
-                            tbl.store_wf(sipmtwf_dis, evt, wf)
+                            tbl.store_wf(sipmtwf_dis, n_events_dis, wf)
 
                         if "/BLR" in h5dis:
                             mau_dis.append(mau_in[evt][np.newaxis])
@@ -394,9 +403,14 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         if "/PMAPS" in h5in:
                             pmap = tbl.read_pmap(pmaps_in, evt)
-                            tbl.store_pmap(pmap, pmaps_dis, evt)
+                            tbl.store_pmap(pmap, pmaps_dis,
+                                           n_events_dis, False)
                             pmap = tbl.read_pmap(pmaps_blr_in, evt)
-                            tbl.store_pmap(pmap, pmaps_blr_dis, evt)
+                            tbl.store_pmap(pmap, pmaps_blr_dis,
+                                           n_events_dis, False)
+                            if not evt % 20:
+                                pmaps_dis.flush()
+                                pmaps_blr_dis.flush()
 
                         n_events_dis += 1
                 h5out.root.Run.events.flush()
@@ -410,8 +424,10 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     print("# events in = {}".format(n_events_in))
     print("# events accepted = {} ({:.2f}%)".format(n_events_out, ratio_out))
     print("# events discarded = {} ({:.2f}%)".format(n_events_dis, ratio_dis))
+    h5out.flush()
     h5out.close()
     if dump_unselected:
+        h5dis.flush()
         h5dis.close()
 
 

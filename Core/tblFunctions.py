@@ -184,7 +184,7 @@ def get_pmt_vectors(h5f):
     return pmttwf, pmtrwf, pmtblr
 
 
-def store_wf_table(event, table, wfdic):
+def store_wf_table(event, table, wfdic, flush=True):
     """
     Stores a set of waveforms in a table.
 
@@ -196,6 +196,8 @@ def store_wf_table(event, table, wfdic):
         Table instance where the wf must be stored.
     wfdic : dictionary or pd.Panel
         Contains a pd.DataFrame for each sensor. Keys are sensor IDs.
+    flush : bool
+        Whether to flush the table or not.
     """
     row = table.row
     for isens, wf in wfdic.items():
@@ -205,7 +207,8 @@ def store_wf_table(event, table, wfdic):
             row["time_mus"] = t
             row["ene_pes"] = e
             row.append()
-    table.flush()
+    if flush:
+        table.flush()
 
 
 def read_sensor_wf(table, evt, isens):
@@ -259,7 +262,7 @@ def read_wf_table(table, event_number):
     return pd.Panel({isens: get_df(isens) for isens in sensor_list})
 
 
-def store_pmap(pmap, table, evt):
+def store_pmap(pmap, table, evt, flush=True):
     """
     Stores a pmap in a table.
 
@@ -271,6 +274,8 @@ def store_pmap(pmap, table, evt):
         Table in which pmap will be stored.
     evt : int
         Event number
+    flush : bool
+        Whether to flush the table or not.
     """
     row = table.row
     for i, peak in enumerate(pmap.peaks):
@@ -283,7 +288,8 @@ def store_pmap(pmap, table, evt):
             row["cathode"] = e
             row["anode"] = qs
             row.append()
-    table.flush()
+    if flush:
+        table.flush()
 
 
 def read_pmap(table, evt):

@@ -354,9 +354,9 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
     plt.tight_layout()
 
 
-def plot_pmap(pmap, legend=True):
+def plot_pmap(pmap, legend=True, style="*-"):
     for i, peak in enumerate(pmap.peaks):
-        plt.plot(peak.times, peak.cathode, '*-',
+        plt.plot(peak.times, peak.cathode, style,
                  label="peak #{} type {}".format(i, peak.signal))
 
     if legend:

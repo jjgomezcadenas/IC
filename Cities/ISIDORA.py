@@ -22,7 +22,7 @@ import numpy as np
 import tables as tb
 
 from Core.LogConfig import logger
-from Core.Configure import configure, define_event_loop
+from Core.Configure import configure, define_event_loop, print_configuration
 from Core.Nh5 import DECONV_PARAM
 import Core.tblFunctions as tbl
 
@@ -119,8 +119,8 @@ def ISIDORA(argv=sys.argv):
         pmtrd_ = h5in.root.RD.pmtrwf  # PMT raw data must exist
         NEVENTS_DST, NPMT, PMTWL = pmtrd_.shape
 
-        logger.info("nof PMTs = {} WF side = {} ".format(NPMT, PMTWL))
-        logger.info("nof events in input DST = {} ".format(NEVENTS_DST))
+        print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
+                             "# events in DST": NEVT})
 
         # create an extensible array to store the CWF waveforms
         # if it exists remove and create again

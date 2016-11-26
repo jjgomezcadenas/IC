@@ -22,7 +22,7 @@ from time import time
 
 import Core.system_of_units as units
 from Core.LogConfig import logger
-from Core.Configure import configure, define_event_loop
+from Core.Configure import configure, define_event_loop, print_configuration
 from Core.Nh5 import FEE, SENSOR_WF
 import Core.wfmFunctions as wfm
 import Core.coreFunctions as cf
@@ -159,11 +159,10 @@ def DIOMIRA(argv=sys.argv):
         PMTWL_FEE = int(PMTWL/FE.t_sample)
         NEVENTS_DST, NSIPM, SIPMWL = sipmrd_.shape
 
-        logger.info("nof PMTs = {} nof  SiPMs = {} "
-                    "nof events in input DST = {} ".format(NPMT, NSIPM,
-                                                           NEVENTS_DST))
-        logger.info("lof PMT WF = {} lof SiPM WF (MC) = {} "
-                    "lof PMT WF (FEE) = {}".format(PMTWL, SIPMWL, PMTWL_FEE))
+        print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
+                             "PMT WL (FEE)": PMTWL_FEE,
+                             "# SiPM": NSIPM, "SIPM WL": SIPMWL,
+                             "# events in DST": NEVT})
 
         # access the geometry and the sensors metadata info
         mctrk_t = h5in.root.MC.MCTracks
