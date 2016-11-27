@@ -120,7 +120,7 @@ def ISIDORA(argv=sys.argv):
         NEVENTS_DST, NPMT, PMTWL = pmtrd_.shape
 
         print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
-                             "# events in DST": NEVT})
+                             "# events in DST": NEVENTS_DST})
 
         # create an extensible array to store the CWF waveforms
         # if it exists remove and create again
