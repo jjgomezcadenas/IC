@@ -162,7 +162,7 @@ def DIOMIRA(argv=sys.argv):
         print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
                              "PMT WL (FEE)": PMTWL_FEE,
                              "# SiPM": NSIPM, "SIPM WL": SIPMWL,
-                             "# events in DST": NEVT})
+                             "# events in DST": NEVENTS_DST})
 
         # access the geometry and the sensors metadata info
         mctrk_t = h5in.root.MC.MCTracks
