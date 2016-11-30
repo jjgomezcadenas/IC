@@ -8,6 +8,7 @@ from __future__ import print_function
 import sys
 import importlib
 import argparse
+import traceback
 import tables as tb
 import numpy as np
 
@@ -359,9 +360,9 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         if "/TWF" in h5out:
                             wf = tbl.read_wf_table(pmttwf_in, evt)
-                            tbl.store_wf(pmttwf_out, n_events_out, wf)
+                            tbl.store_wf_table(n_events_out, pmttwf_out, wf)
                             wf = tbl.read_wf_table(sipmtwf_in, evt)
-                            tbl.store_wf(sipmtwf_out, n_events_out, wf)
+                            tbl.store_wf_table(n_events_out, sipmtwf_out, wf)
 
                         if "/BLR" in h5out:
                             mau_out.append(mau_in[evt][np.newaxis])
@@ -404,9 +405,9 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         if "/TWF" in h5dis:
                             wf = tbl.read_wf_table(pmttwf_in, evt)
-                            tbl.store_wf(pmttwf_dis, n_events_dis, wf)
+                            tbl.store_wf_table(n_events_dis, pmttwf_dis, wf)
                             wf = tbl.read_wf_table(sipmtwf_in, evt)
-                            tbl.store_wf(sipmtwf_dis, n_events_dis, wf)
+                            tbl.store_wf_table(n_events_dis, sipmtwf_dis, wf)
 
                         if "/BLR" in h5dis:
                             mau_dis.append(mau_in[evt][np.newaxis])
@@ -430,12 +431,16 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
                                 pmaps_blr_dis.flush()
 
                         n_events_dis += 1
-                h5out.root.Run.events.flush()
-                if dump_unselected:
-                    h5dis.root.Run.events.flush()
+                if "/Run" in h5in:
+                    h5out.root.Run.events.flush()
+                    if dump_unselected:
+                        h5dis.root.Run.events.flush()
             print("OK")
         except Exception as e:
             if options["RAISE_ERRORS"]:
+                print("\n" + "-"*80 + "\n- TRACEBACK:\n" + "-"*80)
+                traceback.print_tb(sys.exc_info()[2])
+                print("-"*80)
                 raise e
             else:
                 print("Error")
