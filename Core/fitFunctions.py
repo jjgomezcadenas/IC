@@ -10,6 +10,28 @@ import scipy as sc
 import scipy.optimize as optim
 
 
+def in_range(data, minval=-np.inf, maxval=np.inf):
+    """
+    Find values in range.
+
+    Parameters
+    ---------
+    data : np.ndarray
+        Data set of arbitrary dimension.
+    minval : int or float, optional
+        Range minimum. Defaults to -inf.
+    maxval : int or float, optional
+        Range maximum. Defaults to +inf.
+
+    Returns
+    -------
+    selection : np.ndarray
+        Boolean array with the same dimension as the input. Contains True
+        for those values of data in the input range and False for the others.
+    """
+    return (minval <= data) & (data <= maxval)
+
+
 def get_errors(cov):
     """
     Find errors from covariance matrix
@@ -181,15 +203,44 @@ def fit(func, x, y, seed=(), **kwargs):
     return lambda x: fit_fun(x, *vals), vals, get_errors(cov)
 
 
-def profile(xdata, ydata, nbins, range=None, drop_nan=True):
-    xmin, xmax = range if range is not None else (np.min(xdata), np.max(xdata))
+def profileX(xdata, ydata, nbins, xrange=None, yrange=None, drop_nan=True):
+    """
+    Compute the x-axis binned average of a dataset.
+
+    Parameters
+    ----------
+    xdata, ydata : 1-dim np.ndarray
+        x and y coordinates from a dataset.
+    nbins : int
+        Number of divisions in the x axis.
+    xrange : tuple of ints/floats or None, optional
+        Range over the x axis. Defaults to dataset extremes.
+    yrange : tuple of ints/floats or None, optional
+        Range over the y axis. Defaults to dataset extremes.
+    drop_nan : bool, optional
+        Exclude empty bins. Defaults to True.
+
+    Returns
+    -------
+    x_out : 1-dim np.ndarray.
+        Bin centers.
+    y_out : 1-dim np.ndarray
+        Data average for each bin.
+    y_err : 1-dim np.ndarray
+        Average error for each bin.
+    """
+    xmin, xmax = (np.min(xdata), np.max(xdata)) if xrange is None else xrange
+    ymin, ymax = (np.min(ydata), np.max(ydata)) if yrange is None else yrange
+
     x_out = np.linspace(xmin, xmax, nbins+1)
     y_out = np.empty(nbins)
     y_err = np.empty(nbins)
     dx = np.diff(x_out)[0]
 
-    for i in xrange(nbins):
-        bin_data = np.extract((x_out[i] < xdata) & (xdata < x_out[i+1]), ydata)
+    selection = in_range(xdata, xmin, xmax) & in_range(ydata, ymin, ymax)
+    xdata, ydata = xdata[selection], ydata[selection]
+    for i in range(nbins):
+        bin_data = np.extract(in_range(xdata, x_out[i], x_out[i+1]), ydata)
         y_out[i] = np.mean(bin_data)
         y_err[i] = np.std(bin_data) / bin_data.size**0.5
     x_out += dx / 2.
@@ -200,3 +251,131 @@ def profile(xdata, ydata, nbins, range=None, drop_nan=True):
         y_out = y_out[selection]
         y_err = y_err[selection]
     return x_out, y_out, y_err
+
+
+def profileY(xdata, ydata, nbins, yrange=None, xrange=None, drop_nan=True):
+    """
+    Compute the y-axis binned average of a dataset.
+
+    Parameters
+    ----------
+    xdata, ydata : 1-dim np.ndarray
+        x and y coordinates from a dataset.
+    nbins : int
+        Number of divisions in the y axis.
+    yrange : tuple of ints/floats or None, optional
+        Range over the y axis. Defaults to dataset extremes.
+    xrange : tuple of ints/floats or None, optional
+        Range over the x axis. Defaults to dataset extremes.
+    drop_nan : bool, optional
+        Exclude empty bins. Defaults to True.
+
+    Returns
+    -------
+    x_out : 1-dim np.ndarray.
+        Bin centers.
+    y_out : 1-dim np.ndarray
+        Data average for each bin.
+    y_err : 1-dim np.ndarray
+        Average error for each bin.
+    """
+    xmin, xmax = (np.min(xdata), np.max(xdata)) if xrange is None else xrange
+    ymin, ymax = (np.min(ydata), np.max(ydata)) if yrange is None else yrange
+
+    x_out = np.linspace(ymin, ymax, nbins+1)
+    y_out = np.empty(nbins)
+    y_err = np.empty(nbins)
+    dx = np.diff(x_out)[0]
+
+    selection = in_range(xdata, xmin, xmax) & in_range(ydata, ymin, ymax)
+    xdata, ydata = xdata[selection], ydata[selection]
+    for i in xrange(nbins):
+        bin_data = np.extract(in_range(ydata, x_out[i], x_out[i+1]), xdata)
+        y_out[i] = np.mean(bin_data)
+        y_err[i] = np.std(bin_data) / bin_data.size**0.5
+    x_out += dx / 2.
+    x_out = x_out[:-1]
+    if drop_nan:
+        selection = ~(np.isnan(y_out) | np.isnan(y_err))
+        x_out = x_out[selection]
+        y_out = y_out[selection]
+        y_err = y_err[selection]
+    return x_out, y_out, y_err
+
+
+def projectionX(xdata, ydata, nbins, xrange=None, yrange=None):
+    """
+    Compute the projection of a dataset over the X axis.
+
+    Parameters
+    ----------
+    xdata, ydata : 1-dim np.ndarray
+        x and y coordinates from a dataset.
+    nbins : int
+        Number of divisions in the x axis.
+    xrange : tuple of ints/floats or None, optional
+        Range over the x axis. Defaults to dataset extremes.
+    yrange : tuple of ints/floats or None, optional
+        Range over the y axis. Defaults to dataset extremes.
+
+    Returns
+    -------
+    x_out : 1-dim np.ndarray.
+        Bin centers.
+    y_out : 1-dim np.ndarray
+        Number of points within each bin.
+    """
+    xmin, xmax = (np.min(xdata), np.max(xdata)) if xrange is None else xrange
+    ymin, ymax = (np.min(ydata), np.max(ydata)) if yrange is None else yrange
+
+    x_out = np.linspace(xmin, xmax, nbins+1)
+    y_out = np.empty(nbins)
+    dx = np.diff(x_out)[0]
+
+    selection = in_range(xdata, xmin, xmax) & in_range(ydata, ymin, ymax)
+    xdata, ydata = xdata[selection], ydata[selection]
+    for i in range(nbins):
+        bin_data = np.extract(in_range(xdata, x_out[i], x_out[i+1]), ydata)
+        y_out[i] = bin_data.size
+    x_out += dx / 2.
+    x_out = x_out[:-1]
+    return x_out, y_out
+
+
+def projectionY(xdata, ydata, nbins, yrange=None, xrange=None):
+    """
+    Compute the projection of a dataset over the X axis.
+
+    Parameters
+    ----------
+    xdata, ydata : 1-dim np.ndarray
+        x and y coordinates from a dataset.
+    nbins : int
+        Number of divisions in the x axis.
+    yrange : tuple of ints/floats or None, optional
+        Range over the y axis. Defaults to dataset extremes.
+    xrange : tuple of ints/floats or None, optional
+        Range over the x axis. Defaults to dataset extremes.
+
+    Returns
+    -------
+    x_out : 1-dim np.ndarray.
+        Bin centers.
+    y_out : 1-dim np.ndarray
+        Number of points within each bin.
+    """
+    xmin, xmax = (np.min(xdata), np.max(xdata)) if xrange is None else xrange
+    ymin, ymax = (np.min(ydata), np.max(ydata)) if yrange is None else yrange
+
+    x_out = np.linspace(ymin, ymax, nbins+1)
+    y_out = np.empty(nbins)
+    dx = np.diff(x_out)[0]
+
+    selection = in_range(xdata, xmin, xmax) & in_range(ydata, ymin, ymax)
+    xdata, ydata = xdata[selection], ydata[selection]
+    for i in range(nbins):
+        bin_data = np.extract(in_range(ydata, x_out[i], x_out[i+1]), xdata)
+        y_out[i] = bin_data.size
+    x_out += dx / 2.
+    x_out = x_out[:-1]
+    return x_out, y_out
