@@ -434,8 +434,11 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
                 if dump_unselected:
                     h5dis.root.Run.events.flush()
             print("OK")
-        except:
-            print("Error")
+        except Exception as e:
+            if options["RAISE_ERRORS"]:
+                raise e
+            else:
+                print("Error")
     ratio_out = n_events_out * 100. / n_events_in
     ratio_dis = n_events_dis * 100. / n_events_in
     print("# events in = {}".format(n_events_in))
@@ -458,7 +461,10 @@ if __name__ == "__main__":
                         help="output file with discarded events")
     parser.add_argument("-c", metavar="cfile", type=str,
                         help="configuration file")
+    parser.add_argument("--raise-errors", action="store_true",
+                        help="raise errors if present")
 
     args = parser.parse_args()
     options = read_config_file(args.c) if args.c else {}
+    options["RAISE_ERRORS"] = args.raise_errors
     file_merger(args.o, args.d, *args.i, **options)
