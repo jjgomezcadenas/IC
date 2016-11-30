@@ -365,6 +365,65 @@ def plot_pmap(pmap, legend=True, style="*-"):
     plt.ylabel("Energy (pes)")
 
 
+def plot_anode_slice(slice, sipmdf, threshold=0.1, cut_type="RELATIVE"):
+    """
+    Plots the anode for a single slice as a colored 2D plot.
+
+    Parameters
+    ----------
+    slice : 1-dim np.ndarray
+        The charge for each sensor.
+    sipmdf : pd.DataFrame
+        Contains the sensors' info.
+    threshold : float, optional
+        Cut level for SiPMs. Defaults to 0.1.
+    cut_type : string or None, optional.
+        Type of cut to be applied on the charge. Options are "ABSOLUTE",
+        "RELATIVE" (default) or None. The parameter *threshold* should vary
+        according to this flag. If None, it will be ignored.
+
+    Raises
+    ------
+    ValueError : if cut_type does not match any of the available options.
+    """
+    fig = plt.figure()
+    xmin, xmax = np.nanmin(sipmdf["X"].values), np.nanmax(sipmdf["X"].values)
+    ymin, ymax = np.nanmin(sipmdf["Y"].values), np.nanmax(sipmdf["Y"].values)
+    if cut_type is None:
+        selection = np.ones(slice.size, dtype=bool)
+    elif cut_type.upper() == "RELATIVE":
+        selection = slice > np.nanmax(slice) * threshold
+    elif cut_type.upper() == "ABSOLUTE":
+        selection = slice > threshold
+    else:
+        raise ValueError("cut_type value not recognized")
+
+    x, y = sipmdf["X"][selection], sipmdf["Y"][selection]
+    q = slice[selection]
+
+    plt.scatter(x, y, c=q)
+    plt.xlabel("x (mm)")
+    plt.ylabel("y (mm)")
+    plt.xlim((xmin, xmax))
+    plt.ylim((ymin, ymax))
+    plt.colorbar().set_label("Charge (pes)")
+
+
+def plot_anode_sum(pmap, sipmdf, threshold=0.1, cut_type="RELATIVE"):
+    """
+    Shortcut for plotting a pmap as a z-collapsed slice.
+
+    Parameters
+    ----------
+    pmap : Bridges.PMap
+        A pmap of any event.
+
+    Other parameters are the ones from plot_anode_slice.
+    """
+    slice = np.nansum(np.concatenate([peak.anode for peak in pmap]), axis=0)
+    plot_anode_slice(slice, sipmdf, threshold, cut_type)
+
+
 def plot_track(geom_df, mchits_df, vox_size=10, zoom=False):
     """
     plot the hits of a mctrk. Adapted from JR plotting functions
