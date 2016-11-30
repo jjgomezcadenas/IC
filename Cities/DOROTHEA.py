@@ -49,18 +49,22 @@ def classify_peaks(pmap, **options):
     foundS1 = False
     foundS2 = False
     s1_min_int = options.get("MIN_S1_INTEGRAL", 0.)
+    s1_max_width = options.get("MAX_S1_WIDTH", 1)
     s1_max_tot = options.get("MAX_S1_ToT", 40)
-    s2_min_wid = options.get("MIN_S2_WIDTH", 0)
+    s2_min_width = options.get("MIN_S2_WIDTH", 0)
     s2_min_hei = options.get("MIN_S2_HEIGHT", 0.)
     s2_min_int = options.get("MIN_S2_INTEGRAL", 0.)
     for peak in pmap:
         peak.signal = Signal.UNKNOWN
-        if (len(peak) >= s2_min_wid and peak.cathode_integral > s2_min_int and
+        if (len(peak) >= s2_min_width and
+           peak.cathode_integral > s2_min_int and
            peak.peakmax[1] > s2_min_hei):
-            peak.signal = Signal.S2
-            foundS2 = True
-        elif len(peak) == 1 and peak.tothrs.sum() < s1_max_tot and not foundS2:
-            if not foundS1 or peak.cathode_integral > s1_min_int:
+           peak.signal = Signal.S2
+           foundS2 = True
+        elif (0 < len(peak) <= s1_max_width and
+             peak.tothrs.sum() < s1_max_tot and
+             not foundS2 and
+             (not foundS1 or peak.cathode_integral > s1_min_int)):
                 peak.signal = Signal.S1
                 foundS1 = True
 
@@ -167,7 +171,7 @@ def DOROTHEA(argv=sys.argv):
                 h5in.root.MC.FEE.copy(newparent=mcgroup)
                 h5in.root.TWF.PMT.copy(newparent=twfgroup)
                 h5in.root.TWF.SiPM.copy(newparent=twfgroup)
-
+            
             rungroup = h5out.create_group(h5out.root, "Run")
             h5in.root.Run.runInfo.copy(newparent=rungroup)
             h5in.root.Run.events.copy(newparent=rungroup)
