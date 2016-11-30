@@ -70,14 +70,19 @@ def create_new_file(outputfilename, inputfilename, **options):
     h5out = tb.open_file(outputfilename, "w", tbl.filters(COMPRESSION))
 
     with tb.open_file(inputfilename, "r") as h5in:
-        NEVT = h5in.root.Run.events.cols.evt_number[:].size
-        NEVT *= options.get("nfiles", 1)
+        if "/Run" in h5in:
+            rungroup = h5out.create_group(h5out.root, "Run")
+            h5in.root.Run.runInfo.copy(newparent=rungroup)
+            h5out.create_table(h5out.root.Run, "events", EventInfo,
+                               "Events information",
+                               tbl.filters("NOCOMPR"))
 
-        rungroup = h5out.create_group(h5out.root, "Run")
-        h5in.root.Run.runInfo.copy(newparent=rungroup)
-        h5out.create_table(h5out.root.Run, "events", EventInfo,
-                           "Events information",
-                           tbl.filters("NOCOMPR"))
+            NEVT = h5in.root.Run.events.cols.evt_number[:].size
+            NEVT *= options.get("nfiles", 1)
+        elif "/RD" in h5in:
+            NEVT = h5in.root.RD.pmtrwf
+        else:
+            NEVT = tbl.get_nofevents(h5in.root.TWF.PMT, "event")
 
         if "/MC" in h5in:
             mcgroup = h5out.create_group(h5out.root, "MC")
@@ -216,7 +221,9 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     filters = map(lambda f: init_filter(f, **options), filters)
 
     h5out = create_new_file(outputfilename, inputfilenames[0], **options)
-    evtrow_out = h5out.root.Run.events.row
+
+    if "/Run" in h5out:
+        evtrow_out = h5out.root.Run.events.row
 
     if "/pmtrd" in h5out:
         pmtrd_out = h5out.root.pmtrd
@@ -251,7 +258,9 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     if dump_unselected:
         h5dis = create_new_file(discardedfilename, inputfilenames[0],
                                 **options)
-        evtrow_dis = h5dis.root.Run.events.row
+
+        if "/Run" in h5out:
+            evtrow_dis = h5dis.root.Run.events.row
 
         if "/pmtrd" in h5dis:
             pmtrd_dis = h5dis.root.pmtrd
@@ -291,8 +300,14 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
         sys.stdout.flush()
         try:
             with tb.open_file(filename, "r") as h5in:
-                run = h5in.root.Run.events.cols
-                NEVT = run.evt_number[:].size
+                if "/Run" in h5in:
+                    run = h5in.root.Run.events.cols
+                    NEVT = run.evt_number[:].size
+                elif "/RD" in h5in:
+                    NEVT = h5in.root.RD.pmtrwf.shape[0]
+                else:
+                    NEVT = tbl.get_nofevents(h5in.root.TWF.PMT, "event")
+
                 n_events_in += NEVT
 
                 if "/pmtrd" in h5in:
@@ -326,9 +341,10 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                 for evt in range(NEVT):
                     if all([filter_(h5in, evt) for filter_ in filters]):
-                        evtrow_out["evt_number"] = run.evt_number[evt]
-                        evtrow_out["timestamp"] = run.timestamp[evt]
-                        evtrow_out.append()
+                        if "/Run" in h5out:
+                            evtrow_out["evt_number"] = run.evt_number[evt]
+                            evtrow_out["timestamp"] = run.timestamp[evt]
+                            evtrow_out.append()
 
                         if "/pmtrd" in h5out:
                             pmtrd_out.append(pmtrd_in[evt][np.newaxis])
@@ -370,9 +386,10 @@ def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
 
                         n_events_out += 1
                     elif dump_unselected:
-                        evtrow_dis["evt_number"] = run.evt_number[evt]
-                        evtrow_dis["timestamp"] = run.timestamp[evt]
-                        evtrow_dis.append()
+                        if "/Run" in h5dis:
+                            evtrow_dis["evt_number"] = run.evt_number[evt]
+                            evtrow_dis["timestamp"] = run.timestamp[evt]
+                            evtrow_dis.append()
 
                         if "/pmtrd" in h5dis:
                             pmtrd_dis.append(pmtrd_in[evt][np.newaxis])
