@@ -23,7 +23,7 @@ def test_fee_params():
     assert_equal(FE.f_mc, 1./(1*units.ns))
     assert_equal(FE.f_LPF1, 3*units.MHZ)
     assert_equal(FE.f_LPF2, 10*units.MHZ)
-    assert_equal(FE.ADC_TO_PES, 20)  # nominal factor, comes out from spe area
+    assert_equal(FE.ADC_TO_PES, 23.1)  # nominal factor, comes out from spe area
     assert_equal(FE.OFFSET, 2500)  # offset adc
 
 def test_spe():
@@ -34,7 +34,7 @@ def test_spe():
     fee = FE.FEE(noise_FEEPMB_rms=0*units.mA, noise_DAQ_rms=0)
     assert_equal(FE.PMT_GAIN, 1.7e6)
     spe_i = FE.spe_pulse(spe,t0=100*units.ns, tmax=200*units.ns)
-    spe_v = FE.signal_v_fee(fee, spe_i)
+    spe_v = FE.signal_v_fee(fee, spe_i, -1)
     spe_adc = FE.daq_decimator(1000.*units.MHZ, 40*units.MHZ, spe_v*FE.v_to_adc())
     adc_to_pes = np.sum(spe_adc)
     assert_greater(adc_to_pes, 18)
