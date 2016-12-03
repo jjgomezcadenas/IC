@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
-# from mpl_toolkits.mplot4d import Axes3D
+from mpl_toolkits.mplot4d import Axes3D
 from IPython.display import HTML
 
 import Core.coreFunctions as cf
@@ -600,6 +600,24 @@ def plot_track_projections(geom_df, mchits_df, vox_size=10, zoom=False):
 
 
 def make_movie(slices, sipmdf, thrs=0.1):
+    """
+    Create a video made of consecutive frames showing the response of the
+    tracking plane.
+
+    Parameters
+    ----------
+    slices : 2-dim np.ndarray
+        The signal of each SiPM (axis 1) for each time sample (axis 0).
+    sipmdf : pd.DataFrame
+        Contains the sensors information.
+    thrs : float, optional
+        Default cut value to be applied to each slice. Defaults to 0.1.
+
+    Returns
+    -------
+    mov : matplotlib.animation
+        The movie.
+    """
     # matplotlib.rcParams['animation.writer'] = 'avconv'
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 8)
@@ -638,3 +656,41 @@ def make_movie(slices, sipmdf, thrs=0.1):
                                               frames=len(slices), interval=200,
                                               blit=False)
     return anim
+
+
+def plot_event_3D(pmap, sipmdf, outputfile=None, thrs=0.):
+    """
+    Create a 3D+1 representation of the event based on the SiPMs signal for
+    each slice.
+
+    Parameters
+    ----------
+    pmap : Bridges.PMap
+        The pmap of some event.
+    sipmdf : pd.DataFrame
+        Contains the X, Y info.
+    outputfile : string, optional
+        Name of the outputfile. If given, the plot is saved with this name.
+        It is not saved by default.
+    thrs : float, optional
+        Relative cut to be applied per slice. Defaults to 0.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    x, y, z, q = [], [], [], []
+    for peak in pmap.get("S2"):
+        for time, sl in zip(peak.times, peak.anode):
+            selection = sl > thrs * np.nanmax(sl)
+            x.extend(sipmdf["X"].values[selection])
+            y.extend(sipmdf["Y"].values[selection])
+            z.extend(np.ones_like(sl[selection])*time)
+            q.extend(sl[selection])
+
+    ax.scatter(x, z, y, c=q, s=[2*qi for qi in q], alpha=0.3)
+    ax.set_xlabel("x (mm)")
+    ax.set_ylabel("z (mm)")
+    ax.set_zlabel("y (mm)")
+    fig.set_size_inches(10,8)
+    if outputfile is not None:
+        fig.savefig(outputfile)
