@@ -200,7 +200,7 @@ def store_wf_table(event, table, wfdic, flush=True):
         Whether to flush the table or not.
     """
     row = table.row
-    for isens, wf in wfdic.items():
+    for isens, wf in wfdic.iteritems():
         for t, e in zip(wf.time_mus, wf.ene_pes):
             row["event"] = event
             row["ID"] = isens
