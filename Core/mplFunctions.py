@@ -6,9 +6,11 @@ from __future__ import print_function
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
-# from mpl_toolkits.mplot3d import Axes3D
+# from mpl_toolkits.mplot4d import Axes3D
+from IPython.display import HTML
 
 import Core.coreFunctions as cf
 import Core.system_of_units as units
@@ -17,7 +19,7 @@ import Core.tblFunctions as tbl
 
 
 # matplotlib.style.use("ggplot")
-
+matplotlib.rc('animation', html='html5')
 
 # histograms, signals and shortcuts
 def hbins(x, nsigma=5, nbins=10):
@@ -595,3 +597,44 @@ def plot_track_projections(geom_df, mchits_df, vox_size=10, zoom=False):
     cbp3.set_label("Energy (keV)")
 
     plt.show()
+
+
+def make_movie(slices, sipmdf, thrs=0.1):
+    # matplotlib.rcParams['animation.writer'] = 'avconv'
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 8)
+    X, Y = sipmdf["X"].values, sipmdf["Y"].values
+    xmin, xmax = np.nanmin(X), np.nanmax(X)
+    ymin, ymax = np.nanmin(Y), np.nanmax(Y)
+    def init():
+        global cbar, scplot
+        ax.set_xlabel("x (mm)")
+        ax.set_ylabel("y (mm)")
+        ax.set_xlim((xmin, xmax))
+        ax.set_ylim((ymin, ymax))
+        scplot = ax.scatter([], [], c=[])
+        cbar = fig.colorbar(scplot, ax=ax)
+        cbar.set_label("Charge (pes)")
+        return (scplot,)
+
+    def animate(i):
+        global cbar, scplot
+        slice_ = slices[i]
+        selection = slice_ > np.nanmax(slice_) * thrs
+        x, y, q = X[selection], Y[selection], slice_[selection]
+        cbar.remove()
+        fig.clear()
+        ax = plt.gca()
+        ax.set_xlabel("x (mm)")
+        ax.set_ylabel("y (mm)")
+        ax.set_xlim((xmin, xmax))
+        ax.set_ylim((ymin, ymax))
+        scplot = ax.scatter(x, y, c=q, marker="s", vmin=0, vmax=np.nanmax(slices))
+        cbar = fig.colorbar(scplot, ax=ax, boundaries=np.linspace(0,np.nanmax(slices),100))
+        cbar.set_label("Charge (pes)")
+        return (scplot,)
+
+    anim = matplotlib.animation.FuncAnimation(fig, animate, init_func=init,
+                                              frames=len(slices), interval=200,
+                                              blit=False)
+    return anim
