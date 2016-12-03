@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
-from mpl_toolkits.mplot4d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D
 from IPython.display import HTML
 
 import Core.coreFunctions as cf
@@ -618,7 +618,7 @@ def make_movie(slices, sipmdf, thrs=0.1):
     mov : matplotlib.animation
         The movie.
     """
-    # matplotlib.rcParams['animation.writer'] = 'avconv'
+
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 8)
     X, Y = sipmdf["X"].values, sipmdf["Y"].values
