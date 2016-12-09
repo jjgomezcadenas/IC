@@ -77,14 +77,17 @@ def plts(signal, signal_start=0, signal_end=1e+4, offset=5):
 
 
 def plot_signal(signal_t, signal, title="signal",
-                signal_start=0, signal_end=1e+4, units=""):
+                signal_start=0, signal_end=1e+4,
+                ymax = 200, t_units="", units=""):
     """
     Given a series signal (t, signal), plot the signal
     """
 
     ax1 = plt.subplot(1, 1, 1)
     ax1.set_xlim([signal_start, signal_end])
-    SetPlotLabels(xlabel="t (ns)", ylabel="signal (%s)" % units)
+    ax1.set_ylim([0, ymax])
+    SetPlotLabels(xlabel="t ({})".format(t_units),
+                  ylabel="signal ({})".format(units))
     plt.title(title)
     plt.plot(signal_t, signal)
     plt.show()

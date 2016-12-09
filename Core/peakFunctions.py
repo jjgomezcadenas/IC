@@ -8,6 +8,14 @@ from __future__ import print_function
 import math
 import numpy as np
 import pandas as pd
+import Core.system_of_units as units
+import ICython.Sierpe.BLR as blr
+import ICython.Core.peakFunctions as pf
+from Database import loadDB
+import matplotlib.pyplot as plt
+from time import time
+import tables as tb
+
 
 
 def pmt_sum(CWF, adc_to_pes):
@@ -31,12 +39,12 @@ def wfdf(time,energy_pes):
     takes two vectors (time, energy) and returns a data frame representing a waveform
     """
     swf = {}
-    swf['time_mus'] = time/units.mus
+    swf['time_ns'] = time/units.ns
     swf['ene_pes'] = energy_pes
     return pd.DataFrame(swf)
 
 
-def wf_thr(wf,threshold=0):
+def wf_thr(wf, threshold=0):
     """
     return a zero supressed waveform (more generally, the vaules of wf above threshold)
     """
@@ -73,3 +81,250 @@ def find_peaks(wfzs, stride=4, lmin=8):
         if len(S12[i]) > lmin:
             S12L.append(pd.DataFrame(S12[i], columns=['time_mus','ene_pes','index']))
     return S12L
+
+
+def find_S12(wfzs, tmin=0*units.mus, tmax=1200*units.mus,
+             stride=4, lmin=8, lmax=1e+6):
+    """
+    Find S1/S2 peaks.
+    input: a zero supressed wf
+    returns a list of waveform data frames
+    do not interrupt the peak if next sample comes within stride
+    accept the peak only if within [lmin, lmax)
+    accept the peak only if within [tmin, tmax)
+    """
+
+    T = wfzs['time_ns'].values
+    P = wfzs['ene_pes'].values
+
+    S12 = {}
+    pulse_on = 1
+    j=0
+
+    S12[0] = []
+    S12[0].append([T[0],P[0]])
+
+    for i in range(1,len(wfzs)) :
+
+        if T[i] > tmax:
+            break
+
+        if T[i] < tmin:
+            continue
+
+        if wfzs.index[i] - stride > wfzs.index[i-1]:  #new s12
+            j+=1
+            S12[j] = []
+            S12[j].append([T[i],P[i]])
+        else:
+            S12[j].append([T[i],P[i]])
+
+    S12L=[]
+    for i in S12.keys():
+        if len(S12[i]) >= lmin and len(S12[i]) < lmax:
+            S12L.append(pd.DataFrame(S12[i], columns=['time_ns','ene_pes']))
+    return S12L
+
+
+def s12_df(S12, lmin=0, lmax=1000000):
+    """
+    Convert the S12 dictionary into a DF
+    Keep only those S12 between lmin and lmax
+    """
+    S12L=[]
+    for i in S12.keys():
+        if len(S12[i]) >= lmin and len(S12[i]) < lmax:
+            S12L.append(pd.DataFrame(S12[i], columns=['time_ns','ene_pes']))
+    return S12L
+
+
+def scan_S12(S12):
+    """
+    prints and plots the peaks of input list S12
+    """
+    print('number of peaks = {}'.format(len(S12)))
+    for i,s in enumerate(S12):
+        print('S12 number = {}, samples = {} sum in pes ={}'.format(i, len(s), np.sum(s.ene_pes.values)))
+        plt.plot(s.time_ns.values,s.ene_pes)
+        plt.show()
+        raw_input('hit return')
+
+
+class S12Finder:
+    """
+    Driver class to find S12
+
+    """
+    def __init__(self, run_number, n_baseline=28000, n_MAU=200,
+                 thr_trigger=5, wfm_length=48000, tstep = 25):
+        """
+        Inits the machine
+        """
+        DataPMT = loadDB.DataPMT(run_number)
+        self.adc_to_pes = abs(DataPMT.adc_to_pes.values).astype(np.double)
+        self.coeff_c = DataPMT.coeff_c.values.astype(np.double)
+        self.coeff_blr = DataPMT.coeff_blr.values.astype(np.double)
+
+        self.n_MAU = n_MAU
+        self.n_baseline = n_baseline
+        self.thr_trigger = thr_trigger
+        self.signal_t = np.arange(0., wfm_length * tstep, tstep)
+
+        self.setFiles = False
+        self.setS1 = False
+        self.setS2 = False
+
+        self.plot_csum = False
+        self.plot_s1 = False
+        self.plot_s2 = False
+
+        self.nprint = 1000000
+
+        # Dictionary of S1 and S2
+        # each entry contains a list of S1 and S2 df
+
+        self.dS1 = {}
+        self.dS2 = {}
+
+    def set_plot(self, plot_csum=False, plot_s1=False, plot_s2=False):
+        self.plot_csum = plot_csum
+        self.plot_s1 = plot_s1
+        self.plot_s2 = plot_s2
+
+    def set_print(self, nprint=10):
+        self.nprint = nprint
+
+    def set_files(self,path, input_files):
+        """
+        Sets the input files
+        """
+        self.path = path
+        self.input_files = input_files
+        self.setFiles = True
+
+    def set_s1(self, tmin=0*units.mus, tmax=590*units.mus, stride=4, lmin=4, lmax=16):
+        self.tmin_s1 = tmin
+        self.tmax_s1 = tmax
+        self.stride_s1 = stride
+        self.lmin_s1 = lmin
+        self.lmax_s1 = lmax
+        self.setS1 = True
+
+    def set_s2(self, tmin=590*units.mus, tmax=620*units.mus, stride=40, lmin=100, lmax=1000000):
+        self.tmin_s2 = tmin
+        self.tmax_s2 = tmax
+        self.stride_s2 = stride
+        self.lmin_s2 = lmin
+        self.lmax_s2 = lmax
+        self.setS2 = True
+
+    def get_dS1(self):
+        if len(self.dS1) == 0:
+            print('S1 dictionary is empty')
+            return 0
+        else:
+            return self.dS1
+
+    def get_dS2(self):
+        if len(self.dS2) == 0:
+            print('S2 dictionary is empty')
+            return 0
+        else:
+            return self.dS2
+
+    def find_s12(self, nmax, thr_s12=1.0*units.pes):
+        """
+        Run the machine
+
+        """
+        n_events_tot = 0
+
+        if self.setFiles == False:
+            raise IOError('must set files before running')
+        if self.setS1 == False:
+            raise IOError('must set S1 parameters before running')
+        if self.setS2 == False:
+            raise IOError('must set S2 parameters before running')
+        if self.path =='':
+            raise IOError('path is empty')
+        if len(self.input_files) == 0:
+            raise IOError('input file list is empty')
+
+
+        t0 = time()
+        print('t0 = {} s'.format(t0))
+        for ffile in self.input_files:
+
+            print("Opening", ffile, end="... ")
+            filename = self.path + ffile
+            #sys.stdout.flush()
+
+            try:
+                with tb.open_file(filename, "r+") as h5in:
+
+                    pmtrwf = h5in.root.RD.pmtrwf
+                    NEVT = pmtrwf.shape[0]
+
+                    for evt in range(NEVT):
+                        # deconvolve
+                        CWF = blr.deconv_pmt(pmtrwf[evt], self.coeff_c, self.coeff_blr,
+                                         n_baseline=self.n_baseline,
+                                         thr_trigger=self.thr_trigger)
+
+                        # calibrated PMT sum
+                        csum = pf.calibrated_pmt_sum(CWF, self.adc_to_pes,
+                                                  n_MAU=self.n_MAU,
+                                                  thr_MAU=self.thr_trigger)
+                        if self.plot_csum:
+                            plt.plot(csum)
+                            plt.show()
+                            raw_input('->')
+
+
+                        # Supress samples below threshold (in pes)
+                        wfzs_ene, wfzs_indx = pf.wfzs(csum, threshold=thr_s12)
+
+                        # find S1 and S2
+                        S1 = pf.find_S12(wfzs_ene, wfzs_indx,
+                                         tmin=self.tmin_s1,
+                                         tmax=self.tmax_s1,
+                                         stride=self.stride_s1)
+
+                        s1df = s12_df(S1, lmin=self.lmin_s1, lmax=self.lmax_s1)
+
+                        S2 = pf.find_S12(wfzs_ene, wfzs_indx,
+                                         tmin=self.tmin_s2,
+                                         tmax=self.tmax_s2,
+                                         stride=self.stride_s2)
+                        s2df = s12_df(S2, lmin=self.lmin_s2, lmax=self.lmax_s2)
+
+                        self.dS1[n_events_tot] = s1df
+                        self.dS2[n_events_tot] = s2df
+
+                        if self.plot_s1:
+                            scan_S12(s1df)
+                        if self.plot_s2:
+                            scan_S12(s2df)
+
+                        n_events_tot +=1
+                        if n_events_tot%self.nprint == 0:
+                            print('event in file = {}, total = {}'.format(evt, n_events_tot))
+
+                        if n_events_tot > nmax:
+                            print('reached maximum number of events (={})'.format(nmax))
+                            self.plot_csum = False
+                            self.plot_s1 = False
+                            self.plot_s2 = False
+                            break
+
+
+            except:
+                print('error')
+                raise
+
+
+        t1 = time()
+        print('t1 = {} s'.format(t1))
+        dt = t1 - t0
+
+        print("S12Finder has run over {} events in {} seconds".format(n_events_tot+1, dt))

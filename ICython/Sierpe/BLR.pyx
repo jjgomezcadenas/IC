@@ -83,7 +83,7 @@ cpdef deconvolve_signal(double [:] signal_daq,
                 acum[k]=0
                 j=0
     # return recovered signal
-    return signal_r
+    return np.asarray(signal_r)
 
 
 cpdef deconv_pmt(np.ndarray[np.int16_t, ndim=2] pmtrwf,
