@@ -148,12 +148,55 @@ def scan_S12(S12):
     """
     print('number of peaks = {}'.format(len(S12)))
     for i in S12.keys():
-        s12df = pd.DataFrame(S12[i],columns=['time_ns','ene_pes'])
         print('S12 number = {}, samples = {} sum in pes ={}'.\
-          format(i, len(s12df), np.sum(s12df.ene_pes.values)))
-        plt.plot(s12df.time_ns.values,s12df.ene_pes)
+          format(i, len(S12[i][0]), np.sum(S12[i][1])))
+        plt.plot(S12[i][0],S12[i][1])
         plt.show()
         raw_input('hit return')
+
+
+def index_from_S2(S2):
+    """
+    return the indexes defining the vector
+    """
+    T = S2[0]/units.mus
+    #print(T[0], T[-1])
+    return int(T[0]), int(T[-1])
+
+
+def sipm_S2(SIPM,S2, thr=5*units.pes):
+    """
+    Given a vector with SIPMs (energies above threshold), returns
+    a list of np arrays. Each element of the list is the S2 window
+    in the SiPM (if not zero)
+    """
+    i0,i1 = index_from_S2(S2)
+    dim = int(i1 - i0)
+    SIPML = []
+    for i in SIPM.keys():
+        sipm = SIPM[i]
+        psum = np.sum(sipm[i0:i1])
+        #print('sum in window = {}'.format(psum))
+        if psum > thr:
+            e = np.zeros(dim, dtype=np.double)
+            e[:] = sipm[i0:i1]
+            SIPML.append(e)
+    return SIPML
+
+
+def sipm_S2_dict(SIPM, S2d, thr=5*units.pes):
+    """
+    Given a vector with SIPMs (energies above threshold), and a
+    dictionary of S2s, S2d, returns a dictionary of SiPMs-S2.
+    Each index of the dictionary correspond to one S2 and is
+    a list of np arrays. Each element of the list is the S2 window
+    in the SiPM (if not zero)
+    """
+    SiPMd = {}
+    for i in S2d.keys():
+        S2 = S2d[i]
+        SiPMd[i] = sipm_S2(SIPM,S2, thr=thr)
+    return SiPMd
 
 def scan_S12L(S12L):
     """

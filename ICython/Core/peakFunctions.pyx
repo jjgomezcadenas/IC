@@ -103,7 +103,7 @@ cpdef time_from_index(int [:] indx):
 cpdef find_S12(double [:] wfzs, int [:] index,
                double tmin=0, double tmax=1e+6,
                int lmin=8, int lmax=1000000,
-               int stride=4):
+               int stride=4, rebin=False, rebin_stride=40):
     """
     Find S1/S2 peaks.
     input:
@@ -124,10 +124,10 @@ cpdef find_S12(double [:] wfzs, int [:] index,
 
     cdef dict S12 = {}
     cdef dict S12L = {}
-    cdef int i, j
+    cdef int i, j, k, ls
 
     cdef list s12 = []
-    #cdef list S12L = []
+
     S12[0] = s12
     S12[0].append([T[0],P[0]])
 
@@ -141,20 +141,39 @@ cpdef find_S12(double [:] wfzs, int [:] index,
             continue
 
         if index[i] - stride > index[i-1]:  #new s12
-            j+=1
+            j += 1
             s12 = []
             S12[j] = s12
             S12[j].append([T[i],P[i]])
         else:
             S12[j].append([T[i],P[i]])
 
-    #return S12
+
+    # re-arrange and rebin
     j=0
+
     for i in S12.keys():
-        if len(S12[i]) >= lmin and len(S12[i]) < lmax:
-            S12L[j] = S12[i]
-            j+=1
+        ls = len(S12[i])
+
+        if ls < lmin or ls >= lmax:
+            continue
+
+        t = np.zeros(ls, dtype=np.double)
+        e = np.zeros(ls, dtype=np.double)
+
+        for k in range(ls):
+            t[k] = S12[i][k][0]
+            e[k] = S12[i][k][1]
+
+        if rebin == True:
+            TR, ER = rebin_waveform(t, e, stride = rebin_stride)
+            S12L[j] = [TR,ER]
+        else:
+            S12L[j] = [t,e]
+        j+=1
+
     return S12L
+
 
 cpdef rebin_waveform(double [:] t, double[:] e, int stride = 40):
     """

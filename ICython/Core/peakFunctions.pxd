@@ -59,7 +59,7 @@ accept the peak only if within [tmin, tmax)
 cpdef find_S12(double [:] wfzs, int [:] index,
                double tmin=*, double tmax=*,
                int lmin=*, int lmax=*,
-               int stride=*)
+               int stride=*, rebin=*, rebin_stride=*)
 
 """
 rebins  a waveform according to stride
