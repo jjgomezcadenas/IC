@@ -174,13 +174,13 @@ def sipm_S2(SIPM,S2, thr=5*units.pes):
     dim = int(i1 - i0)
     SIPML = []
     for i in SIPM.keys():
-        sipm = SIPM[i]
+        sipm = SIPM[i][1]
         psum = np.sum(sipm[i0:i1])
         #print('sum in window = {}'.format(psum))
         if psum > thr:
             e = np.zeros(dim, dtype=np.double)
             e[:] = sipm[i0:i1]
-            SIPML.append(e)
+            SIPML.append([SIPM[i][0],e])
     return SIPML
 
 
