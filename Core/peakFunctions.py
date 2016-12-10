@@ -126,6 +126,25 @@ def find_S12(wfzs, tmin=0*units.mus, tmax=1200*units.mus,
             S12L.append(pd.DataFrame(S12[i], columns=['time_ns','ene_pes']))
     return S12L
 
+def sipm_S2(dSIPM,S2, thr=5*units.pes):
+    """
+    Given a vector with SIPMs (energies above threshold), returns
+    a list of np arrays. Each element of the list is the S2 window
+    in the SiPM (if not zero)
+    """
+    
+    i0,i1 = index_from_S2(S2)
+    dim = int(i1 - i0)
+    SIPML = []
+    for i in dSIPM.keys():
+        sipm = dSIPM[i][1]
+        psum = np.sum(sipm[i0:i1])
+        if psum > thr:
+            e = np.zeros(dim, dtype=np.double)
+            e[:] = sipm[i0:i1]
+            SIPML.append([dSIPM[i][0],e])
+    return SIPML
+
 
 def dict_to_df_S12(S12):
     """
@@ -163,25 +182,6 @@ def index_from_S2(S2):
     #print(T[0], T[-1])
     return int(T[0]), int(T[-1])
 
-
-def sipm_S2(SIPM,S2, thr=5*units.pes):
-    """
-    Given a vector with SIPMs (energies above threshold), returns
-    a list of np arrays. Each element of the list is the S2 window
-    in the SiPM (if not zero)
-    """
-    i0,i1 = index_from_S2(S2)
-    dim = int(i1 - i0)
-    SIPML = []
-    for i in SIPM.keys():
-        sipm = SIPM[i][1]
-        psum = np.sum(sipm[i0:i1])
-        #print('sum in window = {}'.format(psum))
-        if psum > thr:
-            e = np.zeros(dim, dtype=np.double)
-            e[:] = sipm[i0:i1]
-            SIPML.append([SIPM[i][0],e])
-    return SIPML
 
 
 def sipm_S2_dict(SIPM, S2d, thr=5*units.pes):

@@ -289,6 +289,6 @@ cpdef select_sipm(double [:, :] sipmzs):
         for k in range(NWFM):
             psum += sipmzs[i,k]
         if psum > 0:
-            SIPM[j] = np.asarray(sipmzs[i])
+            SIPM[j] = [i,np.asarray(sipmzs[i])]
             j+=1
     return SIPM
