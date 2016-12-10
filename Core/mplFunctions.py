@@ -315,6 +315,20 @@ def plot_ene_pmt(geom_df, sensor_df, epmt, event_number=0, radius=10):
     return col
 
 
+def plot_sipm(sipm, nmin=0, nmax=16, x=4, y=4):
+    """
+    Takes as input a wf storing the SiPMs and plot nsipm
+    """
+    plt.figure(figsize=(12, 12))
+
+    for i in range(nmin, nmax):
+        plt.subplot(y, y, i+1)
+        # ax1.set_xlim([0, len_pmt])
+        #mpl.SetPlotLabels(xlabel="samples", ylabel="adc")
+        plt.plot(sipm[i])
+
+    plt.show()
+
 def plot_best(sipmrwf, sipmtwf, sipmdf, evt=0):
     """
     Plot the noisy waveform of the SiPM with greatest charge and

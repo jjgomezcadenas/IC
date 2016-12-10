@@ -58,4 +58,31 @@ accept the peak only if within [tmin, tmax)
 """
 cpdef find_S12(double [:] wfzs, int [:] index,
                double tmin=*, double tmax=*,
+               int lmin=*, int lmax=*,
                int stride=*)
+
+"""
+rebins  a waveform according to stride
+The input waveform is a vector such that the index expresses time bin and the
+contents expresses energy (e.g, in pes)
+The function returns a rebinned vector of T and E.
+"""
+cpdef rebin_waveform(double [:] t, double[:] e, int stride=*)
+
+
+"""
+subtracts the baseline
+Uses a MAU to set the signal threshold (thr, in PES)
+returns ZS waveforms for all SiPMs
+"""
+
+cpdef signal_sipm(np.ndarray[np.int16_t, ndim=2] SIPM,
+                  double [:] adc_to_pes, double thr,
+                  int n_MAU=*)
+
+"""
+Selects the SiPMs with signal
+and returns a dictionary
+"""
+
+cpdef select_sipm(double [:, :] sipmzs)

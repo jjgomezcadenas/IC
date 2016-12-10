@@ -23,6 +23,7 @@ def pmt_sum(CWF, adc_to_pes):
     input: A CWF list or array
            a vector with the adc_to_pes values (must be positive)
     returns: the sum of CWF, in pes
+
     """
 
     NPMT = len(CWF)
@@ -126,26 +127,44 @@ def find_S12(wfzs, tmin=0*units.mus, tmax=1200*units.mus,
     return S12L
 
 
-def s12_df(S12, lmin=0, lmax=1000000):
+def dict_to_df_S12(S12):
     """
-    Convert the S12 dictionary into a DF
-    Keep only those S12 between lmin and lmax
+    Takes an S12 dictionary and returns a list of DF
     """
-    S12L=[]
+    S12L = []
+    print('number of peaks = {}'.format(len(S12)))
     for i in S12.keys():
-        if len(S12[i]) >= lmin and len(S12[i]) < lmax:
-            S12L.append(pd.DataFrame(S12[i], columns=['time_ns','ene_pes']))
+        s12df = pd.DataFrame(S12[i],columns=['time_ns','ene_pes'])
+        print('S12 number = {}, samples = {} sum in pes ={}'.\
+          format(i, len(s12df), np.sum(s12df.ene_pes.values)))
+        S12L.append(s12df)
     return S12L
-
 
 def scan_S12(S12):
     """
-    prints and plots the peaks of input list S12
+    prints and plots the peaks of input S12
+    S12 is a dictionary
+    S12[i] for i in keys() are the S12 peaks
     """
     print('number of peaks = {}'.format(len(S12)))
-    for i,s in enumerate(S12):
-        print('S12 number = {}, samples = {} sum in pes ={}'.format(i, len(s), np.sum(s.ene_pes.values)))
-        plt.plot(s.time_ns.values,s.ene_pes)
+    for i in S12.keys():
+        s12df = pd.DataFrame(S12[i],columns=['time_ns','ene_pes'])
+        print('S12 number = {}, samples = {} sum in pes ={}'.\
+          format(i, len(s12df), np.sum(s12df.ene_pes.values)))
+        plt.plot(s12df.time_ns.values,s12df.ene_pes)
+        plt.show()
+        raw_input('hit return')
+
+def scan_S12L(S12L):
+    """
+    prints and plots the peaks of input list S12L
+    S12L is a list of data frames
+    """
+    print('number of peaks = {}'.format(len(S12L)))
+    for i, s12df in enumerate(S12L):
+        print('S12 number = {}, samples = {} sum in pes ={}'.\
+          format(i, len(s12df), np.sum(s12df.ene_pes.values)))
+        plt.plot(s12df.time_ns.values,s12df.ene_pes)
         plt.show()
         raw_input('hit return')
 
