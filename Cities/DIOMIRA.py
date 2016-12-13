@@ -177,6 +177,12 @@ def DIOMIRA(argv=sys.argv):
         with tables.open_file(CFP["FILE_OUT"], "w",
                               filters=tbl.filters(COMPRESSION)) as h5out:
 
+            # create a group to store sensors IDs
+            sgroup = h5out.create_group(h5out.root, "Sensors")
+            # copy DataSiPM & DataPMT table
+            h5in.root.Sensors.DataSiPM.copy(newparent=sgroup)
+            h5in.root.Sensors.DataPMT.copy(newparent=sgroup)
+
             # create a group to store MC data
             mcgroup = h5out.create_group(h5out.root, "MC")
             # copy the mctrk table
