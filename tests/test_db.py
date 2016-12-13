@@ -15,11 +15,6 @@ class dbTest(unittest.TestCase):
         """
         Check that we retrieve the correct number of PMTs
         """
-        h5out = tables.open_file(self.localdb, 'r')
-        nrows = h5out.root.Sensors.DataPMT.nrows
-        h5out.close()
-        self.assertEqual(nrows, 12)
-
         pmts = DB.DataPMT()
         self.assertEqual(pmts.shape[0], 12)
 
@@ -27,12 +22,6 @@ class dbTest(unittest.TestCase):
         """
         Check that we retrieve the correct number of SiPMs
         """
-        localdb = os.environ['ICDIR'] + '/Database/localdb.h5'
-        h5out = tables.open_file(self.localdb, 'r')
-        nrows = h5out.root.Sensors.DataSiPM.nrows
-        h5out.close()
-        self.assertEqual(nrows, 1792)
-
         sipms = DB.DataSiPM()
         self.assertEqual(sipms.shape[0], 1792)
 
@@ -50,13 +39,13 @@ class dbTest(unittest.TestCase):
         Check Detector Geometry
         """
         geo = DB.DetectorGeo()
-        self.assertEqual(geo['xmin'][0], -198)
-        self.assertEqual(geo['xmax'][0], 198)
-        self.assertEqual(geo['ymin'][0], -198)
-        self.assertEqual(geo['ymax'][0], 198)
-        self.assertEqual(geo['zmin'][0], 0)
-        self.assertEqual(geo['zmax'][0], 532)
-        self.assertEqual(geo['rmax'][0], 198)
+        self.assertEqual(geo['XMIN'][0], -198)
+        self.assertEqual(geo['XMAX'][0], 198)
+        self.assertEqual(geo['YMIN'][0], -198)
+        self.assertEqual(geo['YMAX'][0], 198)
+        self.assertEqual(geo['ZMIN'][0], 0)
+        self.assertEqual(geo['ZMAX'][0], 532)
+        self.assertEqual(geo['RMAX'][0], 198)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

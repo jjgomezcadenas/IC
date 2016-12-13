@@ -18,9 +18,10 @@ import numpy as np
 import tables as tb
 
 from Core.LogConfig import logger
-from Core.Configure import configure, define_event_loop
+from Core.Configure import configure, define_event_loop, print_configuration
 
 import Core.wfmFunctions as wfm
+import Core.tblFunctions as tbl
 import Database.loadDB as DB
 import Sierpe.FEE as FE
 
@@ -44,51 +45,36 @@ ChangeLog:
 """
 
 
-def ANASTASIA(argv):
+def ANASTASIA(argv=sys.argv):
     """
     ANASTASIA driver
     """
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0], argv[1:])
+    CFP = configure(argv)
 
-    if INFO:
+    if CFP["INFO"]:
         print(__doc__)
-
-    PATH_IN = CFP["PATH_IN"]
-    FILE_IN = CFP["FILE_IN"]
-    FIRST_EVT = CFP["FIRST_EVT"]
-    LAST_EVT = CFP["LAST_EVT"]
-    RUN_ALL = CFP["RUN_ALL"]
-    NEVENTS = LAST_EVT - FIRST_EVT
 
     # Increate thresholds by 1% for safety
     PMT_NOISE_CUT_RAW = CFP["PMT_NOISE_CUT_RAW"] * 1.01
     PMT_NOISE_CUT_BLR = CFP["PMT_NOISE_CUT_BLR"] * 1.01
     SIPM_ZS_METHOD = CFP["SIPM_ZS_METHOD"]
     SIPM_NOISE_CUT = CFP["SIPM_NOISE_CUT"]
+    COMPRESSION = CFP["COMPRESSION"]
 
-    logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("input file = {}/{}".format(PATH_IN, FILE_IN))
-    logger.info("First event = {} last event = {} "
-                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
-    logger.info("ZS method PMTS RAW = {}. "
-                "Cut value = {}".format("RMS_CUT", PMT_NOISE_CUT_RAW))
-    logger.info("ZS method PMTS BLR = {}. "
-                "Cut value = {}".format("ABSOLUTE", PMT_NOISE_CUT_BLR))
-    logger.info("ZS method SIPMS = {}. "
-                "Cut value = {}".format(SIPM_ZS_METHOD, SIPM_NOISE_CUT))
-
-    with tb.open_file("{}/{}".format(PATH_IN, FILE_IN), "r+") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "r+",
+                      filters=tbl.filters(CFP["COMPRESSION"])) as h5in:
         pmtblr = h5in.root.RD.pmtblr
         pmtcwf = h5in.root.RD.pmtcwf
         sipmrwf = h5in.root.RD.sipmrwf
+        pmtdf = DB.DataPMT()
         sipmdf = DB.DataSiPM()
 
         NEVT, NPMT, PMTWL = pmtcwf.shape
         NEVT, NSIPM, SIPMWL = sipmrwf.shape
 
-        logger.info("# events in DST = {}".format(NEVT))
-        logger.info("#PMTs = {} #SiPMs = {}".format(NPMT, NSIPM))
-        logger.info("PMT WFL = {} SiPM WFL = {}".format(PMTWL, SIPMWL))
+        print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
+                             "# SiPM": NSIPM, "SIPM WL": SIPMWL,
+                             "# events in DST": NEVT})
 
         # Create instance of the noise sampler and compute noise thresholds
         sipms_noise_sampler_ = SiPMsNoiseSampler(SIPMWL)
@@ -112,30 +98,32 @@ def ANASTASIA(argv):
         pmt_zs_ = h5in.create_earray(h5in.root.ZS, "PMT",
                                      atom=tb.Int16Atom(),
                                      shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVT)
+                                     expectedrows=NEVT,
+                                     filters=tbl.filters(COMPRESSION))
 
         blr_zs_ = h5in.create_earray(h5in.root.ZS, "BLR",
                                      atom=tb.Int16Atom(),
                                      shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVT)
+                                     expectedrows=NEVT,
+                                     filters=tbl.filters(COMPRESSION))
 
         sipm_zs_ = h5in.create_earray(h5in.root.ZS, "SiPM",
                                       atom=tb.Int16Atom(),
                                       shape=(0, NSIPM, SIPMWL),
-                                      expectedrows=NEVT)
+                                      expectedrows=NEVT,
+                                      filters=tbl.filters(COMPRESSION))
 
-        first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                           NEVENTS,
-                                                           NEVT, RUN_ALL)
-
+        adc_to_pes = abs(1.0/pmtdf["adc_to_pes"].reshape(NPMT, 1))
         t0 = time()
-        for i in range(first_evt, last_evt):
-            if not i % print_mod:
-                logger.info("-->event number = {}".format(i))
+        for i in define_event_loop(CFP, NEVT):
+            sumpmt = np.sum(pmtcwf[i] * adc_to_pes, axis=0)
+            selection = np.tile(sumpmt > PMT_NOISE_CUT_RAW, (NPMT, 1))
+            pmtzs = np.where(selection, pmtcwf[i], 0)
 
-            pmtzs = wfm.noise_suppression(pmtcwf[i], PMT_NOISE_CUT_RAW)
-            blrzs = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
-            blrzs = wfm.noise_suppression(blrzs, PMT_NOISE_CUT_BLR)
+            blr = wfm.subtract_baseline(FE.CEILING - pmtblr[i])
+            sumpmt = np.sum(blr * adc_to_pes, axis=0)
+            selection = np.tile(sumpmt > PMT_NOISE_CUT_BLR, (NPMT, 1))
+            blrzs = np.where(selection, blr, 0)
 
             pmt_zs_.append(pmtzs[np.newaxis])
             blr_zs_.append(blrzs[np.newaxis])

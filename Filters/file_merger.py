@@ -8,6 +8,7 @@ from __future__ import print_function
 import sys
 import importlib
 import argparse
+import traceback
 import tables as tb
 import numpy as np
 
@@ -70,14 +71,19 @@ def create_new_file(outputfilename, inputfilename, **options):
     h5out = tb.open_file(outputfilename, "w", tbl.filters(COMPRESSION))
 
     with tb.open_file(inputfilename, "r") as h5in:
-        NEVT = h5in.root.Run.events.cols.evt_number[:].size
-        NEVT *= options.get("nfiles", 1)
+        if "/Run" in h5in:
+            rungroup = h5out.create_group(h5out.root, "Run")
+            h5in.root.Run.runInfo.copy(newparent=rungroup)
+            h5out.create_table(h5out.root.Run, "events", EventInfo,
+                               "Events information",
+                               tbl.filters("NOCOMPR"))
 
-        rungroup = h5out.create_group(h5out.root, "Run")
-        h5in.root.Run.runInfo.copy(newparent=rungroup)
-        h5out.create_table(h5out.root.Run, "events", EventInfo,
-                           "Events information",
-                           tbl.filters("NOCOMPR"))
+            NEVT = h5in.root.Run.events.cols.evt_number[:].size
+            NEVT *= options.get("nfiles", 1)
+        elif "/RD" in h5in:
+            NEVT = h5in.root.RD.pmtrwf
+        else:
+            NEVT = tbl.get_nofevents(h5in.root.TWF.PMT, "event")
 
         if "/MC" in h5in:
             mcgroup = h5out.create_group(h5out.root, "MC")
@@ -100,13 +106,15 @@ def create_new_file(outputfilename, inputfilename, **options):
             h5out.create_earray(h5out.root, "pmtrd",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             _, NSIPM, SIPMWL = h5in.root.sipmrd.shape
             h5out.create_earray(h5out.root, "sipmrd",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
         if "/RD" in h5in:
             rdgroup = h5out.create_group(h5out.root, "RD")
@@ -114,18 +122,29 @@ def create_new_file(outputfilename, inputfilename, **options):
             h5out.create_earray(rdgroup, "pmtrwf",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(rdgroup, "pmtblr",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             _, NSIPM, SIPMWL = h5in.root.RD.sipmrwf.shape
             h5out.create_earray(rdgroup, "sipmrwf",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
+
+            if "/RD/pmtcwf" in h5in:
+                h5out.create_earray(rdgroup, "pmtcwf",
+                                    atom=tb.Int16Atom(),
+                                    shape=(0, NPMT, PMTWL),
+                                    expectedrows=NEVT,
+                                    filters=tbl.filters(COMPRESSION))
+
 
         if "/TWF" in h5in:
             twfgroup = h5out.create_group(h5out.root, "TWF")
@@ -145,48 +164,56 @@ def create_new_file(outputfilename, inputfilename, **options):
             h5out.create_earray(h5out.root.BLR, "mau",
                                 atom=tb.Int16Atom(),
                                 shape=(0, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(h5out.root.BLR, "pulse_on",
                                 atom=tb.Int16Atom(),
                                 shape=(0, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(h5out.root.BLR, "wait_over",
                                 atom=tb.Int16Atom(),
                                 shape=(0, PMTWL),
-                                expectedrows=NEVT)
+                                filters=tbl.filters(COMPRESSION))
 
         if "/ZS" in h5in:
             zsgroup = h5out.create_group(h5out.root, "ZS")
             h5out.create_earray(zsgroup, "PMT",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(zsgroup, "BLR",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NPMT, PMTWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
             h5out.create_earray(zsgroup, "SiPM",
                                 atom=tb.Int16Atom(),
                                 shape=(0, NSIPM, SIPMWL),
-                                expectedrows=NEVT)
+                                expectedrows=NEVT,
+                                filters=tbl.filters(COMPRESSION))
 
         if "/PMAPS" in h5in:
             pmapgroup = h5out.create_group(h5out.root, "PMAPS")
-            h5out.create_table(pmapgroup, "PMaps", PMAP,
-                               "Store for PMaps", tbl.filters(COMPRESSION))
+            pmaps_table = h5out.create_table(pmapgroup, "PMaps", PMAP,
+                                             "Store for PMaps",
+                                             tbl.filters(COMPRESSION))
 
-            h5out.create_table(pmapgroup, "PMapsBLR", PMAP,
-                               "Store for PMaps made with BLR",
-                               tbl.filters(COMPRESSION))
+            pmaps_blr_table = h5out.create_table(pmapgroup, "PMapsBLR", PMAP,
+                                                 "Store for BLR PMaps",
+                                                 tbl.filters(COMPRESSION))
+            pmaps_table.cols.event.create_index()
+            pmaps_blr_table.cols.event.create_index()
 
     return h5out
 
 
-def file_merger(outputfilename, *inputfilenames, **options):
+def file_merger(outputfilename, discardedfilename, *inputfilenames, **options):
     options["nfiles"] = len(inputfilenames)
 
     filters = options.get("FILTERS", [])
@@ -196,7 +223,8 @@ def file_merger(outputfilename, *inputfilenames, **options):
 
     h5out = create_new_file(outputfilename, inputfilenames[0], **options)
 
-    evtrow = h5out.root.Run.events.row
+    if "/Run" in h5out:
+        evtrow_out = h5out.root.Run.events.row
 
     if "/pmtrd" in h5out:
         pmtrd_out = h5out.root.pmtrd
@@ -206,6 +234,8 @@ def file_merger(outputfilename, *inputfilenames, **options):
         pmtrwf_out = h5out.root.RD.pmtrwf
         pmtblr_out = h5out.root.RD.pmtblr
         sipmrwf_out = h5out.root.RD.sipmrwf
+        if "/RD/pmtcwf" in h5out:
+            pmtcwf_out = h5out.root.RD.pmtcwf
 
     if "/TWF" in h5out:
         pmttwf_out = h5out.root.TWF.PMT
@@ -225,15 +255,60 @@ def file_merger(outputfilename, *inputfilenames, **options):
         pmaps_out = h5out.root.PMAPS.PMaps
         pmaps_blr_out = h5out.root.PMAPS.PMapsBLR
 
+    dump_unselected = discardedfilename is not None
+    if dump_unselected:
+        h5dis = create_new_file(discardedfilename, inputfilenames[0],
+                                **options)
+
+        if "/Run" in h5out:
+            evtrow_dis = h5dis.root.Run.events.row
+
+        if "/pmtrd" in h5dis:
+            pmtrd_dis = h5dis.root.pmtrd
+            sipmrd_dis = h5dis.root.sipmrd
+
+        if "/RD" in h5dis:
+            pmtrwf_dis = h5dis.root.RD.pmtrwf
+            pmtblr_dis = h5dis.root.RD.pmtblr
+            sipmrwf_dis = h5dis.root.RD.sipmrwf
+            if "/RD/pmtcwf" in h5dis:
+                pmtcwf_dis = h5dis.root.RD.pmtcwf
+
+        if "/TWF" in h5dis:
+            pmttwf_dis = h5dis.root.TWF.PMT
+            sipmtwf_dis = h5dis.root.TWF.SiPM
+
+        if "/BLR" in h5dis:
+            mau_dis = h5dis.root.BLR.mau
+            pulse_on_dis = h5dis.root.BLR.pulse_on
+            wait_over_dis = h5dis.root.BLR.wait_over
+
+        if "/ZS" in h5dis:
+            pmtzs_dis = h5dis.root.ZS.PMT
+            blrzs_dis = h5dis.root.ZS.BLR
+            sipmzs_dis = h5dis.root.ZS.SiPM
+
+        if "/PMAPS" in h5dis:
+            pmaps_dis = h5dis.root.PMAPS.PMaps
+            pmaps_blr_dis = h5dis.root.PMAPS.PMapsBLR
+
     n_events_in = 0
     n_events_out = 0
+    n_events_dis = 0
+
     for i, filename in enumerate(inputfilenames):
         print("Opening", filename, end="... ")
         sys.stdout.flush()
         try:
             with tb.open_file(filename, "r") as h5in:
-                run = h5in.root.Run.events.cols
-                NEVT = run.evt_number[:].size
+                if "/Run" in h5in:
+                    run = h5in.root.Run.events.cols
+                    NEVT = run.evt_number[:].size
+                elif "/RD" in h5in:
+                    NEVT = h5in.root.RD.pmtrwf.shape[0]
+                else:
+                    NEVT = tbl.get_nofevents(h5in.root.TWF.PMT, "event")
+
                 n_events_in += NEVT
 
                 if "/pmtrd" in h5in:
@@ -244,6 +319,8 @@ def file_merger(outputfilename, *inputfilenames, **options):
                     pmtrwf_in = h5in.root.RD.pmtrwf
                     pmtblr_in = h5in.root.RD.pmtblr
                     sipmrwf_in = h5in.root.RD.sipmrwf
+                    if "/RD/pmtcwf" in h5in:
+                        pmtcwf_in = h5in.root.RD.pmtcwf
 
                 if "/TWF" in h5in:
                     pmttwf_in = h5in.root.TWF.PMT
@@ -264,50 +341,119 @@ def file_merger(outputfilename, *inputfilenames, **options):
                     pmaps_blr_in = h5in.root.PMAPS.PMapsBLR
 
                 for evt in range(NEVT):
-                    if not all([filter_(h5in, evt) for filter_ in filters]):
-                        continue
-                    evtrow["evt_number"] = run.evt_number[evt]
-                    evtrow["timestamp"] = run.timestamp[evt]
-                    evtrow.append()
+                    if all([filter_(h5in, evt) for filter_ in filters]):
+                        if "/Run" in h5out:
+                            evtrow_out["evt_number"] = run.evt_number[evt]
+                            evtrow_out["timestamp"] = run.timestamp[evt]
+                            evtrow_out.append()
 
-                    if "/pmtrd" in h5out:
-                        pmtrd_out.append(pmtrd_in[evt][np.newaxis])
-                        sipmrd_out.append(sipmrd_in[evt][np.newaxis])
+                        if "/pmtrd" in h5out:
+                            pmtrd_out.append(pmtrd_in[evt][np.newaxis])
+                            sipmrd_out.append(sipmrd_in[evt][np.newaxis])
 
-                    if "/RD" in h5out:
-                        pmtrwf_out.append(pmtrwf_in[evt][np.newaxis])
-                        pmtblr_out.append(pmtblr_in[evt][np.newaxis])
-                        sipmrwf_out.append(sipmrwf_in[evt][np.newaxis])
+                        if "/RD" in h5out:
+                            pmtrwf_out.append(pmtrwf_in[evt][np.newaxis])
+                            pmtblr_out.append(pmtblr_in[evt][np.newaxis])
+                            sipmrwf_out.append(sipmrwf_in[evt][np.newaxis])
+                            if "/RD/pmtcwf" in h5out:
+                                pmtcwf_out.append(pmtcwf_in[evt][np.newaxis])
 
-                    if "/TWF" in h5out:
-                        wf = tbl.read_wf_table(pmttwf_in, evt)
-                        tbl.store_wf(pmttwf_out, evt, wf)
-                        wf = tbl.read_wf_table(sipmtwf_in, evt)
-                        tbl.store_wf(sipmtwf_out, evt, wf)
+                        if "/TWF" in h5out:
+                            wf = tbl.read_wf_table(pmttwf_in, evt)
+                            tbl.store_wf_table(n_events_out, pmttwf_out, wf)
+                            wf = tbl.read_wf_table(sipmtwf_in, evt)
+                            tbl.store_wf_table(n_events_out, sipmtwf_out, wf)
 
-                    if "/BLR" in h5out:
-                        mau_out.append(mau_in[evt][np.newaxis])
-                        pulse_on_out.append(pulse_on_in[evt][np.newaxis])
-                        wait_over_out.append(wait_over_in[evt][np.newaxis])
+                        if "/BLR" in h5out:
+                            mau_out.append(mau_in[evt][np.newaxis])
+                            pulse_on_out.append(pulse_on_in[evt][np.newaxis])
+                            wait_over_out.append(wait_over_in[evt][np.newaxis])
 
-                    if "/ZS" in h5out:
-                        pmtzs_out.append(pmtzs_in[evt][np.newaxis])
-                        blrzs_out.append(blrzs_in[evt][np.newaxis])
-                        sipmzs_out.append(sipmzs_in[evt][np.newaxis])
+                        if "/ZS" in h5out:
+                            pmtzs_out.append(pmtzs_in[evt][np.newaxis])
+                            blrzs_out.append(blrzs_in[evt][np.newaxis])
+                            sipmzs_out.append(sipmzs_in[evt][np.newaxis])
 
-                    if "/PMAPS" in h5in:
-                        pmap = tbl.read_pmap(pmaps_in, evt)
-                        tbl.store_pmap(pmap, pmaps_out, evt)
-                        pmap = tbl.read_pmap(pmaps_blr_in, evt)
-                        tbl.store_pmap(pmap, pmaps_blr_out, evt)
+                        if "/PMAPS" in h5in:
+                            pmap = tbl.read_pmap(pmaps_in, evt)
+                            tbl.store_pmap(pmap, pmaps_out,
+                                           n_events_out, False)
+                            pmap = tbl.read_pmap(pmaps_blr_in, n_events_out)
+                            tbl.store_pmap(pmap, pmaps_blr_out,
+                                           n_events_out, False)
+                            if not evt % 20:
+                                pmaps_out.flush()
+                                pmaps_blr_out.flush()
 
-                    n_events_out += 1
-                h5out.root.Run.events.flush()
+                        n_events_out += 1
+                    elif dump_unselected:
+                        if "/Run" in h5dis:
+                            evtrow_dis["evt_number"] = run.evt_number[evt]
+                            evtrow_dis["timestamp"] = run.timestamp[evt]
+                            evtrow_dis.append()
+
+                        if "/pmtrd" in h5dis:
+                            pmtrd_dis.append(pmtrd_in[evt][np.newaxis])
+                            sipmrd_dis.append(sipmrd_in[evt][np.newaxis])
+
+                        if "/RD" in h5dis:
+                            pmtrwf_dis.append(pmtrwf_in[evt][np.newaxis])
+                            pmtblr_dis.append(pmtblr_in[evt][np.newaxis])
+                            sipmrwf_dis.append(sipmrwf_in[evt][np.newaxis])
+                            if "/RD/pmtcwf" in h5dis:
+                                pmtcwf_dis.append(pmtcwf_in[evt][np.newaxis])
+
+                        if "/TWF" in h5dis:
+                            wf = tbl.read_wf_table(pmttwf_in, evt)
+                            tbl.store_wf_table(n_events_dis, pmttwf_dis, wf)
+                            wf = tbl.read_wf_table(sipmtwf_in, evt)
+                            tbl.store_wf_table(n_events_dis, sipmtwf_dis, wf)
+
+                        if "/BLR" in h5dis:
+                            mau_dis.append(mau_in[evt][np.newaxis])
+                            pulse_on_dis.append(pulse_on_in[evt][np.newaxis])
+                            wait_over_dis.append(wait_over_in[evt][np.newaxis])
+
+                        if "/ZS" in h5dis:
+                            pmtzs_dis.append(pmtzs_in[evt][np.newaxis])
+                            blrzs_dis.append(blrzs_in[evt][np.newaxis])
+                            sipmzs_dis.append(sipmzs_in[evt][np.newaxis])
+
+                        if "/PMAPS" in h5in:
+                            pmap = tbl.read_pmap(pmaps_in, evt)
+                            tbl.store_pmap(pmap, pmaps_dis,
+                                           n_events_dis, False)
+                            pmap = tbl.read_pmap(pmaps_blr_in, evt)
+                            tbl.store_pmap(pmap, pmaps_blr_dis,
+                                           n_events_dis, False)
+                            if not evt % 20:
+                                pmaps_dis.flush()
+                                pmaps_blr_dis.flush()
+
+                        n_events_dis += 1
+                if "/Run" in h5in:
+                    h5out.root.Run.events.flush()
+                    if dump_unselected:
+                        h5dis.root.Run.events.flush()
             print("OK")
-        except:
-            print("Error")
-    print("# events out/in = {}/{} = {}".format(n_events_out, n_events_in,
-                                                n_events_out*1.0/n_events_in))
+        except Exception as e:
+            if options["RAISE_ERRORS"]:
+                print("\n" + "-"*80 + "\n- TRACEBACK:\n" + "-"*80)
+                traceback.print_tb(sys.exc_info()[2])
+                print("-"*80)
+                raise e
+            else:
+                print("Error")
+    ratio_out = n_events_out * 100. / n_events_in
+    ratio_dis = n_events_dis * 100. / n_events_in
+    print("# events in = {}".format(n_events_in))
+    print("# events accepted = {} ({:.2f}%)".format(n_events_out, ratio_out))
+    print("# events discarded = {} ({:.2f}%)".format(n_events_dis, ratio_dis))
+    h5out.flush()
+    h5out.close()
+    if dump_unselected:
+        h5dis.flush()
+        h5dis.close()
 
 
 if __name__ == "__main__":
@@ -316,9 +462,14 @@ if __name__ == "__main__":
                         help="input files to be merged", required=True)
     parser.add_argument("-o", metavar="ofile", type=str,
                         help="output file", required=True)
+    parser.add_argument("-d", metavar="dfile", type=str,
+                        help="output file with discarded events")
     parser.add_argument("-c", metavar="cfile", type=str,
                         help="configuration file")
+    parser.add_argument("--raise-errors", action="store_true",
+                        help="raise errors if present")
 
     args = parser.parse_args()
     options = read_config_file(args.c) if args.c else {}
-    file_merger(args.o, *args.i, **options)
+    options["RAISE_ERRORS"] = args.raise_errors
+    file_merger(args.o, args.d, *args.i, **options)

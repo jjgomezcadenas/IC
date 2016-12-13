@@ -160,7 +160,31 @@ def get_vectors(h5f):
     return pmttwf, sipmtwf, pmtrwf, pmtblr, sipmrwf
 
 
-def store_wf_table(event, table, wfdic):
+def get_pmt_vectors(h5f):
+    """
+    Return the most relevant fields stored in a raw data file.
+
+    Parameters
+    ----------
+    h5f : tb.File
+        (Open) hdf5 file.
+
+    Returns
+    -------
+    pmttwf : tb.Table
+        TWF table for PMTs
+    pmtrwf : tb.EArray
+        RWF array for PMTs
+    pmtblr : tb.EArray
+        BLR array for PMTs
+    """
+    pmttwf = h5f.root.TWF.PMT
+    pmtrwf = h5f.root.RD.pmtrwf
+    pmtblr = h5f.root.RD.pmtblr
+    return pmttwf, pmtrwf, pmtblr
+
+
+def store_wf_table(event, table, wfdic, flush=True):
     """
     Stores a set of waveforms in a table.
 
@@ -172,16 +196,19 @@ def store_wf_table(event, table, wfdic):
         Table instance where the wf must be stored.
     wfdic : dictionary or pd.Panel
         Contains a pd.DataFrame for each sensor. Keys are sensor IDs.
+    flush : bool
+        Whether to flush the table or not.
     """
     row = table.row
-    for isens, wf in wfdic.items():
+    for isens, wf in wfdic.iteritems():
         for t, e in zip(wf.time_mus, wf.ene_pes):
             row["event"] = event
             row["ID"] = isens
             row["time_mus"] = t
             row["ene_pes"] = e
             row.append()
-    table.flush()
+    if flush:
+        table.flush()
 
 
 def read_sensor_wf(table, evt, isens):
@@ -235,7 +262,7 @@ def read_wf_table(table, event_number):
     return pd.Panel({isens: get_df(isens) for isens in sensor_list})
 
 
-def store_pmap(pmap, table, evt):
+def store_pmap(pmap, table, evt, flush=True):
     """
     Stores a pmap in a table.
 
@@ -247,6 +274,8 @@ def store_pmap(pmap, table, evt):
         Table in which pmap will be stored.
     evt : int
         Event number
+    flush : bool
+        Whether to flush the table or not.
     """
     row = table.row
     for i, peak in enumerate(pmap.peaks):
@@ -259,7 +288,8 @@ def store_pmap(pmap, table, evt):
             row["cathode"] = e
             row["anode"] = qs
             row.append()
-    table.flush()
+    if flush:
+        table.flush()
 
 
 def read_pmap(table, evt):
@@ -290,3 +320,23 @@ def read_pmap(table, evt):
         anode = table.read_coordinates(coords, "anode")
         pmap.peaks.append(bdg.Peak(times, cathode, anode, ToT, signal))
     return pmap
+
+
+def get_nofevents(table, column_name="evt_number"):
+    """
+    Find number of events in table by asking number of different values in
+    column.
+
+    Parameters
+    ----------
+    table : tb.Table
+        Table to be read.
+    column_name : string
+        Name of the column with a unique value for each event.
+
+    Returns
+    -------
+    nevt : int
+        Number of events in table.
+    """
+    return len(set(table.read(field=column_name)))

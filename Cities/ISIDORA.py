@@ -18,21 +18,20 @@ from __future__ import print_function
 
 import sys
 from time import time
-import textwrap
 import numpy as np
 import tables as tb
 
 from Core.LogConfig import logger
-from Core.Configure import configure, define_event_loop
+from Core.Configure import configure, define_event_loop, print_configuration
 from Core.Nh5 import DECONV_PARAM
 import Core.tblFunctions as tbl
 
-import ICython.cBLR as cblr
+import ICython.Sierpe.cBLR as cblr
 import Database.loadDB as DB
 
 
 def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
-         acum_discharge_length=5000,
+         discharge_length=5000,
          acum_tau=2500,
          acum_compress=0.01):
     """
@@ -42,28 +41,54 @@ def DBLR(pmtrwf, n_baseline=500, thr_trigger=5,
     NPMT, PMTWL = pmtrwf.shape
     CWF = np.empty(pmtrwf.shape)
     ACUM = np.empty(pmtrwf.shape)
+    BSL = np.empty(pmtrwf.shape[0])
+    BSLE = np.empty(pmtrwf.shape[0])
+    BSLN = np.empty(pmtrwf.shape[0])
 
     for pmt in range(NPMT):
-        thr_acum = thr_trigger/DataPMT.coeff_blr[pmt]
-        signal_r, acum = cblr.\
+        # VH
+        signal_r, acum, baseline, baseline_end, noise_rms = cblr.\
           deconvolve_signal_acum(pmtrwf[pmt],
-                                 n_baseline=n_baseline,
+                                 n_baseline=500,
                                  coef_clean=DataPMT.coeff_c[pmt],
                                  coef_blr=DataPMT.coeff_blr[pmt],
                                  thr_trigger=thr_trigger,
-                                 thr_acum=thr_acum,
-                                 acum_discharge_length=acum_discharge_length,
-                                 acum_tau=acum_tau,
-                                 acum_compress=acum_compress)
+                                 acum_discharge_length=discharge_length)
+
+        # JJ
+        # signal_r, acum, baseline, baseline_end, noise_rms = cblr.\
+        #   deconvolve_signal_acum_v2(pmtrwf[pmt],
+        #                             n_baseline=500,
+        #                             coef_clean=DataPMT.coeff_c[pmt],
+        #                             coef_blr=DataPMT.coeff_blr[pmt],
+        #                             thr_trigger=thr_trigger,
+        #                             acum_tau=acum_tau,
+        #                             acum_compress=acum_compress,
+        #                             acum_discharge_length=discharge_length)
+
+        # signal_r, acum = cblr.deconvolve_signal_acum(
+        #                  pmtrwf[pmt],
+        #                  n_baseline=n_baseline,
+        #                  coef_clean=DataPMT.coeff_c[pmt],
+        #                  coef_blr=DataPMT.coeff_blr[pmt],
+        #                  thr_trigger=thr_trigger,
+        #                  thr_acum=thr_acum,
+        #                  acum_discharge_length=acum_discharge_length,
+        #                  acum_tau=acum_tau,
+        #                  acum_compress=acum_compress)
         CWF[pmt] = signal_r
         ACUM[pmt] = acum
-    return CWF, ACUM
+        BSL[pmt] = baseline
+        BSLE[pmt] = baseline_end
+        BSLN[pmt] = noise_rms
+
+    return CWF, ACUM, BSL, BSLE, BSLN
 
 
-def ISIDORA(argv):
-    DEBUG_LEVEL, INFO, CFP = configure(argv[0], argv[1:])
+def ISIDORA(argv=sys.argv):
+    CFP = configure(argv)
 
-    if INFO:
+    if CFP["INFO"]:
 
         print("""
         ISIDORA:
@@ -80,43 +105,22 @@ def ISIDORA(argv):
 
         """)
 
-    PATH_IN = CFP["PATH_IN"]
-    FILE_IN = CFP["FILE_IN"]
-    FIRST_EVT = CFP["FIRST_EVT"]
-    LAST_EVT = CFP["LAST_EVT"]
-    RUN_ALL = CFP["RUN_ALL"]
     N_BASELINE = CFP["N_BASELINE"]
     THR_TRIGGER = CFP["THR_TRIGGER"]
     ACUM_DISCHARGE_LENGTH = CFP["ACUM_DISCHARGE_LENGTH"]
     ACUM_TAU = CFP["ACUM_TAU"]
     ACUM_COMPRESS = CFP["ACUM_COMPRESS"]
-    NEVENTS = LAST_EVT - FIRST_EVT
-
-    logger.info("Debug level = {}".format(DEBUG_LEVEL))
-    logger.info("Input path ={}; file_in ={} ".format(PATH_IN, FILE_IN))
-    logger.info("First event = {} last event = {} "
-                "# events requested = {}".format(FIRST_EVT, LAST_EVT, NEVENTS))
-    logger.info("Baseline calculation length = {}"
-                "n_sigma for trigger = {}".format(N_BASELINE, THR_TRIGGER))
-
-    logger.info(textwrap.dedent("""\
-                Accumulator Parameters:
-                length for discharge = {}
-                tau for discharge = {}
-                compression factor = {}
-                """.format(ACUM_DISCHARGE_LENGTH,
-                           ACUM_TAU, ACUM_COMPRESS)))
+    COMPRESSION = CFP["COMPRESSION"]
 
     # open the input file in mode append
-    with tb.open_file("{}/{}".format(PATH_IN, FILE_IN), "a") as h5in:
+    with tb.open_file(CFP["FILE_IN"], "a",
+                      filters=tbl.filters(COMPRESSION)) as h5in:
         # access the PMT raw data in file
-        pmtrd_ = h5in.root.RD.pmtrwf     # PMT raw data must exist
-
-        # pmtrd_.shape = (nof_events, nof_sensors, wf_length)
+        pmtrd_ = h5in.root.RD.pmtrwf  # PMT raw data must exist
         NEVENTS_DST, NPMT, PMTWL = pmtrd_.shape
 
-        logger.info("nof PMTs = {} WF side = {} ".format(NPMT, PMTWL))
-        logger.info("nof events in input DST = {} ".format(NEVENTS_DST))
+        print_configuration({"# PMT": NPMT, "PMT WL": PMTWL,
+                             "# events in DST": NEVENTS_DST})
 
         # create an extensible array to store the CWF waveforms
         # if it exists remove and create again
@@ -126,19 +130,23 @@ def ISIDORA(argv):
         pmtcwf = h5in.create_earray(h5in.root.RD, "pmtcwf",
                                     atom=tb.Int16Atom(),
                                     shape=(0, NPMT, PMTWL),
-                                    expectedrows=NEVENTS_DST)
-        if "/RD/pmtacum" in h5in:
-            h5in.remove_node("/RD", "pmtacum")
-
-        pmtacum = h5in.create_earray(h5in.root.RD, "pmtacum",
-                                     atom=tb.Int16Atom(),
-                                     shape=(0, NPMT, PMTWL),
-                                     expectedrows=NEVENTS_DST)
+                                    expectedrows=NEVENTS_DST,
+                                    filters=tbl.filters(COMPRESSION))
+        # if "/RD/pmtacum" in h5in:
+        #     h5in.remove_node("/RD", "pmtacum")
+        #
+        # pmtacum = h5in.create_earray(h5in.root.RD, "pmtacum",
+        #                              atom=tb.Int16Atom(),
+        #                              shape=(0, NPMT, PMTWL),
+        #                              expectedrows=NEVENTS_DST)
 
         if "/Deconvolution" not in h5in:
             h5in.create_group(h5in.root, "Deconvolution")
         if "/Deconvolution/Parameters" in h5in:
             h5in.remove_node("/Deconvolution", "Parameters")
+        if "/Deconvolution/BL" in h5in:
+            h5in.remove_node("/Deconvolution", "BL")
+
         deconv_table = h5in.create_table(h5in.root.Deconvolution,
                                          "Parameters",
                                          DECONV_PARAM,
@@ -146,33 +154,33 @@ def ISIDORA(argv):
                                          tbl.filters("NOCOMPR"))
         tbl.store_deconv_table(deconv_table, CFP)
 
+        bl_array = h5in.create_earray(h5in.root.Deconvolution, "BL",
+                                      atom=tb.Int16Atom(),
+                                      shape=(0, NPMT, 3),
+                                      expectedrows=NEVENTS_DST,
+                                      filters=tbl.filters(COMPRESSION))
         # LOOP
-        first_evt, last_evt, print_mod = define_event_loop(FIRST_EVT, LAST_EVT,
-                                                           NEVENTS,
-                                                           NEVENTS_DST,
-                                                           RUN_ALL)
-
         t0 = time()
-        for i in range(first_evt, last_evt):
-            if not i % print_mod:
-                logger.info("-->event number = {}".format(i))
-
-            signal_r, acum = DBLR(pmtrd_[i],
-                                  n_baseline=N_BASELINE,
-                                  thr_trigger=THR_TRIGGER,
-                                  acum_discharge_length=ACUM_DISCHARGE_LENGTH,
-                                  acum_tau=ACUM_TAU,
-                                  acum_compress=ACUM_COMPRESS)
+        for i in define_event_loop(CFP, NEVENTS_DST):
+            data = DBLR(pmtrd_[i],
+                        n_baseline=N_BASELINE,
+                        thr_trigger=THR_TRIGGER,
+                        discharge_length=ACUM_DISCHARGE_LENGTH,
+                        acum_tau=ACUM_TAU,
+                        acum_compress=ACUM_COMPRESS)
+            signal_r, bl_data = data[0], data[2:]
 
             # append to pmtcwf
             pmtcwf.append(signal_r.reshape(1, NPMT, PMTWL))
+            bl_array.append(np.array(bl_data).T[np.newaxis])
             # append to pmtacum
-            pmtacum.append(acum.reshape(1, NPMT, PMTWL))
+            # pmtacum.append(acum.reshape(1, NPMT, PMTWL))
 
         t1 = time()
         dt = t1 - t0
         pmtcwf.flush()
-        pmtacum.flush()
+        bl_array.flush()
+        # pmtacum.flush()
 
         print("ISIDORA has run over {} events in {} seconds".format(i+1, dt))
     print("Leaving ISIDORA. Safe travels!")

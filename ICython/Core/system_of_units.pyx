@@ -2,48 +2,8 @@
 # ----------------------------------------------------------------------
 # HEP coherent system of Unitscoulomb
 #
-# This file has been provided by Geant4 (simulation toolkit for HEP).
-#
-# The basic units are :
-#  		millimeter              (millimeter)
-# 		nanosecond              (nanosecond)
-# 		Mega electron Volt      (MeV)
-# 		positron charge         (eplus)
-# 		degree Kelvin           (kelvin)
-#              the amount of substance (mole)
-#              luminous intensity      (candela)
-# 		radian                  (radian)
-#              steradian               (steradian)
-#
-# Below is a non exhaustive list of derived and pratical units
-# (i.e. mostly the SI units).
-# You can add your own units.
-#
-# The SI numerical value of the positron charge is defined here,
-# as it is needed for conversion factor : positron charge = e_SI (coulomb)
-#
-# The others physical constants are defined in the header file :
-# PhysicalConstants.h
-#
-# Authors: M.Maire, S.Giani
-#
-# History:
-#
-# 06.02.96   Created.
-# 28.03.96   Added miscellaneous constants.
-# 05.12.97   E.Tcherniaev: Redefined pascal (to avoid warnings on WinNT)
-# 20.05.98   names: meter, second, gram, radian, degree
-#            (from Brian.Lasiuk@yale.edu (STAR)). Added luminous units.
-# 05.08.98   angstrom, picobarn, microsecond, picosecond, petaelectronvolt
-
-
-#
-# Length [L]
-#
 
 cdef class SystemOfUnits:
-    cdef readonly double euro, millimeter, millimeter2, millimeter3, centimeter, centimeter2, cm, cm2, cm3, centimeter3, decimeter, decimeter2, decimeter3, liter, l, meter, meter2, meter3, kilometer,  kilometer2,  kilometer3,  micrometer,  nanometer,  angstrom, fermi,  nm,  mum,  micron,  barn,  millibarn,  microbarn,  nanobarn,  picobarn,  mm,  mm2,  mm3, m,  m2,  m3,  km, km2, km3, ft,  radian,  milliradian, mrad, degree,  steradian,  rad, sr,  deg,  nanosecond,  millisecond,  second, year,  day,  minute,  hour,  s,  ms,  ps, mus, ns, picosecond, microsecond, hertz, kilohertz, megahertz,  gigahertz,  MHZ,  kHz, kHZ, GHZ,  eplus,  e_SI,  coulomb,  electronvolt, megaelectronvolt,  milielectronvolt,  kiloelectronvolt, gigaelectronvolt,  teraelectronvolt, petaelectronvolt, meV,  eV,  keV,  MeV,  GeV,  TeV,  PeV, eV2,  joule,  kilogram,  gram,  milligram, ton,  kiloton,  kg,  g,  mg,  watt, newton, hep_pascal,  pascal,  Pa,  kPa,  MPa,  GPa,  bar,  milibar,  atmosphere,  denier,  ampere,  milliampere, microampere, nanoampere,  mA,  muA,  nA,  megavolt,  kilovolt,  volt,  millivolt,  V,  mV,  kV, MV,  ohm, farad,  millifarad,  microfarad,  nanofarad,  picofarad, nF,  pF, weber,  tesla,  gauss,  kilogauss,  henry,  kelvin,  mole,  mol,  becquerel,  curie,  Bq,  mBq,  muBq, cks,  U238ppb, Th232ppb,  gray,  candela,  lumen,  lux, perCent, perThousand,  perMillion,  pes, adc
-
 
     def __init__(self):
         self.euro = 1.
@@ -305,5 +265,5 @@ cdef class SystemOfUnits:
         self.pes = 1.
         self.adc = 1
 #
-cpdef celsius(float tKelvin):
+cpdef double celsius(double tKelvin):
     return tKelvin - 273.15

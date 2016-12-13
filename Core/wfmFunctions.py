@@ -9,7 +9,6 @@ ChangeLog
 import math
 import pandas as pd
 import numpy as np
-import scipy.signal as signal
 
 
 def to_adc(wfs, sensdf):
@@ -128,30 +127,38 @@ def get_energy(pmtea, event_list=[0]):
 
     return pd.DataFrame(EPMT)
 
-
-def wfdf(time_mus, energy_pes, indx):
+def wfdf(time,energy_pes):
     """
-    Produce a DataFrame from input values.
-
-    Parameters
-    ----------
-    time_mus : 1-dim np.ndarray
-        Waveform time values.
-    energy_pes : 1-dim np.ndarray
-        Waveform amplitudes.
-    indx : 1-dim np.ndarray
-        Samples indices.
-
-    Returns
-    -------
-    df : pd.DataFrame
-        A data frame with three fields (time_mus, ene_pes and indx) and one
-        entry per sample.
+    takes two vectors (time, energy) and returns a data frame representing a waveform
     """
-    return pd.DataFrame({"time_mus": time_mus,
-                         "ene_pes": energy_pes,
-                         "indx": indx})
+    swf = {}
+    swf['time_mus'] = time/units.mus
+    swf['ene_pes'] = energy_pes
+    return pd.DataFrame(swf)
 
+# def wfdf(time_mus, energy_pes, indx):
+#     """
+#     Produce a DataFrame from input values.
+#
+#     Parameters
+#     ----------
+#     time_mus : 1-dim np.ndarray
+#         Waveform time values.
+#     energy_pes : 1-dim np.ndarray
+#         Waveform amplitudes.
+#     indx : 1-dim np.ndarray
+#         Samples indices.
+#
+#     Returns
+#     -------
+#     df : pd.DataFrame
+#         A data frame with three fields (time_mus, ene_pes and indx) and one
+#         entry per sample.
+#     """
+#     return pd.DataFrame({"time_mus": time_mus,
+#                          "ene_pes": energy_pes,
+#                          "indx": indx})
+#
 
 def wf2df(time_mus, energy_pes, dropnan=False):
     """

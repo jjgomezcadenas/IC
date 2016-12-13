@@ -6,9 +6,11 @@ from __future__ import print_function
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
-# from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D
+from IPython.display import HTML
 
 import Core.coreFunctions as cf
 import Core.system_of_units as units
@@ -17,7 +19,7 @@ import Core.tblFunctions as tbl
 
 
 # matplotlib.style.use("ggplot")
-
+matplotlib.rc('animation', html='html5')
 
 # histograms, signals and shortcuts
 def hbins(x, nsigma=5, nbins=10):
@@ -75,14 +77,17 @@ def plts(signal, signal_start=0, signal_end=1e+4, offset=5):
 
 
 def plot_signal(signal_t, signal, title="signal",
-                signal_start=0, signal_end=1e+4, units=""):
+                signal_start=0, signal_end=1e+4,
+                ymax = 200, t_units="", units=""):
     """
     Given a series signal (t, signal), plot the signal
     """
 
     ax1 = plt.subplot(1, 1, 1)
     ax1.set_xlim([signal_start, signal_end])
-    SetPlotLabels(xlabel="t (ns)", ylabel="signal (%s)" % units)
+    ax1.set_ylim([0, ymax])
+    SetPlotLabels(xlabel="t ({})".format(t_units),
+                  ylabel="signal ({})".format(units))
     plt.title(title)
     plt.plot(signal_t, signal)
     plt.show()
@@ -310,6 +315,20 @@ def plot_ene_pmt(geom_df, sensor_df, epmt, event_number=0, radius=10):
     return col
 
 
+def plot_sipm(sipm, nmin=0, nmax=16, x=4, y=4):
+    """
+    Takes as input a wf storing the SiPMs and plot nsipm
+    """
+    plt.figure(figsize=(12, 12))
+
+    for i in range(nmin, nmax):
+        plt.subplot(y, y, i+1)
+        # ax1.set_xlim([0, len_pmt])
+        #mpl.SetPlotLabels(xlabel="samples", ylabel="adc")
+        plt.plot(sipm[i])
+
+    plt.show()
+
 def plot_best(sipmrwf, sipmtwf, sipmdf, evt=0):
     """
     Plot the noisy waveform of the SiPM with greatest charge and
@@ -318,8 +337,8 @@ def plot_best(sipmrwf, sipmtwf, sipmdf, evt=0):
     plt.figure(figsize=(10, 8))
     # Find SiPM with greatest peak
     maxsipm = np.unravel_index(sipmrwf[evt].argmax(), sipmrwf[evt].shape)[0]
-    print("SiPM with greatest peak is "
-          "at index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].sensorID))
+    print("SiPM with greatest peak is at "
+          "index {} with ID {}".format(maxsipm, sipmdf.ix[maxsipm].sensorID))
 
     # Plot noisy waveform in red and noiseless waveform in blue
     true_times, true_amps = tbl.read_sensor_wf(sipmtwf, evt, maxsipm)
@@ -354,14 +373,74 @@ def plot_best_group(sipmrwf, sipmtwf, sipmdf, evt=0, nsipms=9, ncols=3):
     plt.tight_layout()
 
 
-def plot_pmap(pmap):
+def plot_pmap(pmap, legend=True, style="*-"):
     for i, peak in enumerate(pmap.peaks):
-        plt.plot(peak.times, peak.cathode, '*-',
+        plt.plot(peak.times, peak.cathode, style,
                  label="peak #{} type {}".format(i, peak.signal))
 
-    plt.legend(loc="upper left")
-    plt.xlabel("time ($\mu$s)")
-    plt.ylabel("energy (pes)")
+    if legend:
+        plt.legend(loc="upper left")
+    plt.xlabel("Time ($\mu$s)")
+    plt.ylabel("Energy (pes)")
+
+
+def plot_anode_slice(slice, sipmdf, threshold=0.1, cut_type="RELATIVE"):
+    """
+    Plots the anode for a single slice as a colored 2D plot.
+
+    Parameters
+    ----------
+    slice : 1-dim np.ndarray
+        The charge for each sensor.
+    sipmdf : pd.DataFrame
+        Contains the sensors' info.
+    threshold : float, optional
+        Cut level for SiPMs. Defaults to 0.1.
+    cut_type : string or None, optional.
+        Type of cut to be applied on the charge. Options are "ABSOLUTE",
+        "RELATIVE" (default) or None. The parameter *threshold* should vary
+        according to this flag. If None, it will be ignored.
+
+    Raises
+    ------
+    ValueError : if cut_type does not match any of the available options.
+    """
+    fig = plt.figure()
+    xmin, xmax = np.nanmin(sipmdf["X"].values), np.nanmax(sipmdf["X"].values)
+    ymin, ymax = np.nanmin(sipmdf["Y"].values), np.nanmax(sipmdf["Y"].values)
+    if cut_type is None:
+        selection = np.ones(slice.size, dtype=bool)
+    elif cut_type.upper() == "RELATIVE":
+        selection = slice > np.nanmax(slice) * threshold
+    elif cut_type.upper() == "ABSOLUTE":
+        selection = slice > threshold
+    else:
+        raise ValueError("cut_type value not recognized")
+
+    x, y = sipmdf["X"][selection], sipmdf["Y"][selection]
+    q = slice[selection]
+
+    plt.scatter(x, y, c=q)
+    plt.xlabel("x (mm)")
+    plt.ylabel("y (mm)")
+    plt.xlim((xmin, xmax))
+    plt.ylim((ymin, ymax))
+    plt.colorbar().set_label("Charge (pes)")
+
+
+def plot_anode_sum(pmap, sipmdf, threshold=0.1, cut_type="RELATIVE"):
+    """
+    Shortcut for plotting a pmap as a z-collapsed slice.
+
+    Parameters
+    ----------
+    pmap : Bridges.PMap
+        A pmap of any event.
+
+    Other parameters are the ones from plot_anode_slice.
+    """
+    slice = np.nansum(np.concatenate([peak.anode for peak in pmap]), axis=0)
+    plot_anode_slice(slice, sipmdf, threshold, cut_type)
 
 
 def plot_track(geom_df, mchits_df, vox_size=10, zoom=False):
@@ -535,3 +614,100 @@ def plot_track_projections(geom_df, mchits_df, vox_size=10, zoom=False):
     cbp3.set_label("Energy (keV)")
 
     plt.show()
+
+
+def make_movie(slices, sipmdf, thrs=0.1):
+    """
+    Create a video made of consecutive frames showing the response of the
+    tracking plane.
+
+    Parameters
+    ----------
+    slices : 2-dim np.ndarray
+        The signal of each SiPM (axis 1) for each time sample (axis 0).
+    sipmdf : pd.DataFrame
+        Contains the sensors information.
+    thrs : float, optional
+        Default cut value to be applied to each slice. Defaults to 0.1.
+
+    Returns
+    -------
+    mov : matplotlib.animation
+        The movie.
+    """
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 8)
+    X, Y = sipmdf["X"].values, sipmdf["Y"].values
+    xmin, xmax = np.nanmin(X), np.nanmax(X)
+    ymin, ymax = np.nanmin(Y), np.nanmax(Y)
+    def init():
+        global cbar, scplot
+        ax.set_xlabel("x (mm)")
+        ax.set_ylabel("y (mm)")
+        ax.set_xlim((xmin, xmax))
+        ax.set_ylim((ymin, ymax))
+        scplot = ax.scatter([], [], c=[])
+        cbar = fig.colorbar(scplot, ax=ax)
+        cbar.set_label("Charge (pes)")
+        return (scplot,)
+
+    def animate(i):
+        global cbar, scplot
+        slice_ = slices[i]
+        selection = slice_ > np.nanmax(slice_) * thrs
+        x, y, q = X[selection], Y[selection], slice_[selection]
+        cbar.remove()
+        fig.clear()
+        ax = plt.gca()
+        ax.set_xlabel("x (mm)")
+        ax.set_ylabel("y (mm)")
+        ax.set_xlim((xmin, xmax))
+        ax.set_ylim((ymin, ymax))
+        scplot = ax.scatter(x, y, c=q, marker="s", vmin=0, vmax=np.nanmax(slices))
+        cbar = fig.colorbar(scplot, ax=ax, boundaries=np.linspace(0,np.nanmax(slices),100))
+        cbar.set_label("Charge (pes)")
+        return (scplot,)
+
+    anim = matplotlib.animation.FuncAnimation(fig, animate, init_func=init,
+                                              frames=len(slices), interval=200,
+                                              blit=False)
+    return anim
+
+
+def plot_event_3D(pmap, sipmdf, outputfile=None, thrs=0.):
+    """
+    Create a 3D+1 representation of the event based on the SiPMs signal for
+    each slice.
+
+    Parameters
+    ----------
+    pmap : Bridges.PMap
+        The pmap of some event.
+    sipmdf : pd.DataFrame
+        Contains the X, Y info.
+    outputfile : string, optional
+        Name of the outputfile. If given, the plot is saved with this name.
+        It is not saved by default.
+    thrs : float, optional
+        Relative cut to be applied per slice. Defaults to 0.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    x, y, z, q = [], [], [], []
+    for peak in pmap.get("S2"):
+        for time, sl in zip(peak.times, peak.anode):
+            selection = sl > thrs * np.nanmax(sl)
+            x.extend(sipmdf["X"].values[selection])
+            y.extend(sipmdf["Y"].values[selection])
+            z.extend(np.ones_like(sl[selection])*time)
+            q.extend(sl[selection])
+
+    ax.scatter(x, z, y, c=q, s=[2*qi for qi in q], alpha=0.3)
+    ax.set_xlabel("x (mm)")
+    ax.set_ylabel("z (mm)")
+    ax.set_zlabel("y (mm)")
+    fig.set_size_inches(10,8)
+    if outputfile is not None:
+        fig.savefig(outputfile)
