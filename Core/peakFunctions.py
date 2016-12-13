@@ -132,7 +132,7 @@ def sipm_S2(dSIPM,S2, thr=5*units.pes):
     a list of np arrays. Each element of the list is the S2 window
     in the SiPM (if not zero)
     """
-    
+
     i0,i1 = index_from_S2(S2)
     dim = int(i1 - i0)
     SIPML = []
