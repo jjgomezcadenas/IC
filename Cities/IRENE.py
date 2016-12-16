@@ -3,6 +3,10 @@ from __future__ import print_function
 import numpy as np
 import tables
 from time import time
+import sys
+from glob import glob
+
+from Core.Nh5 import RunInfo, EventInfo
 
 import tables as tb
 import numpy as np
@@ -29,9 +33,10 @@ class S12(tb.IsDescription):
     time and energy of the peak
     """
     event = tb.Int32Col(pos=0)
-    peak = tb.UInt8Col(pos=1)  # peak number
-    time = tb.Float32Col(pos=2) # time in ns
-    ene = tb.Float32Col(pos=3) # energy in pes
+    evtDaq = tb.Int32Col(pos=1)
+    peak = tb.UInt8Col(pos=2)  # peak number
+    time = tb.Float32Col(pos=3) # time in ns
+    ene = tb.Float32Col(pos=4) # energy in pes
 
 class S2Si(tb.IsDescription):
     """
@@ -42,10 +47,11 @@ class S2Si(tb.IsDescription):
     only energies are stored (times are defined in S2)
     """
     event = tb.Int32Col(pos=0)
-    peak = tb.UInt8Col(pos=1)  # peak number
-    nsipm = tb.Int16Col(pos=2)  # sipm number
-    nsample = tb.Int16Col(pos=3) # sample number
-    ene = tb.Float32Col(pos=4) # energy in pes
+    evtDaq = tb.Int32Col(pos=1)
+    peak = tb.UInt8Col(pos=2)  # peak number
+    nsipm = tb.Int16Col(pos=3)  # sipm number
+    nsample = tb.Int16Col(pos=4) # sample number
+    ene = tb.Float32Col(pos=5) # energy in pes
 
 
 class Irene:
@@ -62,6 +68,7 @@ class Irene:
         loads the data base to access calibration and geometry
         sets all switches to default value (False most of the time)
         """
+        self.run_number = run_number
         DataPMT = loadDB.DataPMT(run_number)
         DataSiPM = loadDB.DataSiPM(run_number)
 
@@ -119,19 +126,18 @@ class Irene:
         """
         self.nprint = nprint
 
-    def set_input_files(self,path, input_files):
+    def set_input_files(self, input_files):
         """
         Sets the input files
         """
-        self.path = path
         self.input_files = input_files
         self.setFiles = True
 
-    def set_pmap_store(self, path, pmap_file, compression='ZLIB4'):
+    def set_pmap_store(self, pmap_file, compression='ZLIB4'):
         """
         Sets the input files
         """
-        filename = path + pmap_file
+        filename = pmap_file
         self.pmapFile = tb.open_file(filename, "w",
                           filters=tbl.filters(compression))
 
@@ -156,6 +162,16 @@ class Irene:
         self.s1t.cols.event.create_index()
         self.s2t.cols.event.create_index()
         self.s2sit.cols.event.create_index()
+
+        # Create group for run info
+        rungroup = self.pmapFile.create_group(self.pmapFile.root, "Run")
+
+        self.runInfot = self.pmapFile.create_table(rungroup,"runInfo",
+                                                   RunInfo, "runInfo",
+                                                   tbl.filters(compression))
+        self.evtInfot= self.pmapFile.create_table(rungroup, "events",
+                                                  EventInfo, "events",
+                                                  tbl.filters(compression))
 
         self.setPmapStore = True
 
@@ -236,10 +252,17 @@ class Irene:
         plt.xlim(-198, 198)
         plt.ylim(-198, 198)
 
-    def store_pmaps(self, evt, S1, S2, S2Si):
+    def store_pmaps(self, event, evtInfo, S1, S2, S2Si):
         """
         Store PMAPS
         """
+        # Event info
+        row = self.evtInfot.row
+        row['evt_number'] = evtInfo[0]
+        row['timestamp'] = evtInfo[1]
+        row.append()
+        self.evtInfot.flush()
+
         #S1
         row = self.s1t.row
 
@@ -248,7 +271,8 @@ class Irene:
             ene = S1[i][1]
             assert(len(time) == len(ene))
             for j in range(len(time)):
-                row["event"] = evt
+                row["event"] = event
+                row["evtDaq"] = evtInfo[0]
                 row["peak"] = i
                 row["time"] = time[j]
                 row["ene"] = ene[j]
@@ -264,7 +288,8 @@ class Irene:
             ene = S2[i][1]
             assert(len(time) == len(ene))
             for j in range(len(time)):
-                row["event"] = evt
+                row["event"] = event
+                row["evtDaq"] = evtInfo[0]
                 row["peak"] = i
                 row["time"] = time[j]
                 row["ene"] = ene[j]
@@ -282,7 +307,8 @@ class Irene:
                 ene = sipm[1]
                 for j in range(len(ene)):
                     if ene[j] > 0:
-                        row["event"] = evt
+                        row["event"] = event
+                        row["evtDaq"] = evtInfo[0]
                         row["peak"] = i
                         row["nsipm"] = nsipm
                         row["nsample"] = j
@@ -302,8 +328,6 @@ class Irene:
 
         if self.setFiles == False:
             raise IOError('must set files before running')
-        if self.path =='':
-            raise IOError('path is empty')
         if len(self.input_files) == 0:
             raise IOError('input file list is empty')
 
@@ -319,10 +343,8 @@ class Irene:
         print("""
                  IRENE will run a max of {} events
                  Storing PMAPS (1=yes/0=no)
-                 Input path ={}
                  Input Files ={}
-                          """.format(nmax, store_pmaps,
-                                     self.path,self.input_files))
+                          """.format(nmax, store_pmaps, self.input_files))
 
         print("""
                  S1 parameters
@@ -354,12 +376,13 @@ class Irene:
         for ffile in self.input_files:
 
             print("Opening", ffile, end="... ")
-            filename = self.path + ffile
+            filename = ffile
 
             try:
                 with tb.open_file(filename, "r+") as h5in:
                     pmtrwf = h5in.root.RD.pmtrwf
                     sipmrwf = h5in.root.RD.sipmrwf
+                    eventsInfo = h5in.root.Run.events
 
                     if first == False:
 
@@ -405,7 +428,7 @@ class Irene:
                         wfzs_ene, wfzs_indx = cpf.wfzs(csum,
                                                        threshold=self.thr_csum)
 
-                        #wfzs_t = cpf.time_from_index(wfzs_indx)
+                    #wfzs_t = cpf.time_from_index(wfzs_indx)
 
                         # find S1 and S2
                         S1 = cpf.find_S12(wfzs_ene, wfzs_indx,
@@ -448,7 +471,8 @@ class Irene:
                         if store_pmaps == True:
                             if self.setPmapStore == False:
                                 raise IOError('must set PMAPS before storing')
-                            self.store_pmaps(n_events_tot, S1,S2,S2Si)
+                            self.store_pmaps(n_events_tot, eventsInfo[evt],
+                                             S1, S2, S2Si)
 
                         if self.plot_simap:
                             self.plot_ene_sipm(sipmd)
@@ -460,9 +484,9 @@ class Irene:
                             print('event in file = {}, total = {}'.\
                               format(evt, n_events_tot))
 
-                        if n_events_tot >= nmax:
+                        if n_events_tot >= nmax and nmax > -1:
                             print('reached maximum number of events (={})'.format(nmax))
-                            return nmax
+                            break
 
 
             except:
@@ -470,430 +494,50 @@ class Irene:
                 raise
 
         if store_pmaps == True:
+            row = self.runInfot.row
+            row['run_number'] = self.run_number
+            row.append()
+            self.runInfot.flush()
             self.pmapFile.close()
         return n_events_tot
 
-if __name__ == "__main__":
-    input_files =['run_3112.gdcsnext.000.next1el_3112.root.h5',
-'run_3112.gdcsnext.001.next1el_3112.root.h5',
-'run_3112.gdcsnext.002.next1el_3112.root.h5',
-'run_3112.gdcsnext.003.next1el_3112.root.h5',
-'run_3112.gdcsnext.004.next1el_3112.root.h5',
-'run_3112.gdcsnext.005.next1el_3112.root.h5',
-'run_3112.gdcsnext.006.next1el_3112.root.h5',
-'run_3112.gdcsnext.007.next1el_3112.root.h5',
-'run_3112.gdcsnext.008.next1el_3112.root.h5',
-'run_3112.gdcsnext.009.next1el_3112.root.h5',
-'run_3112.gdcsnext.010.next1el_3112.root.h5',
-'run_3112.gdcsnext.011.next1el_3112.root.h5',
-'run_3112.gdcsnext.012.next1el_3112.root.h5',
-'run_3112.gdcsnext.013.next1el_3112.root.h5',
-'run_3112.gdcsnext.014.next1el_3112.root.h5',
-'run_3112.gdcsnext.015.next1el_3112.root.h5',
-'run_3112.gdcsnext.016.next1el_3112.root.h5',
-'run_3112.gdcsnext.017.next1el_3112.root.h5',
-'run_3112.gdcsnext.018.next1el_3112.root.h5',
-'run_3112.gdcsnext.019.next1el_3112.root.h5',
-'run_3112.gdcsnext.020.next1el_3112.root.h5',
-'run_3112.gdcsnext.021.next1el_3112.root.h5',
-'run_3112.gdcsnext.022.next1el_3112.root.h5',
-'run_3112.gdcsnext.023.next1el_3112.root.h5',
-'run_3112.gdcsnext.024.next1el_3112.root.h5',
-'run_3112.gdcsnext.025.next1el_3112.root.h5',
-'run_3112.gdcsnext.026.next1el_3112.root.h5',
-'run_3112.gdcsnext.027.next1el_3112.root.h5',
-'run_3112.gdcsnext.028.next1el_3112.root.h5',
-'run_3112.gdcsnext.029.next1el_3112.root.h5',
-'run_3112.gdcsnext.030.next1el_3112.root.h5',
-'run_3112.gdcsnext.031.next1el_3112.root.h5',
-'run_3112.gdcsnext.032.next1el_3112.root.h5',
-'run_3112.gdcsnext.033.next1el_3112.root.h5',
-'run_3112.gdcsnext.034.next1el_3112.root.h5',
-'run_3112.gdcsnext.035.next1el_3112.root.h5',
-'run_3112.gdcsnext.036.next1el_3112.root.h5',
-'run_3112.gdcsnext.037.next1el_3112.root.h5',
-'run_3112.gdcsnext.038.next1el_3112.root.h5',
-'run_3112.gdcsnext.039.next1el_3112.root.h5',
-'run_3112.gdcsnext.040.next1el_3112.root.h5',
-'run_3112.gdcsnext.041.next1el_3112.root.h5',
-'run_3112.gdcsnext.042.next1el_3112.root.h5',
-'run_3112.gdcsnext.043.next1el_3112.root.h5',
-'run_3112.gdcsnext.044.next1el_3112.root.h5',
-'run_3112.gdcsnext.045.next1el_3112.root.h5',
-'run_3112.gdcsnext.046.next1el_3112.root.h5',
-'run_3112.gdcsnext.047.next1el_3112.root.h5',
-'run_3112.gdcsnext.048.next1el_3112.root.h5',
-'run_3112.gdcsnext.049.next1el_3112.root.h5',
-'run_3112.gdcsnext.050.next1el_3112.root.h5',
-'run_3112.gdcsnext.051.next1el_3112.root.h5',
-'run_3112.gdcsnext.052.next1el_3112.root.h5',
-'run_3112.gdcsnext.053.next1el_3112.root.h5',
-'run_3112.gdcsnext.054.next1el_3112.root.h5',
-'run_3112.gdcsnext.055.next1el_3112.root.h5',
-'run_3112.gdcsnext.056.next1el_3112.root.h5',
-'run_3112.gdcsnext.057.next1el_3112.root.h5',
-'run_3112.gdcsnext.058.next1el_3112.root.h5',
-'run_3112.gdcsnext.059.next1el_3112.root.h5',
-'run_3112.gdcsnext.060.next1el_3112.root.h5',
-'run_3112.gdcsnext.061.next1el_3112.root.h5',
-'run_3112.gdcsnext.062.next1el_3112.root.h5',
-'run_3112.gdcsnext.063.next1el_3112.root.h5',
-'run_3112.gdcsnext.064.next1el_3112.root.h5',
-'run_3112.gdcsnext.065.next1el_3112.root.h5',
-'run_3112.gdcsnext.066.next1el_3112.root.h5',
-'run_3112.gdcsnext.067.next1el_3112.root.h5',
-'run_3112.gdcsnext.068.next1el_3112.root.h5',
-'run_3112.gdcsnext.069.next1el_3112.root.h5',
-'run_3112.gdcsnext.070.next1el_3112.root.h5',
-'run_3112.gdcsnext.071.next1el_3112.root.h5',
-'run_3112.gdcsnext.072.next1el_3112.root.h5',
-'run_3112.gdcsnext.073.next1el_3112.root.h5',
-'run_3112.gdcsnext.074.next1el_3112.root.h5',
-'run_3112.gdcsnext.075.next1el_3112.root.h5',
-'run_3112.gdcsnext.076.next1el_3112.root.h5',
-'run_3112.gdcsnext.077.next1el_3112.root.h5',
-'run_3112.gdcsnext.078.next1el_3112.root.h5',
-'run_3112.gdcsnext.079.next1el_3112.root.h5',
-'run_3112.gdcsnext.080.next1el_3112.root.h5',
-'run_3112.gdcsnext.081.next1el_3112.root.h5',
-'run_3112.gdcsnext.082.next1el_3112.root.h5',
-'run_3112.gdcsnext.083.next1el_3112.root.h5',
-'run_3112.gdcsnext.084.next1el_3112.root.h5',
-'run_3112.gdcsnext.085.next1el_3112.root.h5',
-'run_3112.gdcsnext.086.next1el_3112.root.h5',
-'run_3112.gdcsnext.087.next1el_3112.root.h5',
-'run_3112.gdcsnext.088.next1el_3112.root.h5',
-'run_3112.gdcsnext.089.next1el_3112.root.h5',
-'run_3112.gdcsnext.090.next1el_3112.root.h5',
-'run_3112.gdcsnext.091.next1el_3112.root.h5',
-'run_3112.gdcsnext.092.next1el_3112.root.h5',
-'run_3112.gdcsnext.093.next1el_3112.root.h5',
-'run_3112.gdcsnext.094.next1el_3112.root.h5',
-'run_3112.gdcsnext.095.next1el_3112.root.h5',
-'run_3112.gdcsnext.096.next1el_3112.root.h5',
-'run_3112.gdcsnext.097.next1el_3112.root.h5',
-'run_3112.gdcsnext.098.next1el_3112.root.h5',
-'run_3112.gdcsnext.099.next1el_3112.root.h5',
-'run_3112.gdcsnext.100.next1el_3112.root.h5',
-'run_3112.gdcsnext.101.next1el_3112.root.h5',
-'run_3112.gdcsnext.102.next1el_3112.root.h5',
-'run_3112.gdcsnext.103.next1el_3112.root.h5',
-'run_3112.gdcsnext.104.next1el_3112.root.h5',
-'run_3112.gdcsnext.105.next1el_3112.root.h5',
-'run_3112.gdcsnext.106.next1el_3112.root.h5',
-'run_3112.gdcsnext.107.next1el_3112.root.h5',
-'run_3112.gdcsnext.108.next1el_3112.root.h5',
-'run_3112.gdcsnext.109.next1el_3112.root.h5',
-'run_3112.gdcsnext.110.next1el_3112.root.h5',
-'run_3112.gdcsnext.111.next1el_3112.root.h5',
-'run_3112.gdcsnext.112.next1el_3112.root.h5',
-'run_3112.gdcsnext.113.next1el_3112.root.h5',
-'run_3112.gdcsnext.114.next1el_3112.root.h5',
-'run_3112.gdcsnext.115.next1el_3112.root.h5',
-'run_3112.gdcsnext.116.next1el_3112.root.h5',
-'run_3112.gdcsnext.117.next1el_3112.root.h5',
-'run_3112.gdcsnext.118.next1el_3112.root.h5',
-'run_3112.gdcsnext.119.next1el_3112.root.h5',
-'run_3112.gdcsnext.120.next1el_3112.root.h5',
-'run_3112.gdcsnext.121.next1el_3112.root.h5',
-'run_3112.gdcsnext.122.next1el_3112.root.h5',
-'run_3112.gdcsnext.123.next1el_3112.root.h5',
-'run_3112.gdcsnext.124.next1el_3112.root.h5',
-'run_3112.gdcsnext.125.next1el_3112.root.h5',
-'run_3112.gdcsnext.126.next1el_3112.root.h5',
-'run_3112.gdcsnext.127.next1el_3112.root.h5',
-'run_3112.gdcsnext.128.next1el_3112.root.h5',
-'run_3112.gdcsnext.129.next1el_3112.root.h5',
-'run_3112.gdcsnext.130.next1el_3112.root.h5',
-'run_3112.gdcsnext.131.next1el_3112.root.h5',
-'run_3112.gdcsnext.132.next1el_3112.root.h5',
-'run_3112.gdcsnext.133.next1el_3112.root.h5',
-'run_3112.gdcsnext.134.next1el_3112.root.h5',
-'run_3112.gdcsnext.135.next1el_3112.root.h5',
-'run_3112.gdcsnext.136.next1el_3112.root.h5',
-'run_3112.gdcsnext.137.next1el_3112.root.h5',
-'run_3112.gdcsnext.138.next1el_3112.root.h5',
-'run_3112.gdcsnext.139.next1el_3112.root.h5',
-'run_3112.gdcsnext.140.next1el_3112.root.h5',
-'run_3112.gdcsnext.141.next1el_3112.root.h5',
-'run_3112.gdcsnext.142.next1el_3112.root.h5',
-'run_3112.gdcsnext.143.next1el_3112.root.h5',
-'run_3112.gdcsnext.144.next1el_3112.root.h5',
-'run_3112.gdcsnext.145.next1el_3112.root.h5',
-'run_3112.gdcsnext.146.next1el_3112.root.h5',
-'run_3112.gdcsnext.147.next1el_3112.root.h5',
-'run_3112.gdcsnext.148.next1el_3112.root.h5',
-'run_3112.gdcsnext.149.next1el_3112.root.h5',
-'run_3112.gdcsnext.150.next1el_3112.root.h5',
-'run_3112.gdcsnext.151.next1el_3112.root.h5',
-'run_3112.gdcsnext.152.next1el_3112.root.h5',
-'run_3112.gdcsnext.153.next1el_3112.root.h5',
-'run_3112.gdcsnext.154.next1el_3112.root.h5',
-'run_3112.gdcsnext.155.next1el_3112.root.h5',
-'run_3112.gdcsnext.156.next1el_3112.root.h5',
-'run_3112.gdcsnext.157.next1el_3112.root.h5',
-'run_3112.gdcsnext.158.next1el_3112.root.h5',
-'run_3112.gdcsnext.159.next1el_3112.root.h5',
-'run_3112.gdcsnext.160.next1el_3112.root.h5',
-'run_3112.gdcsnext.161.next1el_3112.root.h5',
-'run_3112.gdcsnext.162.next1el_3112.root.h5',
-'run_3112.gdcsnext.163.next1el_3112.root.h5',
-'run_3112.gdcsnext.164.next1el_3112.root.h5',
-'run_3112.gdcsnext.165.next1el_3112.root.h5',
-'run_3112.gdcsnext.166.next1el_3112.root.h5',
-'run_3112.gdcsnext.167.next1el_3112.root.h5',
-'run_3112.gdcsnext.168.next1el_3112.root.h5',
-'run_3112.gdcsnext.169.next1el_3112.root.h5',
-'run_3112.gdcsnext.170.next1el_3112.root.h5',
-'run_3112.gdcsnext.171.next1el_3112.root.h5',
-'run_3112.gdcsnext.172.next1el_3112.root.h5',
-'run_3112.gdcsnext.173.next1el_3112.root.h5',
-'run_3112.gdcsnext.174.next1el_3112.root.h5',
-'run_3112.gdcsnext.175.next1el_3112.root.h5',
-'run_3112.gdcsnext.176.next1el_3112.root.h5',
-'run_3112.gdcsnext.177.next1el_3112.root.h5',
-'run_3112.gdcsnext.178.next1el_3112.root.h5',
-'run_3112.gdcsnext.179.next1el_3112.root.h5',
-'run_3112.gdcsnext.180.next1el_3112.root.h5',
-'run_3112.gdcsnext.181.next1el_3112.root.h5',
-'run_3112.gdcsnext.182.next1el_3112.root.h5',
-'run_3112.gdcsnext.183.next1el_3112.root.h5',
-'run_3112.gdcsnext.184.next1el_3112.root.h5',
-'run_3112.gdcsnext.185.next1el_3112.root.h5',
-'run_3112.gdcsnext.186.next1el_3112.root.h5',
-'run_3112.gdcsnext.187.next1el_3112.root.h5',
-'run_3112.gdcsnext.188.next1el_3112.root.h5',
-'run_3112.gdcsnext.189.next1el_3112.root.h5',
-'run_3112.gdcsnext.190.next1el_3112.root.h5',
-'run_3112.gdcsnext.191.next1el_3112.root.h5',
-'run_3112.gdcsnext.192.next1el_3112.root.h5',
-'run_3112.gdcsnext.193.next1el_3112.root.h5',
-'run_3112.gdcsnext.194.next1el_3112.root.h5',
-'run_3112.gdcsnext.195.next1el_3112.root.h5',
-'run_3112.gdcsnext.196.next1el_3112.root.h5',
-'run_3112.gdcsnext.197.next1el_3112.root.h5',
-'run_3112.gdcsnext.198.next1el_3112.root.h5',
-'run_3112.gdcsnext.199.next1el_3112.root.h5',
-'run_3112.gdcsnext.200.next1el_3112.root.h5',
-'run_3112.gdcsnext.201.next1el_3112.root.h5',
-'run_3112.gdcsnext.202.next1el_3112.root.h5',
-'run_3112.gdcsnext.203.next1el_3112.root.h5',
-'run_3112.gdcsnext.204.next1el_3112.root.h5',
-'run_3112.gdcsnext.205.next1el_3112.root.h5',
-'run_3112.gdcsnext.206.next1el_3112.root.h5',
-'run_3112.gdcsnext.207.next1el_3112.root.h5',
-'run_3112.gdcsnext.208.next1el_3112.root.h5',
-'run_3112.gdcsnext.209.next1el_3112.root.h5',
-'run_3112.gdcsnext.210.next1el_3112.root.h5',
-'run_3112.gdcsnext.211.next1el_3112.root.h5',
-'run_3112.gdcsnext.212.next1el_3112.root.h5',
-'run_3112.gdcsnext.213.next1el_3112.root.h5',
-'run_3112.gdcsnext.214.next1el_3112.root.h5',
-'run_3112.gdcsnext.215.next1el_3112.root.h5',
-'run_3112.gdcsnext.216.next1el_3112.root.h5',
-'run_3112.gdcsnext.217.next1el_3112.root.h5',
-'run_3112.gdcsnext.218.next1el_3112.root.h5',
-'run_3112.gdcsnext.219.next1el_3112.root.h5',
-'run_3112.gdcsnext.220.next1el_3112.root.h5',
-'run_3112.gdcsnext.221.next1el_3112.root.h5',
-'run_3112.gdcsnext.222.next1el_3112.root.h5',
-'run_3112.gdcsnext.223.next1el_3112.root.h5',
-'run_3112.gdcsnext.224.next1el_3112.root.h5',
-'run_3112.gdcsnext.225.next1el_3112.root.h5',
-'run_3112.gdcsnext.226.next1el_3112.root.h5',
-'run_3112.gdcsnext.227.next1el_3112.root.h5',
-'run_3112.gdcsnext.228.next1el_3112.root.h5',
-'run_3112.gdcsnext.229.next1el_3112.root.h5',
-'run_3112.gdcsnext.230.next1el_3112.root.h5',
-'run_3112.gdcsnext.231.next1el_3112.root.h5',
-'run_3112.gdcsnext.232.next1el_3112.root.h5',
-'run_3112.gdcsnext.233.next1el_3112.root.h5',
-'run_3112.gdcsnext.234.next1el_3112.root.h5',
-'run_3112.gdcsnext.235.next1el_3112.root.h5',
-'run_3112.gdcsnext.236.next1el_3112.root.h5',
-'run_3112.gdcsnext.237.next1el_3112.root.h5',
-'run_3112.gdcsnext.238.next1el_3112.root.h5',
-'run_3112.gdcsnext.239.next1el_3112.root.h5',
-'run_3112.gdcsnext.240.next1el_3112.root.h5',
-'run_3112.gdcsnext.241.next1el_3112.root.h5',
-'run_3112.gdcsnext.242.next1el_3112.root.h5',
-'run_3112.gdcsnext.243.next1el_3112.root.h5',
-'run_3112.gdcsnext.244.next1el_3112.root.h5',
-'run_3112.gdcsnext.245.next1el_3112.root.h5',
-'run_3112.gdcsnext.246.next1el_3112.root.h5',
-'run_3112.gdcsnext.247.next1el_3112.root.h5',
-'run_3112.gdcsnext.248.next1el_3112.root.h5',
-'run_3112.gdcsnext.249.next1el_3112.root.h5',
-'run_3112.gdcsnext.250.next1el_3112.root.h5',
-'run_3112.gdcsnext.251.next1el_3112.root.h5',
-'run_3112.gdcsnext.252.next1el_3112.root.h5',
-'run_3112.gdcsnext.253.next1el_3112.root.h5',
-'run_3112.gdcsnext.254.next1el_3112.root.h5',
-'run_3112.gdcsnext.255.next1el_3112.root.h5',
-'run_3112.gdcsnext.256.next1el_3112.root.h5',
-'run_3112.gdcsnext.257.next1el_3112.root.h5',
-'run_3112.gdcsnext.258.next1el_3112.root.h5',
-'run_3112.gdcsnext.259.next1el_3112.root.h5',
-'run_3112.gdcsnext.260.next1el_3112.root.h5',
-'run_3112.gdcsnext.261.next1el_3112.root.h5',
-'run_3112.gdcsnext.262.next1el_3112.root.h5',
-'run_3112.gdcsnext.263.next1el_3112.root.h5',
-'run_3112.gdcsnext.264.next1el_3112.root.h5',
-'run_3112.gdcsnext.265.next1el_3112.root.h5',
-'run_3112.gdcsnext.266.next1el_3112.root.h5',
-'run_3112.gdcsnext.267.next1el_3112.root.h5',
-'run_3112.gdcsnext.268.next1el_3112.root.h5',
-'run_3112.gdcsnext.269.next1el_3112.root.h5',
-'run_3112.gdcsnext.270.next1el_3112.root.h5',
-'run_3112.gdcsnext.271.next1el_3112.root.h5',
-'run_3112.gdcsnext.272.next1el_3112.root.h5',
-'run_3112.gdcsnext.273.next1el_3112.root.h5',
-'run_3112.gdcsnext.274.next1el_3112.root.h5',
-'run_3112.gdcsnext.275.next1el_3112.root.h5',
-'run_3112.gdcsnext.276.next1el_3112.root.h5',
-'run_3112.gdcsnext.277.next1el_3112.root.h5',
-'run_3112.gdcsnext.278.next1el_3112.root.h5',
-'run_3112.gdcsnext.279.next1el_3112.root.h5',
-'run_3112.gdcsnext.280.next1el_3112.root.h5',
-'run_3112.gdcsnext.281.next1el_3112.root.h5',
-'run_3112.gdcsnext.282.next1el_3112.root.h5',
-'run_3112.gdcsnext.283.next1el_3112.root.h5',
-'run_3112.gdcsnext.284.next1el_3112.root.h5',
-'run_3112.gdcsnext.285.next1el_3112.root.h5',
-'run_3112.gdcsnext.286.next1el_3112.root.h5',
-'run_3112.gdcsnext.287.next1el_3112.root.h5',
-'run_3112.gdcsnext.288.next1el_3112.root.h5',
-'run_3112.gdcsnext.289.next1el_3112.root.h5',
-'run_3112.gdcsnext.290.next1el_3112.root.h5',
-'run_3112.gdcsnext.291.next1el_3112.root.h5',
-'run_3112.gdcsnext.292.next1el_3112.root.h5',
-'run_3112.gdcsnext.293.next1el_3112.root.h5',
-'run_3112.gdcsnext.294.next1el_3112.root.h5',
-'run_3112.gdcsnext.295.next1el_3112.root.h5',
-'run_3112.gdcsnext.296.next1el_3112.root.h5',
-'run_3112.gdcsnext.297.next1el_3112.root.h5',
-'run_3112.gdcsnext.298.next1el_3112.root.h5',
-'run_3112.gdcsnext.299.next1el_3112.root.h5',
-'run_3112.gdcsnext.300.next1el_3112.root.h5',
-'run_3112.gdcsnext.301.next1el_3112.root.h5',
-'run_3112.gdcsnext.302.next1el_3112.root.h5',
-'run_3112.gdcsnext.303.next1el_3112.root.h5',
-'run_3112.gdcsnext.304.next1el_3112.root.h5',
-'run_3112.gdcsnext.305.next1el_3112.root.h5',
-'run_3112.gdcsnext.306.next1el_3112.root.h5',
-'run_3112.gdcsnext.307.next1el_3112.root.h5',
-'run_3112.gdcsnext.308.next1el_3112.root.h5',
-'run_3112.gdcsnext.309.next1el_3112.root.h5',
-'run_3112.gdcsnext.310.next1el_3112.root.h5',
-'run_3112.gdcsnext.311.next1el_3112.root.h5',
-'run_3112.gdcsnext.312.next1el_3112.root.h5',
-'run_3112.gdcsnext.313.next1el_3112.root.h5',
-'run_3112.gdcsnext.314.next1el_3112.root.h5',
-'run_3112.gdcsnext.315.next1el_3112.root.h5',
-'run_3112.gdcsnext.316.next1el_3112.root.h5',
-'run_3112.gdcsnext.317.next1el_3112.root.h5',
-'run_3112.gdcsnext.318.next1el_3112.root.h5',
-'run_3112.gdcsnext.319.next1el_3112.root.h5',
-'run_3112.gdcsnext.320.next1el_3112.root.h5',
-'run_3112.gdcsnext.321.next1el_3112.root.h5',
-'run_3112.gdcsnext.322.next1el_3112.root.h5',
-'run_3112.gdcsnext.323.next1el_3112.root.h5',
-'run_3112.gdcsnext.324.next1el_3112.root.h5',
-'run_3112.gdcsnext.325.next1el_3112.root.h5',
-'run_3112.gdcsnext.326.next1el_3112.root.h5',
-'run_3112.gdcsnext.327.next1el_3112.root.h5',
-'run_3112.gdcsnext.328.next1el_3112.root.h5',
-'run_3112.gdcsnext.329.next1el_3112.root.h5',
-'run_3112.gdcsnext.330.next1el_3112.root.h5',
-'run_3112.gdcsnext.331.next1el_3112.root.h5',
-'run_3112.gdcsnext.332.next1el_3112.root.h5',
-'run_3112.gdcsnext.333.next1el_3112.root.h5',
-'run_3112.gdcsnext.334.next1el_3112.root.h5',
-'run_3112.gdcsnext.335.next1el_3112.root.h5',
-'run_3112.gdcsnext.336.next1el_3112.root.h5',
-'run_3112.gdcsnext.337.next1el_3112.root.h5',
-'run_3112.gdcsnext.338.next1el_3112.root.h5',
-'run_3112.gdcsnext.339.next1el_3112.root.h5',
-'run_3112.gdcsnext.340.next1el_3112.root.h5',
-'run_3112.gdcsnext.341.next1el_3112.root.h5',
-'run_3112.gdcsnext.342.next1el_3112.root.h5',
-'run_3112.gdcsnext.343.next1el_3112.root.h5',
-'run_3112.gdcsnext.344.next1el_3112.root.h5',
-'run_3112.gdcsnext.345.next1el_3112.root.h5',
-'run_3112.gdcsnext.346.next1el_3112.root.h5',
-'run_3112.gdcsnext.347.next1el_3112.root.h5',
-'run_3112.gdcsnext.348.next1el_3112.root.h5',
-'run_3112.gdcsnext.349.next1el_3112.root.h5',
-'run_3112.gdcsnext.350.next1el_3112.root.h5',
-'run_3112.gdcsnext.351.next1el_3112.root.h5',
-'run_3112.gdcsnext.352.next1el_3112.root.h5',
-'run_3112.gdcsnext.353.next1el_3112.root.h5',
-'run_3112.gdcsnext.354.next1el_3112.root.h5',
-'run_3112.gdcsnext.355.next1el_3112.root.h5',
-'run_3112.gdcsnext.356.next1el_3112.root.h5',
-'run_3112.gdcsnext.357.next1el_3112.root.h5',
-'run_3112.gdcsnext.358.next1el_3112.root.h5',
-'run_3112.gdcsnext.359.next1el_3112.root.h5',
-'run_3112.gdcsnext.360.next1el_3112.root.h5',
-'run_3112.gdcsnext.361.next1el_3112.root.h5',
-'run_3112.gdcsnext.362.next1el_3112.root.h5',
-'run_3112.gdcsnext.363.next1el_3112.root.h5',
-'run_3112.gdcsnext.364.next1el_3112.root.h5',
-'run_3112.gdcsnext.365.next1el_3112.root.h5',
-'run_3112.gdcsnext.366.next1el_3112.root.h5',
-'run_3112.gdcsnext.367.next1el_3112.root.h5',
-'run_3112.gdcsnext.368.next1el_3112.root.h5',
-'run_3112.gdcsnext.369.next1el_3112.root.h5',
-'run_3112.gdcsnext.370.next1el_3112.root.h5',
-'run_3112.gdcsnext.371.next1el_3112.root.h5',
-'run_3112.gdcsnext.372.next1el_3112.root.h5',
-'run_3112.gdcsnext.373.next1el_3112.root.h5',
-'run_3112.gdcsnext.374.next1el_3112.root.h5',
-'run_3112.gdcsnext.375.next1el_3112.root.h5',
-'run_3112.gdcsnext.376.next1el_3112.root.h5',
-'run_3112.gdcsnext.377.next1el_3112.root.h5',
-'run_3112.gdcsnext.378.next1el_3112.root.h5',
-'run_3112.gdcsnext.379.next1el_3112.root.h5',
-'run_3112.gdcsnext.380.next1el_3112.root.h5',
-'run_3112.gdcsnext.381.next1el_3112.root.h5',
-'run_3112.gdcsnext.382.next1el_3112.root.h5',
-'run_3112.gdcsnext.383.next1el_3112.root.h5',
-'run_3112.gdcsnext.384.next1el_3112.root.h5',
-'run_3112.gdcsnext.385.next1el_3112.root.h5',
-'run_3112.gdcsnext.386.next1el_3112.root.h5',
-'run_3112.gdcsnext.387.next1el_3112.root.h5',
-'run_3112.gdcsnext.388.next1el_3112.root.h5',
-'run_3112.gdcsnext.389.next1el_3112.root.h5',
-'run_3112.gdcsnext.390.next1el_3112.root.h5',
-'run_3112.gdcsnext.391.next1el_3112.root.h5',
-'run_3112.gdcsnext.392.next1el_3112.root.h5',
-'run_3112.gdcsnext.393.next1el_3112.root.h5',
-'run_3112.gdcsnext.394.next1el_3112.root.h5',
-'run_3112.gdcsnext.395.next1el_3112.root.h5',
-'run_3112.gdcsnext.396.next1el_3112.root.h5',
-'run_3112.gdcsnext.397.next1el_3112.root.h5',
-'run_3112.gdcsnext.398.next1el_3112.root.h5',
-'run_3112.gdcsnext.399.next1el_3112.root.h5',
-'run_3112.gdcsnext.400.next1el_3112.root.h5']
-    path='/Users/jjgomezcadenas/Documents/Development/NEXT/icdata/LSC/run3112/'
-    fpp = Irene(run_number=3112)
 
-    # set the state of the machine
-    fpp.set_input_files(path, input_files)
-    fpp.set_pmap_store(path, 'pmaps_0_400.h5', compression='ZLIB4')
-    fpp.set_print(nprint=10)
+def IRENE(argv=sys.argv):
+    """
+    IRENE DRIVER
+    """
+    CFP = configure(argv)
 
-    fpp.set_BLR(n_baseline=38000, thr_trigger=5*units.adc)
-    fpp.set_MAU(n_MAU=100, thr_MAU=3*units.adc)
-    fpp.set_CSUM(thr_csum=1*units.pes)
-    fpp.set_S1(tmin=10*units.mus, tmax=590*units.mus, stride=4, lmin=8, lmax=20)
-    fpp.set_S2(tmin=590*units.mus, tmax=1190*units.mus, stride=40, lmin=100,
-           lmax=100000)
-    fpp.set_SiPM(thr_zs=5*units.pes, thr_sipm_s2=25*units.pes)
+    fpp = Irene(run_number=CFP['RUN_NUMBER'])
+
+    files_in = glob(CFP['FILE_IN'])
+    files_in.sort()
+    fpp.set_input_files(files_in)
+    fpp.set_pmap_store(CFP['FILE_OUT'],
+                       compression=CFP['COMPRESSION'])
+    fpp.set_print(nprint=CFP['NPRINT'])
+
+    fpp.set_BLR(n_baseline=CFP['NBASELINE'],
+                thr_trigger=CFP['THR_TRIGGER']*units.adc)
+    fpp.set_MAU(n_MAU=CFP['NMAU'], thr_MAU=CFP['THR_MAU']*units.adc)
+    fpp.set_CSUM(thr_csum=CFP['THR_CSUM']*units.pes)
+    fpp.set_S1(tmin=CFP['S1_TMIN']*units.mus, tmax=CFP['S1_TMAX']*units.mus,
+               stride=CFP['S1_STRIDE'], lmin=CFP['S1_LMIN'],
+               lmax=CFP['S1_LMAX'])
+    fpp.set_S2(tmin=CFP['S2_TMIN']*units.mus, tmax=CFP['S2_TMAX']*units.mus,
+               stride=CFP['S2_STRIDE'], lmin=CFP['S2_LMIN'],
+               lmax=CFP['S2_LMAX'])
+    fpp.set_SiPM(thr_zs=CFP['THR_ZS']*units.pes,
+                 thr_sipm_s2=CFP['THR_SIPM_S2']*units.pes)
 
     t0 = time()
-    nevt = fpp.run(nmax=100000, store_pmaps=True)
+    nevts = CFP['NEVENTS'] if not CFP['RUN_ALL'] else -1
+    nevt = fpp.run(nmax=nevts, store_pmaps=True)
     t1 = time()
     dt = t1 - t0
 
     print("run {} evts in {} s, time/event = {}".format(nevt, dt, dt/nevt))
+
+
+if __name__ == "__main__":
+    IRENE(sys.argv)
