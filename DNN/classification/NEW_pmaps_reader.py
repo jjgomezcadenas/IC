@@ -32,6 +32,10 @@ f_ids = tb.open_file(sipm_param_file)
 s_ids = np.array(f_ids.root.Sensors.XY)
 f_ids.close()
 
+# Open the 20x20 window table.
+fwtbl = h5py.File("wtbl.h5",'r')
+wtbl = fwtbl['wtbl']
+
 # Construct a dictionary that will map sensor id to a x,y coord pair
 id_to_coords = {}
 for ID, x, y in zip(s_ids[12:, 0], s_ids[12:, 1], s_ids[12:, 2]):
@@ -107,20 +111,50 @@ for fn in range(fnum):
                             ID = sipm % 64 + 1000 * (int(sipm / 64) + 1)
                             [i, j] = (id_to_coords[ID] + 235) / 10
                             tmap[np.int8(i), np.int8(j), bb + offset] += amp
+
+                # -----------------------------------------------------------
+                # Attempt to confine the event to a 20x20 window.
+                tmap20 = np.zeros((20, 20, max_slices), dtype=np.float32)
+                tsproj = np.zeros((48, 48), dtype=np.float32)
+                tsipm_sum = 0.
+                for isipm in range(48):
+                    for jsipm in range(48):
+                        sval = np.sum(tmap[isipm, jsipm, :])
+                        tsproj[isipm, jsipm] = sval
+                        tsipm_sum += sval
+
+                # Ensure that the charge in the 20x20 window is sufficient.
+                chg_frac = tsipm_sum / np.sum(tmap)
+                if(chg_frac > 0.9):
+
+                    # Get the index of the max SiPM and fill the corresponding 20x20 maps.
+                    imax_sum = np.argmax(tsproj)
+                    for nslice in range(len(eslices)):
+                        for s20id in range(len(wtbl[imax_sum])):
+                            s48id = wtbl[imax_sum][s20id]
+                            i20 = int(s20id / 20)
+                            j20 = s20id % 20
+                            i48 = int(s48id / 48)
+                            j48 = s48id % 48
+                            tmap20[i20][j20][nslice] = tmap[i48][j48][nslice]
+                         
+ 
+                    # Weight the slices assuming a total slice energy of 1.
+                    etot = np.sum(eslices)
+                    for nsl,esl in enumerate(eslices):
+                        tmap20[:,:,nsl] /= np.sum(tmap20[:,:,nsl])
+                        tmap20[:,:,nsl] *= 1.0*esl/etot
             
-                # Weight the slices assuming a total slice energy of 1.
-                etot = np.sum(eslices)
-                for nsl,esl in enumerate(eslices):
-                    tmap[:,:,nsl] *= 1.0*esl/etot
-            
-                # Add the event to the lists of maps and energies if it contains some information.
-                maxval = np.max(tmap)
-                if(maxval > 0):
-                    #tmap /= maxval     # normalize so maximum value is = 1
-                    maps.append(tmap)
-                    energies.append(eslices)
-                    ev += 1
-                    print("** Added map for event ", ev, "; file event number ", evtnum, "\n")
+                    # Add the event to the lists of maps and energies if it contains some information.
+                    maxval = np.max(tmap)
+                    if(maxval > 0):
+                        #tmap /= maxval     # normalize so maximum value is = 1
+                        maps.append(tmap20)
+                        energies.append(eslices)
+                        ev += 1
+                        print("** Added map for event ", ev, "; file event number ", evtnum, "\n")
+                else:
+                    print("--> Event did not make charge fraction cut with charge",chg_frac)
     
         # Set to the next event.
         if(rnum < pmaps.nrows):
