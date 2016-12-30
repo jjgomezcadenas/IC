@@ -4,6 +4,7 @@
 from __future__ import print_function
 import tables as tb
 import numpy as np
+import h5py
 
 extend_training_set = False
 gen_all = True
@@ -11,20 +12,20 @@ gen_all = True
 # -------------------------------------------------------------------------------------------------
 # Input parameters
 #
-etype = 'si'                  # 'si' or 'bg': set depending on type of events in file below (dfile) 
+etype = 'bg'                  # 'si' or 'bg': set depending on type of events in file below (dfile) 
 
 # Process files with base dfile and ending _(num).h5 where (num) runs from 0 to fnum-1.
 #dfile = '/home/jrenner/data/SE/hdf5_NEXT_v0_08_06_NEW_se_1M_combined.h5'
 #dfile = '/home/jrenner/data/0vbb/bb_1M_v0_08_07/hdf5_NEXT_v0_08_06_NEW_bb_1M_combined'
-dfile = '/home/jrenner/data/0vbb/bb_1M_v0_08_07/hdf5_NEXT_NEW_bb_1M_v0_08_07'
-#dfile = '/home/jrenner/data/SE/se_1M_v0_08_07/hdf5_NEXT_NEW_se_1M_v0_08_07'
+#dfile = '/home/jrenner/data/0vbb/bb_1M_v0_08_07/hdf5_NEXT_NEW_bb_1M_v0_08_07'
+dfile = '/home/jrenner/data/SE/se_1M_v0_08_07/hdf5_NEXT_NEW_se_1M_v0_08_07'
 fnum = 50
 
 sipm_param_file = '/home/jrenner/data/sipm_param/ReproducedFull.h5'
 
-nevts = 10000                            # number of events to read
-tbin = 5                                 # bin size in microseconds
-max_slices = 30                          # maximum number of slices per map
+nevts = 400                           # number of events to read
+tbin = 2                                 # bin size in microseconds
+max_slices = 60                          # maximum number of slices per map
 # -------------------------------------------------------------------------------------------------
 
 # Get the map of XY values vs. ID.
@@ -90,7 +91,7 @@ for fn in range(fnum):
             else:
         
                 # Calculate a slice offset so that not all slices begin at 0.
-                offset = np.random.randint(0,max_slices-nslices) 
+                offset = 0 #np.random.randint(0,max_slices-nslices) 
             
                 # Create SiPM maps for this event.
                 tmap = np.zeros((48, 48, max_slices), dtype=np.float32)
@@ -122,28 +123,31 @@ for fn in range(fnum):
                         sval = np.sum(tmap[isipm, jsipm, :])
                         tsproj[isipm, jsipm] = sval
                         tsipm_sum += sval
+                print(tsproj)
+
+                # Get the index of the max SiPM and fill the corresponding 20x20 maps.
+                imax_sum = np.argmax(tsproj)
+                print("** Max is",imax_sum)
+                for nslice in range(len(eslices)):
+                    for s20id in range(len(wtbl[imax_sum])):
+                        s48id = wtbl[imax_sum][s20id]
+                        i20 = int(s20id / 20)
+                        j20 = s20id % 20
+                        i48 = int(s48id / 48)
+                        j48 = s48id % 48
+                        tmap20[i20][j20][nslice] = tmap[i48][j48][nslice]
 
                 # Ensure that the charge in the 20x20 window is sufficient.
-                chg_frac = tsipm_sum / np.sum(tmap)
-                if(chg_frac > 0.9):
-
-                    # Get the index of the max SiPM and fill the corresponding 20x20 maps.
-                    imax_sum = np.argmax(tsproj)
-                    for nslice in range(len(eslices)):
-                        for s20id in range(len(wtbl[imax_sum])):
-                            s48id = wtbl[imax_sum][s20id]
-                            i20 = int(s20id / 20)
-                            j20 = s20id % 20
-                            i48 = int(s48id / 48)
-                            j48 = s48id % 48
-                            tmap20[i20][j20][nslice] = tmap[i48][j48][nslice]
-                         
+                chg_frac = np.sum(tmap20) / tsipm_sum
+                if(chg_frac > 0.9):                         
  
                     # Weight the slices assuming a total slice energy of 1.
                     etot = np.sum(eslices)
                     for nsl,esl in enumerate(eslices):
-                        tmap20[:,:,nsl] /= np.sum(tmap20[:,:,nsl])
-                        tmap20[:,:,nsl] *= 1.0*esl/etot
+                        nval = np.sum(tmap20[:,:,nsl])
+                        if(nval > 0):
+                            tmap20[:,:,nsl] *= 1.0/nval
+                            tmap20[:,:,nsl] *= 1.0*esl/etot
             
                     # Add the event to the lists of maps and energies if it contains some information.
                     maxval = np.max(tmap)
@@ -152,7 +156,7 @@ for fn in range(fnum):
                         maps.append(tmap20)
                         energies.append(eslices)
                         ev += 1
-                        print("** Added map for event ", ev, "; file event number ", evtnum, "\n")
+                        print("** Added map for event ", ev, ", file", fn, "; file event number ", evtnum, "\n")
                 else:
                     print("--> Event did not make charge fraction cut with charge",chg_frac)
     
@@ -171,7 +175,7 @@ print("Maps of length = ", len(maps))
 f = tb.open_file('NEW_training_MC_{0}.h5'.format(etype), 'w')
 filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
 atom_m = tb.Atom.from_dtype(maps.dtype)
-maparray = f.create_earray(f.root, 'maps', atom_m, (0, 48, 48, max_slices), filters=filters)
+maparray = f.create_earray(f.root, 'maps', atom_m, (0, 20, 20, max_slices), filters=filters)
 atom_e = tb.Atom.from_dtype(energies.dtype)
 earray = f.create_earray(f.root, 'energies', atom_e, (0, max_slices), filters=filters)
 
