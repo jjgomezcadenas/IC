@@ -5,28 +5,35 @@ from __future__ import print_function
 import tables as tb
 import numpy as np
 import h5py
+import sys
 
-extend_training_set = False
-gen_all = True
 
 # -------------------------------------------------------------------------------------------------
 # Input parameters
 #
-etype = 'bg'                  # 'si' or 'bg': set depending on type of events in file below (dfile) 
 
 # Process files with base dfile and ending _(num).h5 where (num) runs from 0 to fnum-1.
 #dfile = '/home/jrenner/data/SE/hdf5_NEXT_v0_08_06_NEW_se_1M_combined.h5'
 #dfile = '/home/jrenner/data/0vbb/bb_1M_v0_08_07/hdf5_NEXT_v0_08_06_NEW_bb_1M_combined'
 #dfile = '/home/jrenner/data/0vbb/bb_1M_v0_08_07/hdf5_NEXT_NEW_bb_1M_v0_08_07'
 dfile = '/home/jrenner/data/SE/se_1M_v0_08_07/hdf5_NEXT_NEW_se_1M_v0_08_07'
-fnum = 50
+#fnum = 50
 
 sipm_param_file = '/home/jrenner/data/sipm_param/ReproducedFull.h5'
 
-nevts = 400                           # number of events to read
+nevts = 100000                              # number of events to read
 tbin = 2                                 # bin size in microseconds
 max_slices = 60                          # maximum number of slices per map
 # -------------------------------------------------------------------------------------------------
+
+# Get input arguments
+iargs = sys.argv
+if(len(iargs) < 4):
+    print("python NEW_pmaps_reader.py <si_or_bg> <start_file> <end_file+1>")
+    exit()
+etype = iargs[1]          # 'si' or 'bg': set depending on type of events in file below (dfile)
+f_start = int(iargs[2])
+f_end = int(iargs[3])
 
 # Get the map of XY values vs. ID.
 f_ids = tb.open_file(sipm_param_file)
@@ -45,7 +52,7 @@ for ID, x, y in zip(s_ids[12:, 0], s_ids[12:, 1], s_ids[12:, 2]):
 # Loop over all files.
 maps = []
 energies = []
-for fn in range(fnum):
+for fn in range(f_start,f_end):
 
     # Open the hdf5 file containing the PMaps.
     fname = "{0}_{1}.h5".format(dfile,fn)
@@ -172,7 +179,7 @@ maps = np.array(maps)
 energies = np.array(energies)
 print("Maps of length = ", len(maps))
 
-f = tb.open_file('NEW_training_MC_{0}.h5'.format(etype), 'w')
+f = tb.open_file('NEW_training_MC_{0}_{1}_to_{2}.h5'.format(etype,f_start,f_end), 'w')
 filters = tb.Filters(complib='blosc', complevel=9, shuffle=False)
 atom_m = tb.Atom.from_dtype(maps.dtype)
 maparray = f.create_earray(f.root, 'maps', atom_m, (0, 20, 20, max_slices), filters=filters)
